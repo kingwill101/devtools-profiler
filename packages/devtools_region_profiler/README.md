@@ -1,9 +1,3 @@
-<!--
-Copyright 2026 The Flutter Authors
-Use of this source code is governed by a BSD-style license that can be
-found in the LICENSE file or at https://developers.google.com/open-source/licenses/bsd.
--->
-
 # DevTools Region Profiler
 
 `devtools_region_profiler` is the helper package you add to a Dart program when
@@ -15,20 +9,37 @@ run is too broad and you want results for a specific section such as `startup`,
 
 For the full CLI workflow, see [the profiler README](../../README.md).
 
+## Main API Surface
+
+The package exports:
+
+- `profileRegion()`: wraps one async closure and stops the region
+  automatically
+- `startProfileRegion()`: starts a region manually and returns a stop handle
+- `ProfileRegionHandle`: the active region handle returned by manual starts
+- `ProfileRegionConfigurationException`: thrown when the process is not running
+  inside a compatible profiler session
+- protocol types such as `ProfileRegionOptions`, `ProfileCaptureKind`, and
+  `ProfileIsolateScope`
+
+Use `profileRegion()` by default. Reach for `startProfileRegion()` only when
+the measured work spans multiple branches, callbacks, or lifecycle hooks.
+
 ## Add It To A Target App
 
-This package is local to the profiler workspace. Add it with a path dependency:
-
-```yaml
-dependencies:
-  devtools_region_profiler:
-    path: /absolute/path/to/devtools/profiler/packages/devtools_region_profiler
-```
-
-Then run the target app through the profiler CLI:
+Add the region helper to the target package:
 
 ```bash
-dart run packages/devtools_profiler_cli/bin/devtools_profiler.dart run \
+dart pub add devtools_region_profiler
+```
+
+When testing an unpublished checkout, use a path dependency to the local
+`packages/devtools_region_profiler` directory instead.
+
+Run the target app through the globally activated profiler CLI:
+
+```bash
+devtools-profiler run \
   --cwd /path/to/app \
   -- dart run bin/main.dart
 ```
@@ -36,7 +47,7 @@ dart run packages/devtools_profiler_cli/bin/devtools_profiler.dart run \
 For Flutter targets, run through `flutter test` or `flutter run`:
 
 ```bash
-dart run packages/devtools_profiler_cli/bin/devtools_profiler.dart run \
+devtools-profiler run \
   --cwd /path/to/flutter/app \
   -- flutter test test/widget_test.dart
 ```
@@ -53,6 +64,10 @@ markers are required.
 The helper reads profiler session values from process environment variables and
 from Dart compile-time environment values. The CLI uses environment variables
 for Dart commands and `--dart-define` for Flutter commands.
+
+The API reference expands on this behavior, including how nested regions
+inherit parent ids, how manual handles should be stopped, and how region
+configuration failures are surfaced.
 
 ## Mark A Region With A Closure
 
