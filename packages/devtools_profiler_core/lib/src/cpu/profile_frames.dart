@@ -95,8 +95,9 @@ class ProfileFrame {
 }
 
 String _packageNameFromPubCacheFolder(String folder) {
-  final versionMatch =
-      RegExp(r'^(.+)-(\d+\.\d+\.\d+(?:[-+].*)?)$').firstMatch(folder);
+  final versionMatch = RegExp(
+    r'^(.+)-(\d+\.\d+\.\d+(?:[-+].*)?)$',
+  ).firstMatch(folder);
   return versionMatch?.group(1) ?? folder;
 }
 

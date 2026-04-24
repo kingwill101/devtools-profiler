@@ -4,8 +4,8 @@ import 'package:vm_service/vm_service.dart';
 import 'memory_models.dart';
 
 /// Predicate used to retain or hide memory class summaries.
-typedef ProfileMemoryClassPredicate = bool Function(
-    ProfileMemoryClassSummary summary);
+typedef ProfileMemoryClassPredicate =
+    bool Function(ProfileMemoryClassSummary summary);
 
 /// Builds a [ProfileMemoryResult] from start and end allocation snapshots.
 ProfileMemoryResult summarizeMemoryProfile({
@@ -29,7 +29,8 @@ ProfileMemoryResult summarizeMemoryProfile({
       libraryUri: endStat?.libraryUri ?? startStat?.libraryUri,
       allocationBytesDelta:
           (endStat?.accumulatedBytes ?? 0) - (startStat?.accumulatedBytes ?? 0),
-      allocationInstancesDelta: (endStat?.accumulatedInstances ?? 0) -
+      allocationInstancesDelta:
+          (endStat?.accumulatedInstances ?? 0) -
           (startStat?.accumulatedInstances ?? 0),
       liveBytes: endStat?.liveBytes ?? 0,
       liveBytesDelta: (endStat?.liveBytes ?? 0) - (startStat?.liveBytes ?? 0),
@@ -109,20 +110,23 @@ int _compareMemoryClassSummary(
   ProfileMemoryClassSummary left,
   ProfileMemoryClassSummary right,
 ) {
-  final allocationBytesCompare =
-      right.allocationBytesDelta.compareTo(left.allocationBytesDelta);
+  final allocationBytesCompare = right.allocationBytesDelta.compareTo(
+    left.allocationBytesDelta,
+  );
   if (allocationBytesCompare != 0) {
     return allocationBytesCompare;
   }
 
-  final liveBytesDeltaCompare =
-      right.liveBytesDelta.compareTo(left.liveBytesDelta);
+  final liveBytesDeltaCompare = right.liveBytesDelta.compareTo(
+    left.liveBytesDelta,
+  );
   if (liveBytesDeltaCompare != 0) {
     return liveBytesDeltaCompare;
   }
 
-  final allocationInstancesCompare =
-      right.allocationInstancesDelta.compareTo(left.allocationInstancesDelta);
+  final allocationInstancesCompare = right.allocationInstancesDelta.compareTo(
+    left.allocationInstancesDelta,
+  );
   if (allocationInstancesCompare != 0) {
     return allocationInstancesCompare;
   }
@@ -133,10 +137,7 @@ int _compareMemoryClassSummary(
 int _sanitizeMemoryValue(int? value) => value == null || value < 0 ? 0 : value;
 
 final class _MutableMemoryClassStats {
-  _MutableMemoryClassStats({
-    required this.className,
-    required this.libraryUri,
-  });
+  _MutableMemoryClassStats({required this.className, required this.libraryUri});
 
   final String className;
   final String? libraryUri;

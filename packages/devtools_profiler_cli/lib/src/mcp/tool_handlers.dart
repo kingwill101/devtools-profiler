@@ -13,19 +13,13 @@ const _sessionFileName = 'session.json';
 const _sessionsDirectoryName = 'sessions';
 const _defaultSessionListLimit = 20;
 
-typedef _ProgressReporter = void Function(
-  num progress,
-  num total,
-  String message,
-);
+typedef _ProgressReporter =
+    void Function(num progress, num total, String message);
 
 /// Handles MCP profiler tool calls.
 class McpToolHandlers {
   /// Creates tool handlers backed by [runner].
-  McpToolHandlers({
-    required this.runner,
-    required this.notifyProgress,
-  });
+  McpToolHandlers({required this.runner, required this.notifyProgress});
 
   /// The profiler backend used by all tool calls.
   final ProfileRunner runner;
@@ -98,10 +92,7 @@ class McpToolHandlers {
               key: 'artifactDirectory',
             ),
             duration: _requiredDurationSecondsArgument(arguments),
-            vmServiceUri: _requiredUriArgument(
-              arguments,
-              key: 'vmServiceUri',
-            ),
+            vmServiceUri: _requiredUriArgument(arguments, key: 'vmServiceUri'),
             workingDirectory: _optionalStringArgument(
               arguments,
               key: 'workingDirectory',
@@ -109,7 +100,10 @@ class McpToolHandlers {
           ),
         );
         progress(
-            1, 3, 'Attach window finished. Preparing session presentation.');
+          1,
+          3,
+          'Attach window finished. Preparing session presentation.',
+        );
         final prepared = await prepareSessionPresentation(
           runner,
           result,
@@ -206,8 +200,10 @@ class McpToolHandlers {
             for (final region in session.result.regions) region.regionId,
           ],
           'overallProfile': switch (session.result.overallProfile) {
-            final ProfileRegionResult overall =>
-              _regionListingJson(overall, scope: 'session'),
+            final ProfileRegionResult overall => _regionListingJson(
+              overall,
+              scope: 'session',
+            ),
             _ => null,
           },
           'regions': [
@@ -561,8 +557,10 @@ class McpToolHandlers {
         );
         final baselineSession = _selectStoredSession(
           sessions,
-          selector:
-              _optionalStringArgument(arguments, key: 'baselineSessionId'),
+          selector: _optionalStringArgument(
+            arguments,
+            key: 'baselineSessionId',
+          ),
           defaultIndex: 1,
           defaultLabel: 'previous',
         );
@@ -608,7 +606,7 @@ class McpToolHandlers {
     required CallToolRequest request,
     required String successMessage,
     required Future<Map<String, Object?>> Function(_ProgressReporter progress)
-        action,
+    action,
   }) async {
     try {
       final progressToken = request.meta?.progressToken;
@@ -629,9 +627,7 @@ class McpToolHandlers {
       final result = await action(emitProgress);
       return CallToolResult(
         content: [
-          TextContent(
-            text: '$successMessage\n${_jsonEncoder.convert(result)}',
-          ),
+          TextContent(text: '$successMessage\n${_jsonEncoder.convert(result)}'),
         ],
         structuredContent: result,
       );
@@ -752,8 +748,8 @@ class McpToolHandlers {
     }
 
     final sessionsDirectory = _resolveSessionsDirectory(arguments);
-    final sessionIds =
-        (arguments['sessionIds'] as List<Object?>? ?? const []).cast<String>();
+    final sessionIds = (arguments['sessionIds'] as List<Object?>? ?? const [])
+        .cast<String>();
     if (sessionIds.isNotEmpty) {
       if (sessionIds.length < 2) {
         throw ArgumentError(
@@ -773,8 +769,9 @@ class McpToolHandlers {
 
     final sessions = await _discoverSessions(sessionsDirectory);
     final limit = _listLimitFromArguments(arguments);
-    final selected =
-        limit == null ? sessions : sessions.take(limit).toList(growable: false);
+    final selected = limit == null
+        ? sessions
+        : sessions.take(limit).toList(growable: false);
     if (selected.length < 2) {
       throw ArgumentError(
         'Trend analysis requires at least two stored sessions.',
@@ -796,8 +793,9 @@ class McpToolHandlers {
       if (!sessionDirectory.existsSync()) {
         throw ArgumentError('Session directory not found: $sessionPath');
       }
-      final sessionFile =
-          File(path.join(sessionDirectory.path, _sessionFileName));
+      final sessionFile = File(
+        path.join(sessionDirectory.path, _sessionFileName),
+      );
       if (!sessionFile.existsSync()) {
         throw ArgumentError('No session.json found in "$sessionPath".');
       }
@@ -842,8 +840,9 @@ class McpToolHandlers {
         'Session "$sessionId" was not found under "${sessionsDirectory.path}".',
       );
     }
-    final sessionFile =
-        File(path.join(sessionDirectory.path, _sessionFileName));
+    final sessionFile = File(
+      path.join(sessionDirectory.path, _sessionFileName),
+    );
     if (!sessionFile.existsSync()) {
       throw ArgumentError(
         'No session.json found for session "$sessionId" under "${sessionsDirectory.path}".',
@@ -851,8 +850,9 @@ class McpToolHandlers {
     }
     final stat = await sessionFile.stat();
     return StoredSession(
-      directory:
-          Directory(path.normalize(path.absolute(sessionDirectory.path))),
+      directory: Directory(
+        path.normalize(path.absolute(sessionDirectory.path)),
+      ),
       result: await ProfileArtifacts.readSession(sessionDirectory.path),
       modifiedTime: stat.modified.toUtc(),
     );
@@ -892,8 +892,9 @@ class McpToolHandlers {
         'Session "$normalized" was not found under "${sessionsDirectory.path}".',
       );
     }
-    final sessionFile =
-        File(path.join(sessionDirectory.path, _sessionFileName));
+    final sessionFile = File(
+      path.join(sessionDirectory.path, _sessionFileName),
+    );
     if (!sessionFile.existsSync()) {
       throw ArgumentError(
         'No session.json found for session "$normalized" under "${sessionsDirectory.path}".',
@@ -901,8 +902,9 @@ class McpToolHandlers {
     }
     final stat = await sessionFile.stat();
     return StoredSession(
-      directory:
-          Directory(path.normalize(path.absolute(sessionDirectory.path))),
+      directory: Directory(
+        path.normalize(path.absolute(sessionDirectory.path)),
+      ),
       result: await ProfileArtifacts.readSession(sessionDirectory.path),
       modifiedTime: stat.modified.toUtc(),
     );
@@ -981,7 +983,7 @@ Directory _resolveSessionsDirectory(Map<String, Object?> arguments) {
 
   final rootDirectory =
       _optionalStringArgument(arguments, key: 'rootDirectory') ??
-          Directory.current.path;
+      Directory.current.path;
   final normalizedRoot = path.normalize(path.absolute(rootDirectory));
   final candidate = Directory(
     path.join(normalizedRoot, '.dart_tool', 'devtools_profiler', 'sessions'),
@@ -1025,9 +1027,7 @@ Map<String, Object?> _sessionMetadataJson(StoredSession session) {
       for (final scope in session.result.supportedIsolateScopes) scope.name,
     ],
     'regionCount': session.result.regions.length,
-    'regionIds': [
-      for (final region in session.result.regions) region.regionId,
-    ],
+    'regionIds': [for (final region in session.result.regions) region.regionId],
     'hasOverallProfile': session.result.overallProfile != null,
     'vmServiceUri': session.result.vmServiceUri,
   };
@@ -1120,9 +1120,7 @@ Duration? _optionalDurationSecondsArgument(
     return null;
   }
   if (value is! int || value <= 0) {
-    throw ArgumentError(
-      'The "$key" argument must be a positive integer.',
-    );
+    throw ArgumentError('The "$key" argument must be a positive integer.');
   }
   return Duration(seconds: value);
 }
@@ -1145,9 +1143,7 @@ Uri _requiredUriArgument(
   final value = _requiredStringArgument(arguments, key: key);
   final uri = Uri.parse(value);
   if (!uri.hasScheme || (uri.scheme != 'http' && uri.scheme != 'https')) {
-    throw ArgumentError(
-      'The "$key" argument must be an HTTP VM service URI.',
-    );
+    throw ArgumentError('The "$key" argument must be an HTTP VM service URI.');
   }
   return uri;
 }

@@ -43,10 +43,7 @@ final class ProfileSessionRegionRpcHandler {
     vmHookup.validateSession(
       params['sessionId'].valueOr(context.sessionId) as String?,
     );
-    return {
-      DtdParameters.type: 'PingResult',
-      'sessionId': context.sessionId,
-    };
+    return {DtdParameters.type: 'PingResult', 'sessionId': context.sessionId};
   }
 
   /// Handles the DTD region-start request.
@@ -76,9 +73,8 @@ final class ProfileSessionRegionRpcHandler {
     final name = params['name'].asString;
     final startTimestampMicros = params['timestampMicros'].asInt;
     final parentRegionId = params['parentRegionId'].valueOr(null) as String?;
-    final memoryStartSnapshot = options.captureKinds.contains(
-      ProfileCaptureKind.memory,
-    )
+    final memoryStartSnapshot =
+        options.captureKinds.contains(ProfileCaptureKind.memory)
         ? await snapshotCapture.captureMemorySnapshotForScope(
             originIsolateId: isolateId,
             isolateScope: options.isolateScope,
@@ -88,11 +84,11 @@ final class ProfileSessionRegionRpcHandler {
         : null;
     if (context.overallMemoryStartSnapshot == null) {
       try {
-        context.overallMemoryStartSnapshot =
-            await snapshotCapture.captureMemorySnapshotForAllAppIsolates(
-          timestampMicros: startTimestampMicros,
-          warningContext: 'Whole-session memory start',
-        );
+        context.overallMemoryStartSnapshot = await snapshotCapture
+            .captureMemorySnapshotForAllAppIsolates(
+              timestampMicros: startTimestampMicros,
+              warningContext: 'Whole-session memory start',
+            );
       } catch (_) {
         context.overallMemoryStartSnapshot ??= memoryStartSnapshot;
       }

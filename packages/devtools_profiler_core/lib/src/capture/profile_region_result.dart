@@ -32,12 +32,13 @@ class ProfileRegionResult {
     this.isolateScope = ProfileIsolateScope.current,
     this.rawProfilePath,
     this.error,
-  })  : isolateIds = List.unmodifiable(
-          isolateIds ??
-              (isolateId.isEmpty ? const <String>[] : <String>[isolateId]),
-        ),
-        captureKinds =
-            List.unmodifiable(normalizeProfileCaptureKinds(captureKinds));
+  }) : isolateIds = List.unmodifiable(
+         isolateIds ??
+             (isolateId.isEmpty ? const <String>[] : <String>[isolateId]),
+       ),
+       captureKinds = List.unmodifiable(
+         normalizeProfileCaptureKinds(captureKinds),
+       );
 
   /// Deserializes a region profiling result from JSON.
   factory ProfileRegionResult.fromJson(Map<String, Object?> json) {
@@ -46,14 +47,15 @@ class ProfileRegionResult {
       name: json['name'] as String? ?? '',
       attributes: castStringMap(json['attributes']),
       isolateId: json['isolateId'] as String? ?? '',
-      isolateIds: castNullableStringList(json['isolateIds']) ??
+      isolateIds:
+          castNullableStringList(json['isolateIds']) ??
           legacyIsolateIds(json['isolateId'] as String?),
       parentRegionId: json['parentRegionId'] as String?,
       captureKinds: switch (json['captureKinds']) {
         final List<Object?> values => [
-            for (final value in values)
-              ProfileCaptureKind.parse(value.toString()),
-          ],
+          for (final value in values)
+            ProfileCaptureKind.parse(value.toString()),
+        ],
         _ => defaultProfileCaptureKinds,
       },
       isolateScope: switch (json['isolateScope']) {
@@ -74,8 +76,9 @@ class ProfileRegionResult {
           .map((frame) => ProfileFrameSummary.fromJson(castJsonMap(frame)))
           .toList(),
       memory: switch (json['memory']) {
-        final Map<Object?, Object?> memory =>
-          ProfileMemoryResult.fromJson(castJsonMap(memory)),
+        final Map<Object?, Object?> memory => ProfileMemoryResult.fromJson(
+          castJsonMap(memory),
+        ),
         _ => null,
       },
       summaryPath: json['summaryPath'] as String? ?? '',
@@ -154,25 +157,24 @@ class ProfileRegionResult {
 
   /// Converts this region result to JSON.
   Map<String, Object?> toJson() => {
-        'regionId': regionId,
-        'name': name,
-        'attributes': attributes,
-        'isolateId': isolateId,
-        'isolateIds': isolateIds,
-        'captureKinds': [for (final kind in captureKinds) kind.name],
-        'isolateScope': isolateScope.name,
-        'parentRegionId': parentRegionId,
-        'startTimestampMicros': startTimestampMicros,
-        'endTimestampMicros': endTimestampMicros,
-        'durationMicros': durationMicros,
-        'sampleCount': sampleCount,
-        'samplePeriodMicros': samplePeriodMicros,
-        'topSelfFrames': topSelfFrames.map((frame) => frame.toJson()).toList(),
-        'topTotalFrames':
-            topTotalFrames.map((frame) => frame.toJson()).toList(),
-        if (memory != null) 'memory': memory!.toJson(),
-        'summaryPath': summaryPath,
-        'rawProfilePath': rawProfilePath,
-        'error': error,
-      };
+    'regionId': regionId,
+    'name': name,
+    'attributes': attributes,
+    'isolateId': isolateId,
+    'isolateIds': isolateIds,
+    'captureKinds': [for (final kind in captureKinds) kind.name],
+    'isolateScope': isolateScope.name,
+    'parentRegionId': parentRegionId,
+    'startTimestampMicros': startTimestampMicros,
+    'endTimestampMicros': endTimestampMicros,
+    'durationMicros': durationMicros,
+    'sampleCount': sampleCount,
+    'samplePeriodMicros': samplePeriodMicros,
+    'topSelfFrames': topSelfFrames.map((frame) => frame.toJson()).toList(),
+    'topTotalFrames': topTotalFrames.map((frame) => frame.toJson()).toList(),
+    if (memory != null) 'memory': memory!.toJson(),
+    'summaryPath': summaryPath,
+    'rawProfilePath': rawProfilePath,
+    'error': error,
+  };
 }

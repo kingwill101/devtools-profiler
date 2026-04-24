@@ -33,21 +33,18 @@ CpuSamples mergeCpuSamples(Iterable<CpuSamples> cpuSamplesByIsolate) {
     final samples = cpuSamples.samples ?? const <CpuSample>[];
     final functionIndexOffset = mergedFunctions.length;
     mergedFunctions.addAll(functions);
-    mergedSamples.addAll(
-      [
-        for (final sample in samples)
-          CpuSample(
-            timestamp: sample.timestamp,
-            stack: switch (sample.stack) {
-              final List<int> stack => [
-                  for (final frameIndex in stack)
-                    frameIndex + functionIndexOffset
-                ],
-              _ => null,
-            },
-          ),
-      ],
-    );
+    mergedSamples.addAll([
+      for (final sample in samples)
+        CpuSample(
+          timestamp: sample.timestamp,
+          stack: switch (sample.stack) {
+            final List<int> stack => [
+              for (final frameIndex in stack) frameIndex + functionIndexOffset,
+            ],
+            _ => null,
+          },
+        ),
+    ]);
 
     sampleCount += cpuSamples.sampleCount ?? samples.length;
 

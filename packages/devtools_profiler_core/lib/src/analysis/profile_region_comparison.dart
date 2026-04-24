@@ -77,21 +77,17 @@ ProfileRegionComparison compareProfileRegions({
   final memory = switch ((baseline.memory, current.memory)) {
     (null, null) => null,
     (final ProfileMemoryResult left, final ProfileMemoryResult right) =>
-      _buildMemoryComparison(
-        left,
-        right,
-        memoryClassLimit: memoryClassLimit,
-      ),
+      _buildMemoryComparison(left, right, memoryClassLimit: memoryClassLimit),
     (final ProfileMemoryResult left, null) => _buildMemoryComparison(
-        left,
-        _emptyMemoryResult(left.start.timestamp, left.end.timestamp),
-        memoryClassLimit: memoryClassLimit,
-      ),
+      left,
+      _emptyMemoryResult(left.start.timestamp, left.end.timestamp),
+      memoryClassLimit: memoryClassLimit,
+    ),
     (null, final ProfileMemoryResult right) => _buildMemoryComparison(
-        _emptyMemoryResult(right.start.timestamp, right.end.timestamp),
-        right,
-        memoryClassLimit: memoryClassLimit,
-      ),
+      _emptyMemoryResult(right.start.timestamp, right.end.timestamp),
+      right,
+      memoryClassLimit: memoryClassLimit,
+    ),
   };
 
   return ProfileRegionComparison(
@@ -158,9 +154,7 @@ List<ProfileFrameDelta> _buildFrameDeltas(
       ),
   ];
 
-  deltas.sort(
-    sortBySelf ? _compareSelfFrameDeltas : _compareTotalFrameDeltas,
-  );
+  deltas.sort(sortBySelf ? _compareSelfFrameDeltas : _compareTotalFrameDeltas);
   return deltas;
 }
 
@@ -467,10 +461,7 @@ bool _sameCaptureKinds(
   return true;
 }
 
-bool _sameStringMap(
-  Map<String, String> baseline,
-  Map<String, String> current,
-) {
+bool _sameStringMap(Map<String, String> baseline, Map<String, String> current) {
   if (baseline.length != current.length) {
     return false;
   }

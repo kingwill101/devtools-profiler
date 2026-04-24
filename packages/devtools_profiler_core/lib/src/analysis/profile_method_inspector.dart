@@ -98,15 +98,15 @@ class ProfileMethodCandidate {
 
   /// Converts this candidate to JSON.
   Map<String, Object?> toJson() => {
-        'methodId': methodId,
-        'name': name,
-        'kind': kind,
-        'location': location,
-        'selfSamples': selfSamples,
-        'totalSamples': totalSamples,
-        'selfPercent': selfPercent,
-        'totalPercent': totalPercent,
-      };
+    'methodId': methodId,
+    'name': name,
+    'kind': kind,
+    'location': location,
+    'selfSamples': selfSamples,
+    'totalSamples': totalSamples,
+    'selfPercent': selfPercent,
+    'totalPercent': totalPercent,
+  };
 }
 
 /// A single frame entry within a representative method path.
@@ -143,11 +143,11 @@ class ProfileMethodPathFrame {
 
   /// Converts this path frame to JSON.
   Map<String, Object?> toJson() => {
-        'methodId': methodId,
-        'name': name,
-        'kind': kind,
-        'location': location,
-      };
+    'methodId': methodId,
+    'name': name,
+    'kind': kind,
+    'location': location,
+  };
 }
 
 /// A representative occurrence path for a selected method.
@@ -169,9 +169,8 @@ class ProfileMethodPath {
       frames: (json['frames'] as List<Object?>? ?? const [])
           .cast<Map<Object?, Object?>>()
           .map(
-            (frame) => ProfileMethodPathFrame.fromJson(
-              frame.cast<String, Object?>(),
-            ),
+            (frame) =>
+                ProfileMethodPathFrame.fromJson(frame.cast<String, Object?>()),
           )
           .toList(),
       selfSamples: json['selfSamples'] as int? ?? 0,
@@ -206,14 +205,14 @@ class ProfileMethodPath {
 
   /// Converts this path to JSON.
   Map<String, Object?> toJson() => {
-        'frames': [for (final frame in frames) frame.toJson()],
-        'selfSamples': selfSamples,
-        'totalSamples': totalSamples,
-        'selfPercent': selfPercent,
-        'totalPercent': totalPercent,
-        'selfMicros': selfMicros,
-        'totalMicros': totalMicros,
-      };
+    'frames': [for (final frame in frames) frame.toJson()],
+    'selfSamples': selfSamples,
+    'totalSamples': totalSamples,
+    'selfPercent': selfPercent,
+    'totalPercent': totalPercent,
+    'selfMicros': selfMicros,
+    'totalMicros': totalMicros,
+  };
 }
 
 /// A structured inspection result for one selected method.
@@ -241,8 +240,9 @@ class ProfileMethodInspection {
       },
       message: json['message'] as String?,
       method: switch (json['method']) {
-        final Map<Object?, Object?> method =>
-          ProfileMethodSummary.fromJson(method.cast<String, Object?>()),
+        final Map<Object?, Object?> method => ProfileMethodSummary.fromJson(
+          method.cast<String, Object?>(),
+        ),
         _ => null,
       },
       candidates: (json['candidates'] as List<Object?>? ?? const [])
@@ -256,17 +256,13 @@ class ProfileMethodInspection {
       topDownPaths: (json['topDownPaths'] as List<Object?>? ?? const [])
           .cast<Map<Object?, Object?>>()
           .map(
-            (path) => ProfileMethodPath.fromJson(
-              path.cast<String, Object?>(),
-            ),
+            (path) => ProfileMethodPath.fromJson(path.cast<String, Object?>()),
           )
           .toList(),
       bottomUpPaths: (json['bottomUpPaths'] as List<Object?>? ?? const [])
           .cast<Map<Object?, Object?>>()
           .map(
-            (path) => ProfileMethodPath.fromJson(
-              path.cast<String, Object?>(),
-            ),
+            (path) => ProfileMethodPath.fromJson(path.cast<String, Object?>()),
           )
           .toList(),
     );
@@ -298,15 +294,15 @@ class ProfileMethodInspection {
 
   /// Converts this inspection result to JSON.
   Map<String, Object?> toJson() => {
-        'query': query,
-        'queryKind': queryKind,
-        'status': status.name,
-        'message': message,
-        'method': method?.toJson(),
-        'candidates': [for (final candidate in candidates) candidate.toJson()],
-        'topDownPaths': [for (final path in topDownPaths) path.toJson()],
-        'bottomUpPaths': [for (final path in bottomUpPaths) path.toJson()],
-      };
+    'query': query,
+    'queryKind': queryKind,
+    'status': status.name,
+    'message': message,
+    'method': method?.toJson(),
+    'candidates': [for (final candidate in candidates) candidate.toJson()],
+    'topDownPaths': [for (final path in topDownPaths) path.toJson()],
+    'bottomUpPaths': [for (final path in bottomUpPaths) path.toJson()],
+  };
 }
 
 /// Inspects a single method using a DevTools-style method table and optional
@@ -380,7 +376,9 @@ ProfileMethodInspection inspectProfileMethod({
 }
 
 _MethodLookupResult _lookupByMethodId(
-    ProfileMethodTable table, String methodId) {
+  ProfileMethodTable table,
+  String methodId,
+) {
   final normalized = methodId.trim();
   final matches = table.methods
       .where((method) => method.methodId == normalized)

@@ -17,11 +17,11 @@ final class ProfileSessionController {
     required DartToolingDaemon dtd,
     required String sessionId,
   }) : context = ProfileSessionContext(
-          artifactStore: artifactStore,
-          childProcessId: childProcessId,
-          dtd: dtd,
-          sessionId: sessionId,
-        ) {
+         artifactStore: artifactStore,
+         childProcessId: childProcessId,
+         dtd: dtd,
+         sessionId: sessionId,
+       ) {
     snapshotCapture = ProfileSessionSnapshotCapture(context);
     vmHookup = ProfileSessionVmHookup(
       context: context,
@@ -123,14 +123,17 @@ final class ProfileSessionController {
     required bool terminatedByProfiler,
     required String workingDirectory,
   }) {
-    final sortedRegions = [...context.regions]..sort((left, right) {
-        final startCompare =
-            left.startTimestampMicros.compareTo(right.startTimestampMicros);
+    final sortedRegions = [...context.regions]
+      ..sort((left, right) {
+        final startCompare = left.startTimestampMicros.compareTo(
+          right.startTimestampMicros,
+        );
         if (startCompare != 0) {
           return startCompare;
         }
-        final endCompare =
-            left.endTimestampMicros.compareTo(right.endTimestampMicros);
+        final endCompare = left.endTimestampMicros.compareTo(
+          right.endTimestampMicros,
+        );
         if (endCompare != 0) {
           return endCompare;
         }

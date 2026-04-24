@@ -24,10 +24,7 @@ final class LaunchedProcess {
 
 /// A resolved executable and argument vector for a profiled launch.
 final class CommandLaunchPlan {
-  const CommandLaunchPlan({
-    required this.executable,
-    required this.arguments,
-  });
+  const CommandLaunchPlan({required this.executable, required this.arguments});
 
   final String executable;
   final List<String> arguments;
@@ -86,15 +83,17 @@ Future<LaunchedProcess> launchProfiledProcess({
       .transform(const LineSplitter())
       .listen((line) => handleLine(line, stderr));
 
-  unawaited(process.exitCode.then((_) {
-    if (!serviceUri.isCompleted) {
-      serviceUri.completeError(
-        StateError(
-          'The profiled process exited before exposing a VM service URI.',
-        ),
-      );
-    }
-  }));
+  unawaited(
+    process.exitCode.then((_) {
+      if (!serviceUri.isCompleted) {
+        serviceUri.completeError(
+          StateError(
+            'The profiled process exited before exposing a VM service URI.',
+          ),
+        );
+      }
+    }),
+  );
 
   return LaunchedProcess(
     process: process,
@@ -120,10 +119,9 @@ void validateProfileCommand(List<String> command) {
 
 /// Validates Dart-specific profiler launch constraints.
 void validateDartCommand(List<String> command) {
-  final firstNonOption = command.skip(1).firstWhere(
-        (argument) => !argument.startsWith('-'),
-        orElse: () => '',
-      );
+  final firstNonOption = command
+      .skip(1)
+      .firstWhere((argument) => !argument.startsWith('-'), orElse: () => '');
   if (firstNonOption.isEmpty) {
     throw ArgumentError('A Dart subcommand or script path is required.');
   }
@@ -172,8 +170,8 @@ ProfileCommandKind profileCommandKind(List<String> command) {
     'dart' => ProfileCommandKind.dart,
     'flutter' => ProfileCommandKind.flutter,
     _ => throw ArgumentError(
-        'Only Dart and Flutter VM commands are supported. Expected the first argument to be "dart" or "flutter".',
-      ),
+      'Only Dart and Flutter VM commands are supported. Expected the first argument to be "dart" or "flutter".',
+    ),
   };
 }
 
@@ -197,21 +195,22 @@ CommandLaunchPlan instrumentedCommandLaunchPlan(
 }) {
   return switch (profileCommandKind(command)) {
     ProfileCommandKind.dart => CommandLaunchPlan(
-        executable: normalizedExecutableName(command.first) == 'dart' &&
-                command.first == 'dart'
-            ? Platform.resolvedExecutable
-            : command.first,
-        arguments: [
-          '--observe=0',
-          '--pause-isolates-on-exit=false',
-          ...command.skip(1),
-        ],
-      ),
+      executable:
+          normalizedExecutableName(command.first) == 'dart' &&
+              command.first == 'dart'
+          ? Platform.resolvedExecutable
+          : command.first,
+      arguments: [
+        '--observe=0',
+        '--pause-isolates-on-exit=false',
+        ...command.skip(1),
+      ],
+    ),
     ProfileCommandKind.flutter => flutterLaunchPlan(
-        command,
-        dtdUri: dtdUri,
-        sessionId: sessionId,
-      ),
+      command,
+      dtdUri: dtdUri,
+      sessionId: sessionId,
+    ),
   };
 }
 
@@ -260,10 +259,10 @@ List<String> flutterProfilerArguments(
 }) {
   return [
     if (subcommand == 'run' &&
-        !hasAnyOption(
-          arguments,
-          const ['host-vmservice-port', 'vm-service-port'],
-        ))
+        !hasAnyOption(arguments, const [
+          'host-vmservice-port',
+          'vm-service-port',
+        ]))
       '--host-vmservice-port=0',
     if (subcommand == 'test' &&
         !hasAnyOption(arguments, const ['enable-vmservice', 'start-paused']))

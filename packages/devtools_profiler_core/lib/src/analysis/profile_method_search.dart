@@ -78,9 +78,8 @@ class ProfileMethodSearchResult {
       methods: (json['methods'] as List<Object?>? ?? const [])
           .cast<Map<Object?, Object?>>()
           .map(
-            (item) => ProfileMethodCandidate.fromJson(
-              item.cast<String, Object?>(),
-            ),
+            (item) =>
+                ProfileMethodCandidate.fromJson(item.cast<String, Object?>()),
           )
           .toList(),
     );
@@ -109,14 +108,14 @@ class ProfileMethodSearchResult {
 
   /// Converts this result to JSON.
   Map<String, Object?> toJson() => {
-        'query': query,
-        'sortBy': sortBy.name,
-        'status': status.name,
-        'message': message,
-        'totalMatches': totalMatches,
-        'truncated': truncated,
-        'methods': [for (final method in methods) method.toJson()],
-      };
+    'query': query,
+    'sortBy': sortBy.name,
+    'status': status.name,
+    'message': message,
+    'totalMatches': totalMatches,
+    'truncated': truncated,
+    'methods': [for (final method in methods) method.toJson()],
+  };
 }
 
 /// Searches a DevTools-style method table for candidate methods.
@@ -181,20 +180,24 @@ int _compareMethodSearch(
   ProfileMethodSearchSort sortBy,
 ) {
   final primaryCompare = switch (sortBy) {
-    ProfileMethodSearchSort.total =>
-      right.totalSamples.compareTo(left.totalSamples),
-    ProfileMethodSearchSort.self =>
-      right.selfSamples.compareTo(left.selfSamples),
+    ProfileMethodSearchSort.total => right.totalSamples.compareTo(
+      left.totalSamples,
+    ),
+    ProfileMethodSearchSort.self => right.selfSamples.compareTo(
+      left.selfSamples,
+    ),
   };
   if (primaryCompare != 0) {
     return primaryCompare;
   }
 
   final secondaryCompare = switch (sortBy) {
-    ProfileMethodSearchSort.total =>
-      right.selfSamples.compareTo(left.selfSamples),
-    ProfileMethodSearchSort.self =>
-      right.totalSamples.compareTo(left.totalSamples),
+    ProfileMethodSearchSort.total => right.selfSamples.compareTo(
+      left.selfSamples,
+    ),
+    ProfileMethodSearchSort.self => right.totalSamples.compareTo(
+      left.totalSamples,
+    ),
   };
   if (secondaryCompare != 0) {
     return secondaryCompare;

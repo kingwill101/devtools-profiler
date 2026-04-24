@@ -35,16 +35,16 @@ base class ProfilerMcpServer extends MCPServer with ToolsSupport {
     required StreamChannel<String> channel,
     Sink<String>? protocolLogSink,
   }) : super.fromStreamChannel(
-          channel,
-          implementation: Implementation(
-            name: _serverName,
-            version: _serverVersion,
-          ),
-          instructions:
-              'Launch profiled Dart or Flutter commands, summarize artifacts, '
-              'and read stored CPU profiling results.',
-          protocolLogSink: protocolLogSink,
-        ) {
+         channel,
+         implementation: Implementation(
+           name: _serverName,
+           version: _serverVersion,
+         ),
+         instructions:
+             'Launch profiled Dart or Flutter commands, summarize artifacts, '
+             'and read stored CPU profiling results.',
+         protocolLogSink: protocolLogSink,
+       ) {
     final handlers = McpToolHandlers(
       runner: runner,
       notifyProgress: notifyProgress,

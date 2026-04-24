@@ -65,16 +65,16 @@ class ProfileTrendPoint {
 
   /// Converts this point to JSON.
   Map<String, Object?> toJson() => {
-        'id': id,
-        'regionId': regionId,
-        'name': name,
-        'durationMicros': durationMicros,
-        'sampleCount': sampleCount,
-        'samplePeriodMicros': samplePeriodMicros,
-        'deltaHeapBytes': deltaHeapBytes,
-        'topSelfFrame': topSelfFrame,
-        'topMethod': topMethod,
-      };
+    'id': id,
+    'regionId': regionId,
+    'name': name,
+    'durationMicros': durationMicros,
+    'sampleCount': sampleCount,
+    'samplePeriodMicros': samplePeriodMicros,
+    'deltaHeapBytes': deltaHeapBytes,
+    'topSelfFrame': topSelfFrame,
+    'topMethod': topMethod,
+  };
 }
 
 /// A consecutive step in a multi-session trend series.
@@ -101,11 +101,11 @@ class ProfileTrendStep {
 
   /// Converts this step to JSON.
   Map<String, Object?> toJson() => {
-        'baselineId': baselineId,
-        'currentId': currentId,
-        'comparison': comparison.toJson(),
-        'regressions': regressions.toJson(),
-      };
+    'baselineId': baselineId,
+    'currentId': currentId,
+    'comparison': comparison.toJson(),
+    'regressions': regressions.toJson(),
+  };
 }
 
 /// A recurring regression subject observed across multiple trend steps.
@@ -148,15 +148,15 @@ class ProfileRecurringRegression {
 
   /// Converts this recurring regression to JSON.
   Map<String, Object?> toJson() => {
-        'kind': kind,
-        'subject': subject,
-        'metric': metric,
-        'occurrences': occurrences,
-        'totalDelta': totalDelta,
-        'latestDelta': latestDelta,
-        'severity': severity.name,
-        'location': location,
-      };
+    'kind': kind,
+    'subject': subject,
+    'metric': metric,
+    'occurrences': occurrences,
+    'totalDelta': totalDelta,
+    'latestDelta': latestDelta,
+    'severity': severity.name,
+    'location': location,
+  };
 }
 
 /// A structured cross-session trend summary for one selected profile.
@@ -170,10 +170,10 @@ class ProfileTrendSummary {
     required List<String> warnings,
     this.overallComparison,
     this.overallRegressions,
-  })  : points = List.unmodifiable(points),
-        steps = List.unmodifiable(steps),
-        recurringRegressions = List.unmodifiable(recurringRegressions),
-        warnings = List.unmodifiable(warnings);
+  }) : points = List.unmodifiable(points),
+       steps = List.unmodifiable(steps),
+       recurringRegressions = List.unmodifiable(recurringRegressions),
+       warnings = List.unmodifiable(warnings);
 
   /// Overall trend status.
   final String status;
@@ -198,18 +198,18 @@ class ProfileTrendSummary {
 
   /// Converts this summary to JSON.
   Map<String, Object?> toJson() => {
-        'status': status,
-        'points': [for (final point in points) point.toJson()],
-        'steps': [for (final step in steps) step.toJson()],
-        if (overallComparison != null)
-          'overallComparison': overallComparison!.toJson(),
-        if (overallRegressions != null)
-          'overallRegressions': overallRegressions!.toJson(),
-        'recurringRegressions': [
-          for (final item in recurringRegressions) item.toJson(),
-        ],
-        'warnings': warnings,
-      };
+    'status': status,
+    'points': [for (final point in points) point.toJson()],
+    'steps': [for (final step in steps) step.toJson()],
+    if (overallComparison != null)
+      'overallComparison': overallComparison!.toJson(),
+    if (overallRegressions != null)
+      'overallRegressions': overallRegressions!.toJson(),
+    'recurringRegressions': [
+      for (final item in recurringRegressions) item.toJson(),
+    ],
+    'warnings': warnings,
+  };
 }
 
 /// Builds a cross-session trend summary from a series of prepared profiles.
@@ -321,14 +321,13 @@ ProfileTrendSummary analyzeProfileTrends({
   warnings.addAll(overallComparison.warnings);
   warnings.addAll(overallRegressions.warnings);
 
-  final recurringRegressions = recurring.values
-      .map((item) => item.freeze())
-      .toList(growable: false)
-    ..sort(_compareRecurringRegressions);
+  final recurringRegressions =
+      recurring.values.map((item) => item.freeze()).toList(growable: false)
+        ..sort(_compareRecurringRegressions);
   final limitedRecurring =
       recurringLimit <= 0 || recurringRegressions.length <= recurringLimit
-          ? recurringRegressions
-          : recurringRegressions.take(recurringLimit).toList(growable: false);
+      ? recurringRegressions
+      : recurringRegressions.take(recurringLimit).toList(growable: false);
 
   return ProfileTrendSummary(
     status: _trendStatus(
@@ -352,14 +351,18 @@ String _trendStatus({
   required ProfileRegressionSummary overallRegressions,
   required List<ProfileRecurringRegression> recurringRegressions,
 }) {
-  final positiveDurationSteps =
-      steps.where((step) => step.comparison.durationMicros.delta > 0).length;
-  final negativeDurationSteps =
-      steps.where((step) => step.comparison.durationMicros.delta < 0).length;
-  final hasRegressionSignal = overallRegressions.status == 'regressed' ||
+  final positiveDurationSteps = steps
+      .where((step) => step.comparison.durationMicros.delta > 0)
+      .length;
+  final negativeDurationSteps = steps
+      .where((step) => step.comparison.durationMicros.delta < 0)
+      .length;
+  final hasRegressionSignal =
+      overallRegressions.status == 'regressed' ||
       recurringRegressions.isNotEmpty;
   final overallHeapDelta = overallComparison.memory?.heapBytes.delta ?? 0;
-  final hasImprovementSignal = overallComparison.durationMicros.delta < 0 ||
+  final hasImprovementSignal =
+      overallComparison.durationMicros.delta < 0 ||
       overallHeapDelta < 0 ||
       (negativeDurationSteps > 0 && positiveDurationSteps == 0);
 

@@ -21,27 +21,28 @@ Future<int> runCli(
   final stderrSink = errorOutput ?? stderr;
 
   int exitCode = successExitCode;
-  final commandRunner = CommandRunner<int>(
-    'devtools-profiler',
-    'Profile Dart and Flutter apps and analyze the results.',
-    out: stdoutSink.writeln,
-    err: stderrSink.writeln,
-    outRaw: stdoutSink.write,
-    errRaw: stderrSink.write,
-    usageExitCode: usageExitCode,
-    setExitCode: (code) => exitCode = code,
-    ansi: output != null ? false : null,
-  )
-    ..addCommand(RunCommand(profiler))
-    ..addCommand(AttachCommand(profiler))
-    ..addCommand(SummarizeCommand(profiler))
-    ..addCommand(ExplainCommand(profiler))
-    ..addCommand(CompareCommand(profiler))
-    ..addCommand(TrendsCommand(profiler))
-    ..addCommand(InspectCommand(profiler))
-    ..addCommand(CompareMethodCommand(profiler))
-    ..addCommand(SearchMethodsCommand(profiler))
-    ..addCommand(McpCommand(profiler));
+  final commandRunner =
+      CommandRunner<int>(
+          'devtools-profiler',
+          'Profile Dart and Flutter apps and analyze the results.',
+          out: stdoutSink.writeln,
+          err: stderrSink.writeln,
+          outRaw: stdoutSink.write,
+          errRaw: stderrSink.write,
+          usageExitCode: usageExitCode,
+          setExitCode: (code) => exitCode = code,
+          ansi: output != null ? false : null,
+        )
+        ..addCommand(RunCommand(profiler))
+        ..addCommand(AttachCommand(profiler))
+        ..addCommand(SummarizeCommand(profiler))
+        ..addCommand(ExplainCommand(profiler))
+        ..addCommand(CompareCommand(profiler))
+        ..addCommand(TrendsCommand(profiler))
+        ..addCommand(InspectCommand(profiler))
+        ..addCommand(CompareMethodCommand(profiler))
+        ..addCommand(SearchMethodsCommand(profiler))
+        ..addCommand(McpCommand(profiler));
 
   try {
     final result = await commandRunner.run(arguments);

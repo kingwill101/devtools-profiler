@@ -50,10 +50,7 @@ void main() {
 
     expect(result.isError, isNot(true));
     expect(environment.runner.lastSummarizePath, '/tmp/summary.json');
-    expect(
-      result.structuredContent,
-      containsPair('kind', 'summary'),
-    );
+    expect(result.structuredContent, containsPair('kind', 'summary'));
   });
 
   test('returns a tool error when required arguments are missing', () async {
@@ -62,10 +59,7 @@ void main() {
     await _initializeServer(environment);
 
     final result = await environment.serverConnection.callTool(
-      CallToolRequest(
-        name: 'profile_run',
-        arguments: const {},
-      ),
+      CallToolRequest(name: 'profile_run', arguments: const {}),
     );
 
     expect(result.isError, isTrue);
@@ -257,8 +251,9 @@ void main() {
         progressToken: ProgressToken('profile-run-progress'),
       ),
     );
-    final progressEventsFuture =
-        environment.serverConnection.onProgress(request).toList();
+    final progressEventsFuture = environment.serverConnection
+        .onProgress(request)
+        .toList();
     final result = await environment.serverConnection.callTool(request);
     final progressEvents = await progressEventsFuture;
 
@@ -304,8 +299,9 @@ void main() {
     addTearDown(environment.shutdown);
     await _initializeServer(environment);
 
-    final rootDirectory =
-        await Directory.systemTemp.createTemp('profiler_mcp_');
+    final rootDirectory = await Directory.systemTemp.createTemp(
+      'profiler_mcp_',
+    );
     addTearDown(() => rootDirectory.delete(recursive: true));
 
     final olderSession = await _writeStoredSession(
@@ -326,24 +322,30 @@ void main() {
     final result = await environment.serverConnection.callTool(
       CallToolRequest(
         name: 'profile_list_sessions',
-        arguments: {
-          'rootDirectory': rootDirectory.path,
-        },
+        arguments: {'rootDirectory': rootDirectory.path},
       ),
     );
 
     expect(result.isError, isNot(true));
     final listing = result.structuredContent!;
     final sessions = listing['sessions'] as List<Object?>;
-    expect(listing['sessionsDirectory'],
-        endsWith('.dart_tool/devtools_profiler/sessions'));
+    expect(
+      listing['sessionsDirectory'],
+      endsWith('.dart_tool/devtools_profiler/sessions'),
+    );
     expect(listing['totalSessions'], 2);
     expect(
-        (sessions.first as Map<String, Object?>)['sessionId'], 'session-new');
-    expect((sessions.first as Map<String, Object?>)['sessionPath'],
-        newerSession.path);
-    expect((sessions.last as Map<String, Object?>)['sessionPath'],
-        olderSession.path);
+      (sessions.first as Map<String, Object?>)['sessionId'],
+      'session-new',
+    );
+    expect(
+      (sessions.first as Map<String, Object?>)['sessionPath'],
+      newerSession.path,
+    );
+    expect(
+      (sessions.last as Map<String, Object?>)['sessionPath'],
+      olderSession.path,
+    );
   });
 
   test('lists overall and explicit regions for a stored session', () async {
@@ -351,8 +353,9 @@ void main() {
     addTearDown(environment.shutdown);
     await _initializeServer(environment);
 
-    final rootDirectory =
-        await Directory.systemTemp.createTemp('profiler_mcp_');
+    final rootDirectory = await Directory.systemTemp.createTemp(
+      'profiler_mcp_',
+    );
     addTearDown(() => rootDirectory.delete(recursive: true));
 
     await _writeStoredSession(
@@ -380,7 +383,9 @@ void main() {
     final regions = listing['regions'] as List<Object?>;
     expect(overallProfile['scope'], 'session');
     expect(
-        (regions.single as Map<String, Object?>)['regionId'], 'region-lookup');
+      (regions.single as Map<String, Object?>)['regionId'],
+      'region-lookup',
+    );
   });
 
   test('loads the latest stored session directly', () async {
@@ -388,8 +393,9 @@ void main() {
     addTearDown(environment.shutdown);
     await _initializeServer(environment);
 
-    final rootDirectory =
-        await Directory.systemTemp.createTemp('profiler_mcp_');
+    final rootDirectory = await Directory.systemTemp.createTemp(
+      'profiler_mcp_',
+    );
     addTearDown(() => rootDirectory.delete(recursive: true));
 
     await _writeStoredSession(
@@ -410,9 +416,7 @@ void main() {
     final result = await environment.serverConnection.callTool(
       CallToolRequest(
         name: 'profile_latest_session',
-        arguments: {
-          'rootDirectory': rootDirectory.path,
-        },
+        arguments: {'rootDirectory': rootDirectory.path},
       ),
     );
 
@@ -430,8 +434,9 @@ void main() {
     addTearDown(environment.shutdown);
     await _initializeServer(environment);
 
-    final rootDirectory =
-        await Directory.systemTemp.createTemp('profiler_mcp_');
+    final rootDirectory = await Directory.systemTemp.createTemp(
+      'profiler_mcp_',
+    );
     addTearDown(() => rootDirectory.delete(recursive: true));
 
     await _writeStoredSession(
@@ -476,9 +481,7 @@ void main() {
     final result = await environment.serverConnection.callTool(
       CallToolRequest(
         name: 'profile_explain_hotspots',
-        arguments: {
-          'path': '/tmp/profile.json',
-        },
+        arguments: {'path': '/tmp/profile.json'},
       ),
     );
 
@@ -488,9 +491,9 @@ void main() {
     final hotspots = payload['hotspots'] as Map<String, Object?>;
     expect(hotspots['status'], 'analyzed');
     final insights = hotspots['insights'] as List<Object?>;
-    final selfInsight = insights
-        .cast<Map<String, Object?>>()
-        .firstWhere((insight) => insight['kind'] == 'selfFrame');
+    final selfInsight = insights.cast<Map<String, Object?>>().firstWhere(
+      (insight) => insight['kind'] == 'selfFrame',
+    );
     final path = selfInsight['path'] as Map<String, Object?>;
     final frames = path['frames'] as List<Object?>;
     expect((frames.first as Map<String, Object?>)['name'], 'all');
@@ -499,7 +502,9 @@ void main() {
     final bottomUpPath = selfInsight['bottomUpPath'] as Map<String, Object?>;
     final bottomUpFrames = bottomUpPath['frames'] as List<Object?>;
     expect(
-        (bottomUpFrames[1] as Map<String, Object?>)['name'], 'Worker.hotLeaf');
+      (bottomUpFrames[1] as Map<String, Object?>)['name'],
+      'Worker.hotLeaf',
+    );
     final focusMethod = selfInsight['focusMethod'] as Map<String, Object?>;
     expect(focusMethod['name'], 'Worker.hotLeaf');
     expect(focusMethod['methodId'], contains('Worker.hotLeaf'));
@@ -528,8 +533,9 @@ void main() {
     final method = inspection['method'] as Map<String, Object?>;
     expect(method['name'], 'Worker.hotLeaf');
     final topDownPaths = inspection['topDownPaths'] as List<Object?>;
-    final frames = (topDownPaths.single as Map<String, Object?>)['frames']
-        as List<Object?>;
+    final frames =
+        (topDownPaths.single as Map<String, Object?>)['frames']
+            as List<Object?>;
     expect((frames.first as Map<String, Object?>)['name'], 'all');
     expect((frames.last as Map<String, Object?>)['name'], 'Worker.hotLeaf');
   });
@@ -542,10 +548,7 @@ void main() {
     final result = await environment.serverConnection.callTool(
       CallToolRequest(
         name: 'profile_search_methods',
-        arguments: {
-          'path': '/tmp/profile.json',
-          'query': 'Worker',
-        },
+        arguments: {'path': '/tmp/profile.json', 'query': 'Worker'},
       ),
     );
 
@@ -588,10 +591,7 @@ void main() {
     expect(comparison['status'], 'compared');
     final methodDelta = comparison['methodDelta'] as Map<String, Object?>;
     expect(methodDelta['name'], 'Worker.hotLeaf');
-    expect(
-      (methodDelta['selfSamples'] as Map<String, Object?>)['delta'],
-      6,
-    );
+    expect((methodDelta['selfSamples'] as Map<String, Object?>)['delta'], 6);
   });
 
   test('loads an explicit region by id with a call tree', () async {
@@ -599,8 +599,9 @@ void main() {
     addTearDown(environment.shutdown);
     await _initializeServer(environment);
 
-    final rootDirectory =
-        await Directory.systemTemp.createTemp('profiler_mcp_');
+    final rootDirectory = await Directory.systemTemp.createTemp(
+      'profiler_mcp_',
+    );
     addTearDown(() => rootDirectory.delete(recursive: true));
 
     final sessionDirectory = await _writeStoredSession(
@@ -643,8 +644,9 @@ void main() {
     addTearDown(environment.shutdown);
     await _initializeServer(environment);
 
-    final rootDirectory =
-        await Directory.systemTemp.createTemp('profiler_mcp_');
+    final rootDirectory = await Directory.systemTemp.createTemp(
+      'profiler_mcp_',
+    );
     addTearDown(() => rootDirectory.delete(recursive: true));
 
     await _writeStoredSession(
@@ -730,9 +732,9 @@ void main() {
     expect(points, hasLength(3));
     final recurring = trends['recurringRegressions'] as List<Object?>;
     expect(
-      recurring
-          .cast<Map<String, Object?>>()
-          .any((item) => item['subject'] == 'Worker.hotLeaf'),
+      recurring.cast<Map<String, Object?>>().any(
+        (item) => item['subject'] == 'Worker.hotLeaf',
+      ),
       isTrue,
     );
   });
@@ -742,8 +744,9 @@ void main() {
     addTearDown(environment.shutdown);
     await _initializeServer(environment);
 
-    final rootDirectory =
-        await Directory.systemTemp.createTemp('profiler_mcp_');
+    final rootDirectory = await Directory.systemTemp.createTemp(
+      'profiler_mcp_',
+    );
     addTearDown(() => rootDirectory.delete(recursive: true));
 
     await _writeStoredSession(
@@ -790,8 +793,9 @@ void main() {
     addTearDown(environment.shutdown);
     await _initializeServer(environment);
 
-    final rootDirectory =
-        await Directory.systemTemp.createTemp('profiler_mcp_');
+    final rootDirectory = await Directory.systemTemp.createTemp(
+      'profiler_mcp_',
+    );
     addTearDown(() => rootDirectory.delete(recursive: true));
 
     await _writeStoredSession(
@@ -819,10 +823,7 @@ void main() {
     final result = await environment.serverConnection.callTool(
       CallToolRequest(
         name: 'profile_analyze_trends',
-        arguments: {
-          'rootDirectory': rootDirectory.path,
-          'limit': 3,
-        },
+        arguments: {'rootDirectory': rootDirectory.path, 'limit': 3},
       ),
     );
 
@@ -847,8 +848,9 @@ void main() {
     addTearDown(environment.shutdown);
     await _initializeServer(environment);
 
-    final rootDirectory =
-        await Directory.systemTemp.createTemp('profiler_mcp_');
+    final rootDirectory = await Directory.systemTemp.createTemp(
+      'profiler_mcp_',
+    );
     addTearDown(() => rootDirectory.delete(recursive: true));
 
     await _writeStoredSession(
@@ -889,33 +891,35 @@ void main() {
     expect((insights.first as Map<String, Object?>)['kind'], 'duration');
   });
 
-  test('supports hiding runtime helper packages for agent-facing summaries',
-      () async {
-    final environment = _McpTestEnvironment(_FakeProfileRunner());
-    addTearDown(environment.shutdown);
-    await _initializeServer(environment);
+  test(
+    'supports hiding runtime helper packages for agent-facing summaries',
+    () async {
+      final environment = _McpTestEnvironment(_FakeProfileRunner());
+      addTearDown(environment.shutdown);
+      await _initializeServer(environment);
 
-    final result = await environment.serverConnection.callTool(
-      CallToolRequest(
-        name: 'profile_summarize',
-        arguments: {
-          'path': '/tmp/helper_profile.json',
-          'hideRuntimeHelpers': true,
-        },
-      ),
-    );
+      final result = await environment.serverConnection.callTool(
+        CallToolRequest(
+          name: 'profile_summarize',
+          arguments: {
+            'path': '/tmp/helper_profile.json',
+            'hideRuntimeHelpers': true,
+          },
+        ),
+      );
 
-    expect(result.isError, isNot(true));
-    final summary = result.structuredContent!;
-    final topTotalFrames = summary['topTotalFrames'] as List<Object?>;
-    expect(
-      topTotalFrames.any(
-        (frame) =>
-            (frame as Map<String, Object?>)['name'] == 'JsonRpcClient.send',
-      ),
-      isFalse,
-    );
-  });
+      expect(result.isError, isNot(true));
+      final summary = result.structuredContent!;
+      final topTotalFrames = summary['topTotalFrames'] as List<Object?>;
+      expect(
+        topTotalFrames.any(
+          (frame) =>
+              (frame as Map<String, Object?>)['name'] == 'JsonRpcClient.send',
+        ),
+        isFalse,
+      );
+    },
+  );
 }
 
 Future<InitializeResult> _initializeServer(
@@ -942,10 +946,15 @@ Future<Directory> _writeStoredSession({
 }) async {
   final sessionsDirectory = Directory(
     path.join(
-        rootDirectory.path, '.dart_tool', 'devtools_profiler', 'sessions'),
+      rootDirectory.path,
+      '.dart_tool',
+      'devtools_profiler',
+      'sessions',
+    ),
   );
-  final sessionDirectory =
-      Directory(path.join(sessionsDirectory.path, sessionId));
+  final sessionDirectory = Directory(
+    path.join(sessionsDirectory.path, sessionId),
+  );
   await sessionDirectory.create(recursive: true);
 
   final overallSummaryPath = path.join(
@@ -1028,7 +1037,9 @@ Future<Directory> _writeStoredSession({
 }
 
 Future<void> _writeCpuArtifact(
-    String artifactPath, CpuSamples cpuSamples) async {
+  String artifactPath,
+  CpuSamples cpuSamples,
+) async {
   final file = File(artifactPath);
   await file.create(recursive: true);
   await file.writeAsString(
@@ -1051,14 +1062,14 @@ class _McpTestEnvironment {
 
   late final StreamChannel<String> clientChannel =
       StreamChannel<String>.withCloseGuarantee(
-    serverController.stream,
-    clientController.sink,
-  );
+        serverController.stream,
+        clientController.sink,
+      );
   late final StreamChannel<String> serverChannel =
       StreamChannel<String>.withCloseGuarantee(
-    clientController.stream,
-    serverController.sink,
-  );
+        clientController.stream,
+        serverController.sink,
+      );
 
   late final ProfilerMcpServer server;
   late final ServerConnection serverConnection;

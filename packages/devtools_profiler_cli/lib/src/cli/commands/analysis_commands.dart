@@ -107,14 +107,8 @@ class InspectCommand extends ProfilerCommand {
         'profile-id',
         help: 'Profile id to select from a session directory.',
       )
-      ..addOption(
-        'method-id',
-        help: 'Exact method id to inspect.',
-      )
-      ..addOption(
-        'method',
-        help: 'Method name query to inspect.',
-      )
+      ..addOption('method-id', help: 'Exact method id to inspect.')
+      ..addOption('method', help: 'Method name query to inspect.')
       ..addOption(
         'path-limit',
         defaultsTo: '$defaultMethodPathLimit',
@@ -174,14 +168,8 @@ class CompareMethodCommand extends ProfilerCommand {
         'current-profile-id',
         help: 'Profile id to select from the current session directory.',
       )
-      ..addOption(
-        'method-id',
-        help: 'Exact method id to compare.',
-      )
-      ..addOption(
-        'method',
-        help: 'Method name query to compare.',
-      )
+      ..addOption('method-id', help: 'Exact method id to compare.')
+      ..addOption('method', help: 'Method name query to compare.')
       ..addOption(
         'path-limit',
         defaultsTo: '$defaultMethodPathLimit',
@@ -279,10 +267,7 @@ class SearchMethodsCommand extends ProfilerCommand {
       profileId: argResults!['profile-id'] as String?,
       query: argResults!['query'] as String?,
       sortBy: ProfileMethodSearchSort.parse(argResults!['sort'] as String),
-      limit: parseLimit(
-        argResults!['limit'] as String,
-        optionName: 'limit',
-      ),
+      limit: parseLimit(argResults!['limit'] as String, optionName: 'limit'),
       options: options,
     );
 

@@ -84,7 +84,8 @@ class ProfileRunner {
       stdoutSubscription = launchedProcess.stdoutSubscription;
       stderrSubscription = launchedProcess.stderrSubscription;
 
-      final vmServiceTimeout = request.vmServiceTimeout ??
+      final vmServiceTimeout =
+          request.vmServiceTimeout ??
           defaultVmServiceTimeoutForCommand(request.command);
       final serviceUri = await launchedProcess.serviceUri.future.timeout(
         vmServiceTimeout,

@@ -28,9 +28,7 @@ void main() {
     expect(exitCode, 0);
     expect(
       stdoutCapture.text,
-      contains(
-        'devtools-profiler run [options] -- <dart-or-flutter-command>',
-      ),
+      contains('devtools-profiler run [options] -- <dart-or-flutter-command>'),
     );
     expect(stdoutCapture.text, contains('Examples:'));
     expect(
@@ -113,14 +111,7 @@ void main() {
     });
 
     final exitCode = await runCli(
-      const [
-        'run',
-        '--json',
-        '--',
-        'flutter',
-        'test',
-        'test/widget_test.dart',
-      ],
+      const ['run', '--json', '--', 'flutter', 'test', 'test/widget_test.dart'],
       runner: runner,
       output: stdoutCapture.sink,
       errorOutput: stderrCapture.sink,
@@ -128,10 +119,11 @@ void main() {
     await stdoutCapture.flush();
 
     expect(exitCode, 0);
-    expect(
-      runner.lastRunRequest?.command,
-      ['flutter', 'test', 'test/widget_test.dart'],
-    );
+    expect(runner.lastRunRequest?.command, [
+      'flutter',
+      'test',
+      'test/widget_test.dart',
+    ]);
     expect(stderrCapture.text, isEmpty);
   });
 
@@ -165,10 +157,7 @@ void main() {
 
     expect(exitCode, 0);
     expect(runner.lastRunRequest?.runDuration, const Duration(seconds: 3));
-    expect(
-      runner.lastRunRequest?.vmServiceTimeout,
-      const Duration(minutes: 2),
-    );
+    expect(runner.lastRunRequest?.vmServiceTimeout, const Duration(minutes: 2));
   });
 
   test('attach profiles an existing VM service URI', () async {
@@ -381,7 +370,8 @@ void main() {
     expect(
       stdoutCapture.text,
       contains(
-          'Worker.hotLeaf - (package:fixture/hot_leaf.dart) [self 8, total 8'),
+        'Worker.hotLeaf - (package:fixture/hot_leaf.dart) [self 8, total 8',
+      ),
     );
     expect(stderrCapture.text, isEmpty);
   });
@@ -491,63 +481,66 @@ void main() {
   });
 
   test(
-      'summarize prints session and region detail output for a session artifact',
-      () async {
-    final runner = _FakeProfileRunner();
-    final stdoutCapture = _OutputCapture();
-    final stderrCapture = _OutputCapture();
-    addTearDown(() async {
-      await stdoutCapture.close();
-      await stderrCapture.close();
-    });
+    'summarize prints session and region detail output for a session artifact',
+    () async {
+      final runner = _FakeProfileRunner();
+      final stdoutCapture = _OutputCapture();
+      final stderrCapture = _OutputCapture();
+      addTearDown(() async {
+        await stdoutCapture.close();
+        await stderrCapture.close();
+      });
 
-    final exitCode = await runCli(
-      const ['summarize', '/tmp/artifacts/session-1'],
-      runner: runner,
-      output: stdoutCapture.sink,
-      errorOutput: stderrCapture.sink,
-    );
-    await stdoutCapture.flush();
+      final exitCode = await runCli(
+        const ['summarize', '/tmp/artifacts/session-1'],
+        runner: runner,
+        output: stdoutCapture.sink,
+        errorOutput: stderrCapture.sink,
+      );
+      await stdoutCapture.flush();
 
-    expect(exitCode, 0);
-    expect(stdoutCapture.text, contains('Profiler Session'));
-    expect(stdoutCapture.text, contains('Regions'));
-    expect(stdoutCapture.text, contains('Region Details'));
-    expect(stdoutCapture.text, contains('Top Self Frames'));
-    expect(stdoutCapture.text, contains('cpu-burn'));
-    expect(stderrCapture.text, isEmpty);
-  });
+      expect(exitCode, 0);
+      expect(stdoutCapture.text, contains('Profiler Session'));
+      expect(stdoutCapture.text, contains('Regions'));
+      expect(stdoutCapture.text, contains('Region Details'));
+      expect(stdoutCapture.text, contains('Top Self Frames'));
+      expect(stdoutCapture.text, contains('cpu-burn'));
+      expect(stderrCapture.text, isEmpty);
+    },
+  );
 
-  test('summarize prints artisanal region output for a region artifact',
-      () async {
-    final runner = _FakeProfileRunner();
-    final stdoutCapture = _OutputCapture();
-    final stderrCapture = _OutputCapture();
-    addTearDown(() async {
-      await stdoutCapture.close();
-      await stderrCapture.close();
-    });
+  test(
+    'summarize prints artisanal region output for a region artifact',
+    () async {
+      final runner = _FakeProfileRunner();
+      final stdoutCapture = _OutputCapture();
+      final stderrCapture = _OutputCapture();
+      addTearDown(() async {
+        await stdoutCapture.close();
+        await stderrCapture.close();
+      });
 
-    final exitCode = await runCli(
-      const [
-        'summarize',
-        '/tmp/artifacts/session-1/regions/region-1/summary.json'
-      ],
-      runner: runner,
-      output: stdoutCapture.sink,
-      errorOutput: stderrCapture.sink,
-    );
-    await stdoutCapture.flush();
+      final exitCode = await runCli(
+        const [
+          'summarize',
+          '/tmp/artifacts/session-1/regions/region-1/summary.json',
+        ],
+        runner: runner,
+        output: stdoutCapture.sink,
+        errorOutput: stderrCapture.sink,
+      );
+      await stdoutCapture.flush();
 
-    expect(exitCode, 0);
-    expect(stdoutCapture.text, contains('Region Summary'));
-    expect(stdoutCapture.text, contains('Top Self Frames'));
-    expect(stdoutCapture.text, contains('Top Total Frames'));
-    expect(stdoutCapture.text, contains('phase'));
-    expect(stdoutCapture.text, contains('fixture'));
-    expect(stdoutCapture.text, contains('Worker.hotLeaf'));
-    expect(stderrCapture.text, isEmpty);
-  });
+      expect(exitCode, 0);
+      expect(stdoutCapture.text, contains('Region Summary'));
+      expect(stdoutCapture.text, contains('Top Self Frames'));
+      expect(stdoutCapture.text, contains('Top Total Frames'));
+      expect(stdoutCapture.text, contains('phase'));
+      expect(stdoutCapture.text, contains('fixture'));
+      expect(stdoutCapture.text, contains('Worker.hotLeaf'));
+      expect(stderrCapture.text, isEmpty);
+    },
+  );
 
   test('explain prints json output with hotspot insights', () async {
     final runner = _FakeProfileRunner();
@@ -572,23 +565,14 @@ void main() {
     final hotspots = json['hotspots'] as Map<String, Object?>;
     expect(hotspots['status'], 'analyzed');
     final insights = hotspots['insights'] as List<Object?>;
-    final selfInsight = insights
-        .cast<Map<String, Object?>>()
-        .firstWhere((insight) => insight['kind'] == 'selfFrame');
+    final selfInsight = insights.cast<Map<String, Object?>>().firstWhere(
+      (insight) => insight['kind'] == 'selfFrame',
+    );
     final path = selfInsight['path'] as Map<String, Object?>;
     final frames = path['frames'] as List<Object?>;
-    expect(
-      (frames.first as Map<String, Object?>)['name'],
-      'all',
-    );
-    expect(
-      (frames[1] as Map<String, Object?>)['name'],
-      'Worker.run',
-    );
-    expect(
-      (frames.last as Map<String, Object?>)['name'],
-      'Worker.hotLeaf',
-    );
+    expect((frames.first as Map<String, Object?>)['name'], 'all');
+    expect((frames[1] as Map<String, Object?>)['name'], 'Worker.run');
+    expect((frames.last as Map<String, Object?>)['name'], 'Worker.hotLeaf');
     final bottomUpPath = selfInsight['bottomUpPath'] as Map<String, Object?>;
     final bottomUpFrames = bottomUpPath['frames'] as List<Object?>;
     expect(
@@ -626,10 +610,7 @@ void main() {
       stdoutCapture.text,
       contains('Path: all -> Worker.run - (package:fixture/run.dart)'),
     );
-    expect(
-      stdoutCapture.text,
-      contains('Bottom up: all -> Worker.hotLeaf'),
-    );
+    expect(stdoutCapture.text, contains('Bottom up: all -> Worker.hotLeaf'));
     expect(
       stdoutCapture.text,
       contains('Inspect: Worker.hotLeaf - (package:fixture/hot_leaf.dart)'),
@@ -669,8 +650,9 @@ void main() {
     final method = inspection['method'] as Map<String, Object?>;
     expect(method['name'], 'Worker.hotLeaf');
     final topDownPaths = inspection['topDownPaths'] as List<Object?>;
-    final frames = (topDownPaths.single as Map<String, Object?>)['frames']
-        as List<Object?>;
+    final frames =
+        (topDownPaths.single as Map<String, Object?>)['frames']
+            as List<Object?>;
     expect((frames.first as Map<String, Object?>)['name'], 'all');
     expect((frames.last as Map<String, Object?>)['name'], 'Worker.hotLeaf');
     expect(stderrCapture.text, isEmpty);
@@ -733,10 +715,7 @@ void main() {
     expect(comparison['status'], 'compared');
     final methodDelta = comparison['methodDelta'] as Map<String, Object?>;
     expect(methodDelta['name'], 'Worker.hotLeaf');
-    expect(
-      (methodDelta['selfSamples'] as Map<String, Object?>)['delta'],
-      6,
-    );
+    expect((methodDelta['selfSamples'] as Map<String, Object?>)['delta'], 6);
     final callerDeltas = comparison['callerDeltas'] as List<Object?>;
     expect(
       callerDeltas
@@ -896,11 +875,7 @@ void main() {
     });
 
     final exitCode = await runCli(
-      const [
-        'compare',
-        '/tmp/artifacts/session-1',
-        '/tmp/artifacts/session-2',
-      ],
+      const ['compare', '/tmp/artifacts/session-1', '/tmp/artifacts/session-2'],
       runner: runner,
       output: stdoutCapture.sink,
       errorOutput: stderrCapture.sink,
@@ -949,9 +924,9 @@ void main() {
     expect(points, hasLength(3));
     final recurring = trends['recurringRegressions'] as List<Object?>;
     expect(
-      recurring
-          .cast<Map<String, Object?>>()
-          .any((item) => item['subject'] == 'Worker.hotLeaf'),
+      recurring.cast<Map<String, Object?>>().any(
+        (item) => item['subject'] == 'Worker.hotLeaf',
+      ),
       isTrue,
     );
     expect(stderrCapture.text, isEmpty);
@@ -1352,8 +1327,9 @@ class _FakeProfileRunner extends ProfileRunner {
 class _OutputCapture {
   _OutputCapture() {
     sink = IOSink(_controller.sink);
-    _subscription =
-        _controller.stream.transform(utf8.decoder).listen(_buffer.write);
+    _subscription = _controller.stream
+        .transform(utf8.decoder)
+        .listen(_buffer.write);
   }
 
   final _controller = StreamController<List<int>>();

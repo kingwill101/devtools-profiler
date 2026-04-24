@@ -5,11 +5,7 @@ import '../presentation.dart';
 /// Adds shared presentation flags to [parser].
 void addPresentationOptions(ArgParser parser) {
   parser
-    ..addFlag(
-      'json',
-      negatable: false,
-      help: 'Print the result as JSON.',
-    )
+    ..addFlag('json', negatable: false, help: 'Print the result as JSON.')
     ..addFlag(
       'call-tree',
       negatable: false,
@@ -25,11 +21,7 @@ void addPresentationOptions(ArgParser parser) {
       negatable: false,
       help: 'Include a DevTools-style method table with callers and callees.',
     )
-    ..addFlag(
-      'expand',
-      negatable: false,
-      help: 'Alias for --call-tree.',
-    )
+    ..addFlag('expand', negatable: false, help: 'Alias for --call-tree.')
     ..addFlag(
       'hide-sdk',
       negatable: false,
@@ -83,7 +75,8 @@ void addPresentationOptions(ArgParser parser) {
 
 /// Returns presentation options parsed from [results].
 ProfilePresentationOptions presentationOptionsFrom(ArgResults results) {
-  final includeCallTree = (results['call-tree'] as bool? ?? false) ||
+  final includeCallTree =
+      (results['call-tree'] as bool? ?? false) ||
       (results['expand'] as bool? ?? false);
   return ProfilePresentationOptions(
     includeCallTree: includeCallTree,
@@ -139,8 +132,8 @@ Duration? parseDuration(String? value, {required String optionName}) {
     'h' => Duration(hours: amount),
     null => Duration(seconds: amount),
     _ => throw FormatException(
-        'The "$optionName" option must be a duration like 30, 30s, 2m, or 500ms.',
-      ),
+      'The "$optionName" option must be a duration like 30, 30s, 2m, or 500ms.',
+    ),
   };
 }
 

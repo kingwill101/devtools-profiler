@@ -117,10 +117,7 @@ class PreparedProfileMethodSearch {
 /// Prepared cross-session profile trend data for CLI or MCP output.
 class PreparedProfileTrends {
   /// Creates prepared trend data.
-  const PreparedProfileTrends({
-    required this.targets,
-    required this.trends,
-  });
+  const PreparedProfileTrends({required this.targets, required this.trends});
 
   /// The resolved profile targets in series order.
   final List<PreparedComparisonTarget> targets;

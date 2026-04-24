@@ -96,9 +96,7 @@ Map<String, Object?> methodComparisonJson(
 }
 
 /// Converts prepared method search data to structured JSON.
-Map<String, Object?> methodSearchJson(
-  PreparedProfileMethodSearch search,
-) {
+Map<String, Object?> methodSearchJson(PreparedProfileMethodSearch search) {
   return {
     'kind': 'methodSearch',
     'target': _comparisonTargetJson(search.target),
@@ -107,14 +105,10 @@ Map<String, Object?> methodSearchJson(
 }
 
 /// Converts prepared trend data to structured JSON.
-Map<String, Object?> trendPresentationJson(
-  PreparedProfileTrends trends,
-) {
+Map<String, Object?> trendPresentationJson(PreparedProfileTrends trends) {
   return {
     'kind': 'profileTrends',
-    'targets': [
-      for (final target in trends.targets) _trendTargetJson(target),
-    ],
+    'targets': [for (final target in trends.targets) _trendTargetJson(target)],
     'trends': trends.trends.toJson(),
   };
 }

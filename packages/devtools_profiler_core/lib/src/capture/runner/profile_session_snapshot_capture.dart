@@ -48,7 +48,8 @@ final class ProfileSessionSnapshotCapture {
 
     try {
       try {
-        cpuSnapshot = context.latestOverallSnapshot ??
+        cpuSnapshot =
+            context.latestOverallSnapshot ??
             await captureCpuSnapshotForAllAppIsolates(
               startTimestampMicros: 0,
               timeExtentMicros: maxSafeJsInt,
@@ -65,7 +66,8 @@ final class ProfileSessionSnapshotCapture {
       final overallMemoryStartSnapshot = context.overallMemoryStartSnapshot;
       if (overallMemoryStartSnapshot != null) {
         try {
-          final endSnapshot = context.latestOverallMemorySnapshot ??
+          final endSnapshot =
+              context.latestOverallMemorySnapshot ??
               await captureMemorySnapshotForAllAppIsolates(
                 timestampMicros: DateTime.now().toUtc().microsecondsSinceEpoch,
                 warningContext: 'Whole-session memory stop',
@@ -111,25 +113,25 @@ final class ProfileSessionSnapshotCapture {
         final resolvedIsolateIds = isolateIds.isEmpty
             ? const ['unknown']
             : isolateIds.toList(growable: false);
-        context.overallProfile =
-            await context.artifactStore.writeOverallSuccess(
-          isolateId: resolvedIsolateIds.first,
-          isolateIds: resolvedIsolateIds,
-          cpuSamples: cpuSnapshot?.cpuSamples,
-          memory: memory,
-          rawMemoryPayload: rawMemoryPayload,
-        );
+        context.overallProfile = await context.artifactStore
+            .writeOverallSuccess(
+              isolateId: resolvedIsolateIds.first,
+              isolateIds: resolvedIsolateIds,
+              cpuSamples: cpuSnapshot?.cpuSamples,
+              memory: memory,
+              rawMemoryPayload: rawMemoryPayload,
+            );
       } else {
         final resolvedIsolateIds =
             context.latestOverallSnapshot?.isolateIds ?? const ['unknown'];
-        context.overallProfile =
-            await context.artifactStore.writeOverallFailure(
-          isolateId: resolvedIsolateIds.first,
-          isolateIds: resolvedIsolateIds,
-          error: failures.isEmpty
-              ? 'No whole-session profile data could be captured.'
-              : failures.join('; '),
-        );
+        context.overallProfile = await context.artifactStore
+            .writeOverallFailure(
+              isolateId: resolvedIsolateIds.first,
+              isolateIds: resolvedIsolateIds,
+              error: failures.isEmpty
+                  ? 'No whole-session profile data could be captured.'
+                  : failures.join('; '),
+            );
       }
     } finally {
       if (!context.overallProfileReady.isCompleted) {
@@ -184,9 +186,9 @@ final class ProfileSessionSnapshotCapture {
         try {
           context.overallMemoryStartSnapshot =
               await captureMemorySnapshotForAllAppIsolates(
-            timestampMicros: DateTime.now().toUtc().microsecondsSinceEpoch,
-            warningContext: 'Whole-session memory start',
-          );
+                timestampMicros: DateTime.now().toUtc().microsecondsSinceEpoch,
+                warningContext: 'Whole-session memory start',
+              );
         } catch (_) {
           // Best-effort. A later poll or region start can still seed memory.
         }
@@ -204,7 +206,8 @@ final class ProfileSessionSnapshotCapture {
         startTimestampMicros: 0,
         timeExtentMicros: maxSafeJsInt,
       );
-      final sampleCount = snapshot.cpuSamples.sampleCount ??
+      final sampleCount =
+          snapshot.cpuSamples.sampleCount ??
           snapshot.cpuSamples.samples?.length ??
           0;
       if (sampleCount > 0) {
@@ -250,16 +253,15 @@ final class ProfileSessionSnapshotCapture {
 
     final cpuSamples =
         region.options.captureKinds.contains(ProfileCaptureKind.cpu)
-            ? (await captureCpuSnapshotForIsolates(
-                isolateIds: isolateIds,
-                startTimestampMicros: region.startTimestampMicros,
-                timeExtentMicros: nonZeroDuration(
-                  stopTimestampMicros - region.startTimestampMicros,
-                ),
-                warningContext: 'Region "${region.name}"',
-              ))
-                .cpuSamples
-            : null;
+        ? (await captureCpuSnapshotForIsolates(
+            isolateIds: isolateIds,
+            startTimestampMicros: region.startTimestampMicros,
+            timeExtentMicros: nonZeroDuration(
+              stopTimestampMicros - region.startTimestampMicros,
+            ),
+            warningContext: 'Region "${region.name}"',
+          )).cpuSamples
+        : null;
 
     ProfileMemoryResult? memory;
     Map<String, Object?>? rawMemoryPayload;
@@ -277,8 +279,8 @@ final class ProfileSessionSnapshotCapture {
         warningContext: 'Region "${region.name}" memory stop',
       );
       final missingIsolates = startSnapshot.isolateIds.toSet().difference(
-            endSnapshot.isolateIds.toSet(),
-          );
+        endSnapshot.isolateIds.toSet(),
+      );
       if (missingIsolates.isNotEmpty) {
         context.warnings.add(
           'Region "${region.name}" memory diff lost '
@@ -320,9 +322,9 @@ final class ProfileSessionSnapshotCapture {
       try {
         context.overallMemoryStartSnapshot =
             await captureMemorySnapshotForAllAppIsolates(
-          timestampMicros: DateTime.now().toUtc().microsecondsSinceEpoch,
-          warningContext: 'Whole-session memory start',
-        );
+              timestampMicros: DateTime.now().toUtc().microsecondsSinceEpoch,
+              warningContext: 'Whole-session memory start',
+            );
         return;
       } catch (error) {
         lastError = error;
@@ -408,25 +410,23 @@ final class ProfileSessionSnapshotCapture {
     final capturedSnapshots = <AllocationProfileSnapshot>[];
     final failures = <String>[];
 
-    await Future.wait(
-      [
-        for (final isolateId in isolateIds)
-          () async {
-            try {
-              final allocationProfile =
-                  await context.vmService!.getAllocationProfile(isolateId);
-              capturedSnapshots.add(
-                AllocationProfileSnapshot(
-                  isolateId: isolateId,
-                  profile: allocationProfile,
-                ),
-              );
-            } catch (error) {
-              failures.add('$isolateId: $error');
-            }
-          }(),
-      ],
-    );
+    await Future.wait([
+      for (final isolateId in isolateIds)
+        () async {
+          try {
+            final allocationProfile = await context.vmService!
+                .getAllocationProfile(isolateId);
+            capturedSnapshots.add(
+              AllocationProfileSnapshot(
+                isolateId: isolateId,
+                profile: allocationProfile,
+              ),
+            );
+          } catch (error) {
+            failures.add('$isolateId: $error');
+          }
+        }(),
+    ]);
 
     if (capturedSnapshots.isEmpty) {
       throw StateError(
@@ -443,12 +443,10 @@ final class ProfileSessionSnapshotCapture {
 
     return MemoryCaptureSnapshot(
       heapSample: heapSampleFromMemoryUsage(
-        memoryUsage: mergeMemoryUsage(
-          [
-            for (final snapshot in capturedSnapshots)
-              snapshot.profile.memoryUsage,
-          ],
-        ),
+        memoryUsage: mergeMemoryUsage([
+          for (final snapshot in capturedSnapshots)
+            snapshot.profile.memoryUsage,
+        ]),
         timestampMicros: timestampMicros,
       ),
       isolateIds: List.unmodifiable([
@@ -517,24 +515,22 @@ final class ProfileSessionSnapshotCapture {
     final capturedSamples = <CpuSamples>[];
     final failures = <String>[];
 
-    await Future.wait(
-      [
-        for (final isolateId in isolateIds)
-          () async {
-            try {
-              final cpuSamples = await context.vmService!.getCpuSamples(
-                isolateId,
-                startTimestampMicros,
-                timeExtentMicros,
-              );
-              capturedIsolateIds.add(isolateId);
-              capturedSamples.add(cpuSamples);
-            } catch (error) {
-              failures.add('$isolateId: $error');
-            }
-          }(),
-      ],
-    );
+    await Future.wait([
+      for (final isolateId in isolateIds)
+        () async {
+          try {
+            final cpuSamples = await context.vmService!.getCpuSamples(
+              isolateId,
+              startTimestampMicros,
+              timeExtentMicros,
+            );
+            capturedIsolateIds.add(isolateId);
+            capturedSamples.add(cpuSamples);
+          } catch (error) {
+            failures.add('$isolateId: $error');
+          }
+        }(),
+    ]);
 
     if (capturedSamples.isEmpty) {
       throw StateError(
