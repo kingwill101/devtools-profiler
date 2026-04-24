@@ -8,6 +8,76 @@ import 'package:test/test.dart';
 import 'package:vm_service/vm_service.dart';
 
 void main() {
+  test('run help shows the target command separator and examples', () async {
+    final stdoutCapture = _OutputCapture();
+    final stderrCapture = _OutputCapture();
+    addTearDown(() async {
+      await stdoutCapture.close();
+      await stderrCapture.close();
+    });
+
+    final exitCode = await runCli(
+      const ['run', '--help'],
+      runner: _FakeProfileRunner(),
+      output: stdoutCapture.sink,
+      errorOutput: stderrCapture.sink,
+    );
+    await stdoutCapture.flush();
+    await stderrCapture.flush();
+
+    expect(exitCode, 0);
+    expect(
+      stdoutCapture.text,
+      contains(
+        'devtools-profiler run [options] -- <dart-or-flutter-command>',
+      ),
+    );
+    expect(stdoutCapture.text, contains('Examples:'));
+    expect(
+      stdoutCapture.text,
+      contains('devtools-profiler run -- dart run bin/main.dart'),
+    );
+    expect(
+      stdoutCapture.text,
+      contains(
+        'devtools-profiler run --duration 15s --cwd path/to/flutter_app -- flutter run -d linux -t lib/main.dart',
+      ),
+    );
+    expect(stderrCapture.text, isEmpty);
+  });
+
+  test('attach help shows bounded VM service profiling examples', () async {
+    final stdoutCapture = _OutputCapture();
+    final stderrCapture = _OutputCapture();
+    addTearDown(() async {
+      await stdoutCapture.close();
+      await stderrCapture.close();
+    });
+
+    final exitCode = await runCli(
+      const ['attach', '--help'],
+      runner: _FakeProfileRunner(),
+      output: stdoutCapture.sink,
+      errorOutput: stderrCapture.sink,
+    );
+    await stdoutCapture.flush();
+    await stderrCapture.flush();
+
+    expect(exitCode, 0);
+    expect(
+      stdoutCapture.text,
+      contains('devtools-profiler attach [options] <vm-service-uri>'),
+    );
+    expect(stdoutCapture.text, contains('Examples:'));
+    expect(
+      stdoutCapture.text,
+      contains(
+        'devtools-profiler attach --duration 15s http://127.0.0.1:8181/abcd/',
+      ),
+    );
+    expect(stderrCapture.text, isEmpty);
+  });
+
   test('run prints json output for a profiling session', () async {
     final runner = _FakeProfileRunner();
     final stdoutCapture = _OutputCapture();
