@@ -1,0 +1,24 @@
+
+name: devtools_profiler_cli
+description: CLI and local stdio MCP server for automated Dart and Flutter CPU profiling.
+publish_to: none
+
+version: 0.1.0
+
+environment:
+  sdk: ^3.6.0
+
+resolution: workspace
+
+executables:
+  devtools-profiler: devtools_profiler
+
+dependencies:
+  artisanal: ^0.3.0
+  dart_mcp: ^0.5.0
+  devtools_profiler_core: ^0.1.0
+  path: ^1.9.0
+
+dev_dependencies:
+  devtools_region_profiler: ^0.1.0
+  test: ^1.25.8
