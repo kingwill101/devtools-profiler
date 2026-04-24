@@ -1,0 +1,18 @@
+
+name: devtools_region_profiler
+description: Helper APIs for marking CPU profiling regions in Dart and Flutter applications.
+publish_to: none
+
+version: 0.1.0
+
+environment:
+  sdk: ^3.6.0
+
+resolution: workspace
+
+dependencies:
+  dtd: ^4.0.0
+  devtools_profiler_protocol: ^0.1.0
+
+dev_dependencies:
+  test: ^1.25.8
