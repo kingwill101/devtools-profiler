@@ -1,0 +1,14 @@
+.dart_tool/
+.packages
+.pub/
+build/
+coverage/
+*.log
+.DS_Store
+*.exe
+*.so
+*.dill
+*.snapshot
+.agents
+.agents/
+.codex

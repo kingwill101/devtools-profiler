@@ -1,0 +1,11 @@
+name: devtools_profiler_workspace
+publish_to: none
+
+environment:
+  sdk: ^3.6.0
+
+workspace:
+  - packages/devtools_profiler_cli
+  - packages/devtools_profiler_core
+  - packages/devtools_profiler_protocol
+  - packages/devtools_region_profiler
