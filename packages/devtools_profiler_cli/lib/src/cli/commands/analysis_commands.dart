@@ -1,8 +1,15 @@
+import 'package:devtools_profiler_core/devtools_profiler_core.dart';
 
-part of '../cli.dart';
+import '../../presentation.dart';
+import '../../rendering.dart';
+import '../constants.dart';
+import '../options.dart';
+import 'profiler_command.dart';
 
-class _CompareCommand extends _ProfilerCommand {
-  _CompareCommand(super.profileRunner) {
+/// Command that compares two session or profile artifacts.
+class CompareCommand extends ProfilerCommand {
+  /// Creates a compare command.
+  CompareCommand(super.profileRunner) {
     argParser
       ..addOption(
         'baseline-profile-id',
@@ -28,7 +35,7 @@ class _CompareCommand extends _ProfilerCommand {
       );
     }
 
-    final options = _presentationOptions;
+    final options = presentationOptions;
     final comparison = await prepareProfileComparison(
       profileRunner,
       baselinePath: argResults!.rest.first,
@@ -38,18 +45,20 @@ class _CompareCommand extends _ProfilerCommand {
       options: options,
     );
 
-    if (_printJson) {
-      _writeJson(comparisonPresentationJson(comparison));
+    if (printJson) {
+      writeJson(comparisonPresentationJson(comparison));
     } else {
-      _writeComparisonSummary(io, comparison, options: options);
+      writeComparisonSummary(io, comparison, options: options);
     }
 
-    return _successExitCode;
+    return successExitCode;
   }
 }
 
-class _TrendsCommand extends _ProfilerCommand {
-  _TrendsCommand(super.profileRunner) {
+/// Command that analyzes profile trends across multiple artifacts.
+class TrendsCommand extends ProfilerCommand {
+  /// Creates a trends command.
+  TrendsCommand(super.profileRunner) {
     argParser.addOption(
       'profile-id',
       help: 'Profile id to select from each session directory.',
@@ -71,7 +80,7 @@ class _TrendsCommand extends _ProfilerCommand {
       );
     }
 
-    final options = _presentationOptions;
+    final options = presentationOptions;
     final trends = await prepareProfileTrends(
       profileRunner,
       targetPaths: argResults!.rest,
@@ -79,18 +88,20 @@ class _TrendsCommand extends _ProfilerCommand {
       options: options,
     );
 
-    if (_printJson) {
-      _writeJson(trendPresentationJson(trends));
+    if (printJson) {
+      writeJson(trendPresentationJson(trends));
     } else {
-      _writeTrendSummary(io, trends, options: options);
+      writeTrendSummary(io, trends, options: options);
     }
 
-    return _successExitCode;
+    return successExitCode;
   }
 }
 
-class _InspectCommand extends _ProfilerCommand {
-  _InspectCommand(super.profileRunner) {
+/// Command that inspects one method in a profile.
+class InspectCommand extends ProfilerCommand {
+  /// Creates an inspect command.
+  InspectCommand(super.profileRunner) {
     argParser
       ..addOption(
         'profile-id',
@@ -106,7 +117,7 @@ class _InspectCommand extends _ProfilerCommand {
       )
       ..addOption(
         'path-limit',
-        defaultsTo: '$_defaultMethodPathLimit',
+        defaultsTo: '$defaultMethodPathLimit',
         help:
             'Maximum representative top-down and bottom-up paths to include. Use 0 for unlimited.',
       );
@@ -126,32 +137,34 @@ class _InspectCommand extends _ProfilerCommand {
       );
     }
 
-    final options = _presentationOptions;
+    final options = presentationOptions;
     final inspection = await prepareProfileMethodInspection(
       profileRunner,
       targetPath: argResults!.rest.single,
       profileId: argResults!['profile-id'] as String?,
       methodId: argResults!['method-id'] as String?,
       methodName: argResults!['method'] as String?,
-      pathLimit: _parseLimit(
+      pathLimit: parseLimit(
         argResults!['path-limit'] as String,
         optionName: 'path-limit',
       ),
       options: options,
     );
 
-    if (_printJson) {
-      _writeJson(methodInspectionJson(inspection));
+    if (printJson) {
+      writeJson(methodInspectionJson(inspection));
     } else {
-      _writeMethodInspection(io, inspection, options: options);
+      writeMethodInspection(io, inspection, options: options);
     }
 
-    return _successExitCode;
+    return successExitCode;
   }
 }
 
-class _CompareMethodCommand extends _ProfilerCommand {
-  _CompareMethodCommand(super.profileRunner) {
+/// Command that compares one method across two profiles.
+class CompareMethodCommand extends ProfilerCommand {
+  /// Creates a compare-method command.
+  CompareMethodCommand(super.profileRunner) {
     argParser
       ..addOption(
         'baseline-profile-id',
@@ -171,7 +184,7 @@ class _CompareMethodCommand extends _ProfilerCommand {
       )
       ..addOption(
         'path-limit',
-        defaultsTo: '$_defaultMethodPathLimit',
+        defaultsTo: '$defaultMethodPathLimit',
         help:
             'Maximum representative top-down and bottom-up paths to include. Use 0 for unlimited.',
       );
@@ -192,7 +205,7 @@ class _CompareMethodCommand extends _ProfilerCommand {
       );
     }
 
-    final options = _presentationOptions;
+    final options = presentationOptions;
     final comparison = await prepareProfileMethodComparison(
       profileRunner,
       baselinePath: argResults!.rest.first,
@@ -201,7 +214,7 @@ class _CompareMethodCommand extends _ProfilerCommand {
       currentProfileId: argResults!['current-profile-id'] as String?,
       methodId: argResults!['method-id'] as String?,
       methodName: argResults!['method'] as String?,
-      pathLimit: _parseLimit(
+      pathLimit: parseLimit(
         argResults!['path-limit'] as String,
         optionName: 'path-limit',
       ),
@@ -209,18 +222,20 @@ class _CompareMethodCommand extends _ProfilerCommand {
       options: options,
     );
 
-    if (_printJson) {
-      _writeJson(methodComparisonJson(comparison));
+    if (printJson) {
+      writeJson(methodComparisonJson(comparison));
     } else {
-      _writeMethodComparison(io, comparison, options: options);
+      writeMethodComparison(io, comparison, options: options);
     }
 
-    return _successExitCode;
+    return successExitCode;
   }
 }
 
-class _SearchMethodsCommand extends _ProfilerCommand {
-  _SearchMethodsCommand(super.profileRunner) {
+/// Command that searches methods in one profile.
+class SearchMethodsCommand extends ProfilerCommand {
+  /// Creates a search-methods command.
+  SearchMethodsCommand(super.profileRunner) {
     argParser
       ..addOption(
         'profile-id',
@@ -257,26 +272,26 @@ class _SearchMethodsCommand extends _ProfilerCommand {
       );
     }
 
-    final options = _presentationOptions;
+    final options = presentationOptions;
     final search = await prepareProfileMethodSearch(
       profileRunner,
       targetPath: argResults!.rest.single,
       profileId: argResults!['profile-id'] as String?,
       query: argResults!['query'] as String?,
       sortBy: ProfileMethodSearchSort.parse(argResults!['sort'] as String),
-      limit: _parseLimit(
+      limit: parseLimit(
         argResults!['limit'] as String,
         optionName: 'limit',
       ),
       options: options,
     );
 
-    if (_printJson) {
-      _writeJson(methodSearchJson(search));
+    if (printJson) {
+      writeJson(methodSearchJson(search));
     } else {
-      _writeMethodSearch(io, search, options: options);
+      writeMethodSearch(io, search, options: options);
     }
 
-    return _successExitCode;
+    return successExitCode;
   }
 }

@@ -1,29 +1,9 @@
+import 'package:artisanal/args.dart';
 
-part of '../cli.dart';
+import '../presentation.dart';
 
-/// Base class for profiler commands that expose common presentation options.
-abstract class _ProfilerCommand extends Command<int> {
-  _ProfilerCommand(this.profileRunner) {
-    _addPresentationOptions(argParser);
-  }
-
-  /// The profiler backend used by this command.
-  final ProfileRunner profileRunner;
-
-  /// Returns presentation options parsed from the current [argResults].
-  ProfilePresentationOptions get _presentationOptions =>
-      _presentationOptionsFrom(argResults!);
-
-  /// Whether to print output as JSON.
-  bool get _printJson => argResults!['json'] as bool? ?? false;
-
-  /// Writes [value] as indented JSON to the command output.
-  void _writeJson(Object? value) {
-    line(_jsonEncoder.convert(value));
-  }
-}
-
-void _addPresentationOptions(ArgParser parser) {
+/// Adds shared presentation flags to [parser].
+void addPresentationOptions(ArgParser parser) {
   parser
     ..addFlag(
       'json',
@@ -101,7 +81,8 @@ void _addPresentationOptions(ArgParser parser) {
     );
 }
 
-ProfilePresentationOptions _presentationOptionsFrom(ArgResults results) {
+/// Returns presentation options parsed from [results].
+ProfilePresentationOptions presentationOptionsFrom(ArgResults results) {
   final includeCallTree = (results['call-tree'] as bool? ?? false) ||
       (results['expand'] as bool? ?? false);
   return ProfilePresentationOptions(
@@ -117,26 +98,27 @@ ProfilePresentationOptions _presentationOptionsFrom(ArgResults results) {
     excludePackages: (results['exclude-package'] as List<String>? ?? const [])
         .where((value) => value.isNotEmpty)
         .toList(growable: false),
-    frameLimit: _parseLimit(
+    frameLimit: parseLimit(
       results['frame-limit'] as String?,
       optionName: 'frame-limit',
     ),
-    methodLimit: _parseLimit(
+    methodLimit: parseLimit(
       results['method-limit'] as String?,
       optionName: 'method-limit',
     ),
-    maxDepth: _parseLimit(
+    maxDepth: parseLimit(
       results['tree-depth'] as String?,
       optionName: 'tree-depth',
     ),
-    maxChildren: _parseLimit(
+    maxChildren: parseLimit(
       results['tree-children'] as String?,
       optionName: 'tree-children',
     ),
   );
 }
 
-Duration? _parseDuration(String? value, {required String optionName}) {
+/// Parses a CLI duration option.
+Duration? parseDuration(String? value, {required String optionName}) {
   if (value == null || value.isEmpty) {
     return null;
   }
@@ -162,7 +144,8 @@ Duration? _parseDuration(String? value, {required String optionName}) {
   };
 }
 
-Uri _parseVmServiceUriArgument(String value) {
+/// Parses a VM service URI argument.
+Uri parseVmServiceUriArgument(String value) {
   final uri = Uri.parse(value);
   if (!uri.hasScheme || (uri.scheme != 'http' && uri.scheme != 'https')) {
     throw const FormatException(
@@ -172,7 +155,8 @@ Uri _parseVmServiceUriArgument(String value) {
   return uri;
 }
 
-int? _parseLimit(String? value, {required String optionName}) {
+/// Parses a non-negative row or tree limit.
+int? parseLimit(String? value, {required String optionName}) {
   if (value == null || value.isEmpty) {
     return null;
   }

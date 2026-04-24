@@ -1,8 +1,17 @@
+import 'package:artisanal/args.dart';
+import 'package:devtools_profiler_core/devtools_profiler_core.dart';
 
-part of '../cli.dart';
+import '../../mcp_server.dart';
+import '../../presentation.dart';
+import '../../rendering.dart';
+import '../constants.dart';
+import '../options.dart';
+import 'profiler_command.dart';
 
-class _RunCommand extends _ProfilerCommand {
-  _RunCommand(super.profileRunner) {
+/// Command that launches and profiles a Dart or Flutter process.
+class RunCommand extends ProfilerCommand {
+  /// Creates a run command.
+  RunCommand(super.profileRunner) {
     argParser
       ..addOption(
         'cwd',
@@ -49,26 +58,26 @@ class _RunCommand extends _ProfilerCommand {
         artifactDirectory: argResults!['artifact-dir'] as String?,
         command: commandArguments,
         forwardOutput: argResults!['forward-output'] as bool,
-        runDuration: _parseDuration(
+        runDuration: parseDuration(
           argResults!['duration'] as String?,
           optionName: 'duration',
         ),
-        vmServiceTimeout: _parseDuration(
+        vmServiceTimeout: parseDuration(
           argResults!['vm-service-timeout'] as String?,
           optionName: 'vm-service-timeout',
         ),
         workingDirectory: argResults!['cwd'] as String?,
       ),
     );
-    final options = _presentationOptions;
+    final options = presentationOptions;
     final prepared = await prepareSessionPresentation(
       profileRunner,
       session,
       options: options,
     );
 
-    if (_printJson) {
-      _writeJson(
+    if (printJson) {
+      writeJson(
         sessionPresentationJson(
           prepared.session,
           prepared.overallTree,
@@ -80,7 +89,7 @@ class _RunCommand extends _ProfilerCommand {
         ),
       );
     } else {
-      _writeSessionSummary(
+      writeSessionSummary(
         io,
         prepared.session,
         overallTree: prepared.overallTree,
@@ -95,13 +104,15 @@ class _RunCommand extends _ProfilerCommand {
 
     return prepared.session.exitCode == 0 ||
             prepared.session.terminatedByProfiler
-        ? _successExitCode
-        : _softwareExitCode;
+        ? successExitCode
+        : softwareExitCode;
   }
 }
 
-class _AttachCommand extends _ProfilerCommand {
-  _AttachCommand(super.profileRunner) {
+/// Command that profiles an already-running Dart VM service.
+class AttachCommand extends ProfilerCommand {
+  /// Creates an attach command.
+  AttachCommand(super.profileRunner) {
     argParser
       ..addOption(
         'cwd',
@@ -131,7 +142,7 @@ class _AttachCommand extends _ProfilerCommand {
       usageException('Attach requires exactly one Dart VM service URI.');
     }
 
-    final duration = _parseDuration(
+    final duration = parseDuration(
       argResults!['duration'] as String?,
       optionName: 'duration',
     );
@@ -143,19 +154,19 @@ class _AttachCommand extends _ProfilerCommand {
       ProfileAttachRequest(
         artifactDirectory: argResults!['artifact-dir'] as String?,
         duration: duration,
-        vmServiceUri: _parseVmServiceUriArgument(argResults!.rest.single),
+        vmServiceUri: parseVmServiceUriArgument(argResults!.rest.single),
         workingDirectory: argResults!['cwd'] as String?,
       ),
     );
-    final options = _presentationOptions;
+    final options = presentationOptions;
     final prepared = await prepareSessionPresentation(
       profileRunner,
       session,
       options: options,
     );
 
-    if (_printJson) {
-      _writeJson(
+    if (printJson) {
+      writeJson(
         sessionPresentationJson(
           prepared.session,
           prepared.overallTree,
@@ -167,7 +178,7 @@ class _AttachCommand extends _ProfilerCommand {
         ),
       );
     } else {
-      _writeSessionSummary(
+      writeSessionSummary(
         io,
         prepared.session,
         overallTree: prepared.overallTree,
@@ -180,12 +191,14 @@ class _AttachCommand extends _ProfilerCommand {
       );
     }
 
-    return _successExitCode;
+    return successExitCode;
   }
 }
 
-class _McpCommand extends Command<int> {
-  _McpCommand(this.profileRunner);
+/// Command that starts the stdio MCP server.
+class McpCommand extends Command<int> {
+  /// Creates an MCP command.
+  McpCommand(this.profileRunner);
 
   /// The profiler backend used by this command.
   final ProfileRunner profileRunner;
@@ -199,6 +212,6 @@ class _McpCommand extends Command<int> {
   @override
   Future<int> run() async {
     await serveMcp(runner: profileRunner);
-    return _successExitCode;
+    return successExitCode;
   }
 }

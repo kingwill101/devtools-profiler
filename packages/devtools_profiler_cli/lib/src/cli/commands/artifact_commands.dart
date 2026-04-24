@@ -1,8 +1,14 @@
+import 'package:devtools_profiler_core/devtools_profiler_core.dart';
 
-part of '../cli.dart';
+import '../../presentation.dart';
+import '../../rendering.dart';
+import '../constants.dart';
+import 'profiler_command.dart';
 
-class _SummarizeCommand extends _ProfilerCommand {
-  _SummarizeCommand(super.profileRunner);
+/// Command that summarizes a session directory or profile artifact.
+class SummarizeCommand extends ProfilerCommand {
+  /// Creates a summarize command.
+  SummarizeCommand(super.profileRunner);
 
   @override
   String get name => 'summarize';
@@ -17,7 +23,7 @@ class _SummarizeCommand extends _ProfilerCommand {
     }
 
     final targetPath = argResults!.rest.first;
-    final options = _presentationOptions;
+    final options = presentationOptions;
     final summary = await profileRunner.summarizeArtifact(targetPath);
 
     if (summary case {'regions': final Object? _}) {
@@ -26,8 +32,8 @@ class _SummarizeCommand extends _ProfilerCommand {
         ProfileRunResult.fromJson(summary),
         options: options,
       );
-      if (_printJson) {
-        _writeJson(
+      if (printJson) {
+        writeJson(
           sessionPresentationJson(
             prepared.session,
             prepared.overallTree,
@@ -39,7 +45,7 @@ class _SummarizeCommand extends _ProfilerCommand {
           ),
         );
       } else {
-        _writeSessionSummary(
+        writeSessionSummary(
           io,
           prepared.session,
           overallTree: prepared.overallTree,
@@ -51,7 +57,7 @@ class _SummarizeCommand extends _ProfilerCommand {
           options: options,
         );
       }
-      return _successExitCode;
+      return successExitCode;
     }
 
     if (summary case {'topSelfFrames': final Object? _}) {
@@ -60,8 +66,8 @@ class _SummarizeCommand extends _ProfilerCommand {
         ProfileRegionResult.fromJson(summary),
         options: options,
       );
-      if (_printJson) {
-        _writeJson(
+      if (printJson) {
+        writeJson(
           regionPresentationJson(
             prepared.region,
             prepared.callTree,
@@ -70,26 +76,28 @@ class _SummarizeCommand extends _ProfilerCommand {
           ),
         );
       } else {
-        _writeRegionSummary(
+        writeRegionSummary(
           io,
           prepared.region,
           callTree: prepared.callTree,
           bottomUpTree: prepared.bottomUpTree,
           methodTable: prepared.methodTable,
-          workingDirectory: _workingDirectoryFromRegionPath(prepared.region),
+          workingDirectory: workingDirectoryFromRegionPath(prepared.region),
           options: options,
         );
       }
-      return _successExitCode;
+      return successExitCode;
     }
 
-    line(_jsonEncoder.convert(summary));
-    return _successExitCode;
+    line(jsonEncoder.convert(summary));
+    return successExitCode;
   }
 }
 
-class _ExplainCommand extends _ProfilerCommand {
-  _ExplainCommand(super.profileRunner) {
+/// Command that explains likely hotspots in a stored profile.
+class ExplainCommand extends ProfilerCommand {
+  /// Creates an explain command.
+  ExplainCommand(super.profileRunner) {
     argParser.addOption(
       'profile-id',
       help: 'Profile id to select from a session directory.',
@@ -111,7 +119,7 @@ class _ExplainCommand extends _ProfilerCommand {
       );
     }
 
-    final options = _presentationOptions;
+    final options = presentationOptions;
     final explanation = await prepareProfileExplanation(
       profileRunner,
       targetPath: argResults!.rest.single,
@@ -119,12 +127,12 @@ class _ExplainCommand extends _ProfilerCommand {
       options: options,
     );
 
-    if (_printJson) {
-      _writeJson(hotspotExplanationJson(explanation));
+    if (printJson) {
+      writeJson(hotspotExplanationJson(explanation));
     } else {
-      _writeHotspotExplanation(io, explanation, options: options);
+      writeHotspotExplanation(io, explanation, options: options);
     }
 
-    return _successExitCode;
+    return successExitCode;
   }
 }

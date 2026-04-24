@@ -1,4 +1,3 @@
-
 /// CLI and MCP entrypoints for the DevTools profiler backend.
 library;
 
