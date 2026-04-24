@@ -1,4 +1,3 @@
-
 import 'dart:convert';
 import 'dart:io';
 
@@ -6,12 +5,19 @@ import 'package:devtools_profiler_protocol/devtools_profiler_protocol.dart';
 import 'package:path/path.dart' as path;
 import 'package:vm_service/vm_service.dart';
 
-import 'call_tree.dart';
-import 'cpu_profile_summary.dart';
-import 'memory_models.dart';
+import '../cpu/call_tree.dart';
+import '../cpu/cpu_profile_summary.dart';
+import '../memory/memory_models.dart';
 import 'models.dart';
 
 /// Utilities for reading and summarizing profiler artifacts.
+///
+/// These helpers are useful for tools that need to inspect stored profiling
+/// output without rerunning the target process. The supported inputs are:
+///
+/// - session directories written by [ProfileArtifactStore]
+/// - region `summary.json` files
+/// - raw `cpu_profile.json` files
 class ProfileArtifacts {
   /// Reads a session artifact directory and returns the stored session result.
   static Future<ProfileRunResult> readSession(String directoryPath) async {
@@ -24,6 +30,9 @@ class ProfileArtifacts {
 
   /// Reads an artifact and returns a structured map suitable for CLI and MCP
   /// output.
+  ///
+  /// Directory targets resolve to the stored session JSON. File targets return
+  /// raw text and parsed JSON when the file contains valid JSON.
   static Future<Map<String, Object?>> readArtifact(String targetPath) async {
     final entityType = FileSystemEntity.typeSync(targetPath);
     switch (entityType) {
@@ -53,6 +62,10 @@ class ProfileArtifacts {
   }
 
   /// Summarizes an artifact directory or raw CPU profile JSON file.
+  ///
+  /// Region summary files are returned as-is. Raw CPU profile files are lifted
+  /// into a synthesized [ProfileRegionResult]-style summary so downstream tools
+  /// can treat them like other profiler artifacts.
   static Future<Map<String, Object?>> summarizeArtifact(
       String targetPath) async {
     final entityType = FileSystemEntity.typeSync(targetPath);
@@ -89,6 +102,8 @@ class ProfileArtifacts {
   }
 
   /// Reads raw CPU samples from a region summary or raw CPU profile artifact.
+  ///
+  /// Region summaries are resolved through their `rawProfilePath` link.
   static Future<CpuSamples> readCpuSamples(String targetPath) async {
     final entityType = FileSystemEntity.typeSync(targetPath);
     if (entityType != FileSystemEntityType.file) {
@@ -105,6 +120,8 @@ class ProfileArtifacts {
   }
 
   /// Reads a call tree for a region summary or raw CPU profile artifact.
+  ///
+  /// This always returns a top-down tree built by [buildCallTree].
   static Future<ProfileCallTree> readCallTree(String targetPath) async {
     return buildCallTree(cpuSamples: await readCpuSamples(targetPath));
   }
@@ -145,6 +162,10 @@ class ProfileArtifacts {
 }
 
 /// Writes session and region artifacts for a profiling run.
+///
+/// A store instance owns one session directory. It writes the session summary,
+/// whole-session profile artifacts, and per-region summaries under stable file
+/// names that [ProfileArtifacts] can read back later.
 class ProfileArtifactStore {
   /// Creates an artifact store rooted at [sessionDirectory].
   ProfileArtifactStore(this.sessionDirectory);

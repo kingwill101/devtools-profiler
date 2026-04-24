@@ -1,5 +1,4 @@
-
-import 'method_table.dart';
+import '../cpu/method_table.dart';
 import 'profile_method_inspector.dart';
 
 /// Ordering modes for method search results.

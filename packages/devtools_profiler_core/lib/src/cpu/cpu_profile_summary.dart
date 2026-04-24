@@ -1,10 +1,9 @@
-
 import 'package:vm_service/vm_service.dart';
 
 import 'package:devtools_profiler_protocol/devtools_profiler_protocol.dart';
 
-import 'memory_models.dart';
-import 'models.dart';
+import '../capture/models.dart';
+import '../memory/memory_models.dart';
 import 'profile_frames.dart';
 
 /// Builds a [ProfileRegionResult] from raw VM CPU samples.
@@ -116,7 +115,7 @@ int _compareTotalDescending(ProfileFrameSummary a, ProfileFrameSummary b) {
   return a.name.compareTo(b.name);
 }
 
-class _MutableFrameStats {
+final class _MutableFrameStats {
   _MutableFrameStats({
     required this.name,
     required this.kind,

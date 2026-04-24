@@ -1,9 +1,3 @@
-<!--
-Copyright 2026 The Flutter Authors
-Use of this source code is governed by a BSD-style license that can be
-found in the LICENSE file or at https://developers.google.com/open-source/licenses/bsd.
--->
-
 # DevTools Profiler Core
 
 `devtools_profiler_core` is the pure-Dart backend used by the profiler CLI and
@@ -12,7 +6,14 @@ MCP server. Most users should start with
 when you are building another tool that needs to launch Dart programs, collect
 profile artifacts, or analyze stored profile data.
 
-For the full workspace guide, see [the profiler README](../../README.md).
+End users normally install and run the CLI with:
+
+```bash
+dart pub global activate devtools_profiler_cli
+devtools-profiler help
+```
+
+For the full CLI guide, see [the profiler README](../../README.md).
 
 ## What It Does
 
@@ -33,8 +34,8 @@ The core package can:
 - inspect, search, and compare individual methods
 - analyze trend series across multiple sessions
 
-It does not contain terminal rendering, MCP transport, Flutter UI code, or web UI
-code.
+It does not contain terminal rendering, MCP transport, Flutter UI code, or web
+UI code.
 
 ## Launch And Profile A Command
 
@@ -170,9 +171,9 @@ The package exports helpers for common profiler views:
 - Profile comparison: compare two sessions or regions.
 - Trend analysis: compare ordered sessions and find recurring regressions.
 
-The CLI uses these APIs to present both readable terminal output and JSON output.
-Tool authors should prefer these higher-level summaries over parsing raw VM
-service payloads directly.
+The CLI uses these APIs to present both readable terminal output and JSON
+output. Tool authors should prefer these higher-level summaries over parsing
+raw VM service payloads directly.
 
 ## Relationship To DevTools Packages
 
@@ -190,4 +191,5 @@ It intentionally does not depend on `packages/devtools_app`,
 - CPU and memory capture are implemented.
 - Timeline capture is represented in the shared protocol enum but is not
   implemented by this backend.
-- This package is local to the profiler workspace and is not published.
+- Most users should prefer the globally installed CLI. Use this package
+  directly when building custom profiler integrations.

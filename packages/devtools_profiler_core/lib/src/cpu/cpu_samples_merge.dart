@@ -1,4 +1,3 @@
-
 import 'package:vm_service/vm_service.dart';
 
 /// Merges multiple isolate-local CPU sample payloads into one synthetic profile.

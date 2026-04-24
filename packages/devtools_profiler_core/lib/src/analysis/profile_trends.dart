@@ -1,6 +1,5 @@
-
-import 'method_table.dart';
-import 'models.dart';
+import '../capture/models.dart';
+import '../cpu/method_table.dart';
 import 'profile_comparison.dart';
 
 /// One prepared profile entry in a multi-session trend series.
@@ -406,7 +405,7 @@ List<String> _dedupeWarnings(List<String> warnings) {
   return deduped;
 }
 
-class _MutableRecurringRegression {
+final class _MutableRecurringRegression {
   _MutableRecurringRegression({
     required this.kind,
     required this.subject,

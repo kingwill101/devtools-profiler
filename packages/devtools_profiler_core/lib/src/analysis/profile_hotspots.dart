@@ -1,8 +1,7 @@
-
-import 'call_tree.dart';
-import 'method_table.dart';
-import 'models.dart';
-import 'profile_frames.dart';
+import '../capture/models.dart';
+import '../cpu/call_tree.dart';
+import '../cpu/method_table.dart';
+import '../cpu/profile_frames.dart';
 
 const _runtimeHelperPackagePrefixes = [
   'devtools_profiler_',

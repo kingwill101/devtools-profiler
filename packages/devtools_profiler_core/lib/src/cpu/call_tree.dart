@@ -1,4 +1,3 @@
-
 import 'package:vm_service/vm_service.dart';
 
 import 'profile_frames.dart';
@@ -367,7 +366,7 @@ List<_MutableBottomUpNode> _mergeBottomUpNodes(
   return merged;
 }
 
-class _TopDownBuildResult {
+final class _TopDownBuildResult {
   const _TopDownBuildResult({
     required this.sampleCount,
     required this.samplePeriodMicros,
@@ -379,7 +378,7 @@ class _TopDownBuildResult {
   final _MutableCallTreeNode root;
 }
 
-class _MutableCallTreeNode {
+final class _MutableCallTreeNode {
   _MutableCallTreeNode({
     required this.name,
     required this.kind,
@@ -447,7 +446,7 @@ class _MutableCallTreeNode {
   }
 }
 
-class _MutableBottomUpNode {
+final class _MutableBottomUpNode {
   _MutableBottomUpNode({
     required this.name,
     required this.kind,

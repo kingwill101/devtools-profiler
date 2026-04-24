@@ -1,4 +1,3 @@
-
 import 'package:path/path.dart' as path;
 import 'package:vm_service/vm_service.dart';
 

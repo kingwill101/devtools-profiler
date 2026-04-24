@@ -1,4 +1,3 @@
-
 import 'package:devtools_shared/devtools_shared.dart';
 
 /// A per-class memory summary for a profiled region or session.

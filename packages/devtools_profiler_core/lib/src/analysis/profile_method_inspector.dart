@@ -1,6 +1,5 @@
-
-import 'call_tree.dart';
-import 'method_table.dart';
+import '../cpu/call_tree.dart';
+import '../cpu/method_table.dart';
 
 /// The lookup state for a method inspection request.
 enum ProfileMethodInspectionStatus {
@@ -558,7 +557,7 @@ String _methodIdForNode(ProfileCallTreeNode node) {
   return '${node.name}|${node.kind}|${node.location ?? ''}';
 }
 
-class _MethodLookupResult {
+final class _MethodLookupResult {
   const _MethodLookupResult({
     required this.status,
     required this.candidates,

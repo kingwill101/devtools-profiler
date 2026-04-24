@@ -1,4 +1,3 @@
-
 import 'package:devtools_profiler_core/devtools_profiler_core.dart';
 import 'package:test/test.dart';
 import 'package:vm_service/vm_service.dart';

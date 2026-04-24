@@ -1,4 +1,3 @@
-
 import 'package:devtools_shared/devtools_shared.dart';
 import 'package:vm_service/vm_service.dart';
 
@@ -133,7 +132,7 @@ int _compareMemoryClassSummary(
 
 int _sanitizeMemoryValue(int? value) => value == null || value < 0 ? 0 : value;
 
-class _MutableMemoryClassStats {
+final class _MutableMemoryClassStats {
   _MutableMemoryClassStats({
     required this.className,
     required this.libraryUri,

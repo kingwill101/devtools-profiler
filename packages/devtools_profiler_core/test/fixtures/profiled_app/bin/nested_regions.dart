@@ -1,4 +1,3 @@
-
 import 'package:devtools_region_profiler/devtools_region_profiler.dart';
 
 Future<void> main() async {

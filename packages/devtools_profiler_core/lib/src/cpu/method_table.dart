@@ -1,4 +1,3 @@
-
 import 'package:vm_service/vm_service.dart';
 
 import 'profile_frames.dart';
@@ -326,7 +325,7 @@ void _walkMethodTableOccurrences({
   }
 }
 
-class _MethodTableOccurrence {
+final class _MethodTableOccurrence {
   _MethodTableOccurrence({
     required this.occurrenceId,
     required this.frame,
@@ -360,7 +359,7 @@ class _MethodTableOccurrence {
   }
 }
 
-class _MutableMethodEntry {
+final class _MutableMethodEntry {
   _MutableMethodEntry({
     required this.methodId,
     required this.name,
