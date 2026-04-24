@@ -45,11 +45,26 @@ class RunCommand extends ProfilerCommand {
   String get description => 'Launch and profile a Dart or Flutter command.';
 
   @override
+  String get invocation =>
+      '${runner!.executableName} run [options] -- <dart-or-flutter-command>';
+
+  @override
+  String formatUsage({bool includeDescription = true}) => usageWithExamples(
+        super.formatUsage(includeDescription: includeDescription),
+        const [
+          'devtools-profiler run -- dart run bin/main.dart',
+          'devtools-profiler run --cwd path/to/app -- dart run bin/main.dart',
+          'devtools-profiler run --duration 15s --cwd path/to/flutter_app -- flutter run -d linux -t lib/main.dart',
+        ],
+      );
+
+  @override
   Future<int> run() async {
     final commandArguments = argResults!.rest;
     if (commandArguments.isEmpty) {
       usageException(
-        'A profiled Dart or Flutter command is required after "--".',
+        'A profiled Dart or Flutter command is required after "--". '
+        'Put profiler options before "--" and the target command after it.',
       );
     }
 
@@ -137,9 +152,25 @@ class AttachCommand extends ProfilerCommand {
       'Attach to an existing Dart VM service and profile a fixed window.';
 
   @override
+  String get invocation =>
+      '${runner!.executableName} attach [options] <vm-service-uri>';
+
+  @override
+  String formatUsage({bool includeDescription = true}) => usageWithExamples(
+        super.formatUsage(includeDescription: includeDescription),
+        const [
+          'devtools-profiler attach --duration 15s http://127.0.0.1:8181/abcd/',
+          'devtools-profiler attach --duration 30s --call-tree --hide-sdk http://127.0.0.1:8181/abcd/',
+        ],
+      );
+
+  @override
   Future<int> run() async {
     if (argResults!.rest.length != 1) {
-      usageException('Attach requires exactly one Dart VM service URI.');
+      usageException(
+        'Attach requires exactly one Dart VM service URI. Start the target with '
+        'the Dart VM service enabled, then pass the printed service URI.',
+      );
     }
 
     final duration = parseDuration(
@@ -147,7 +178,8 @@ class AttachCommand extends ProfilerCommand {
       optionName: 'duration',
     );
     if (duration == null) {
-      usageException('Attach requires --duration.');
+      usageException(
+          'Attach requires --duration so the capture window is bounded.');
     }
 
     final session = await profileRunner.attach(
@@ -193,6 +225,18 @@ class AttachCommand extends ProfilerCommand {
 
     return successExitCode;
   }
+}
+
+/// Appends a stable examples section to a formatted command usage string.
+String usageWithExamples(String usage, List<String> examples) {
+  final buffer = StringBuffer(usage.trimRight())
+    ..writeln()
+    ..writeln()
+    ..writeln('Examples:');
+  for (final example in examples) {
+    buffer.writeln('  $example');
+  }
+  return buffer.toString().trimRight();
 }
 
 /// Command that starts the stdio MCP server.
