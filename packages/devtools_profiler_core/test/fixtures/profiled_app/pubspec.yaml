@@ -1,0 +1,14 @@
+
+name: devtools_profiler_fixture_app
+publish_to: none
+
+environment:
+  sdk: ^3.6.0
+
+dependencies:
+  devtools_region_profiler:
+    path: ../../../../devtools_region_profiler
+
+dependency_overrides:
+  devtools_profiler_protocol:
+    path: ../../../../devtools_profiler_protocol
