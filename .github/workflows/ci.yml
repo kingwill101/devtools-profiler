@@ -37,7 +37,12 @@ jobs:
         run: dart pub get
 
       - name: Check formatting
-        run: dart format --output=none --set-exit-if-changed .
+        run: |
+          dart format .
+          git diff --exit-code -- . || {
+            echo 'Formatting changes required. Run `dart format .` locally.'
+            exit 1
+          }
 
       - name: Analyze workspace
         run: dart analyze .
