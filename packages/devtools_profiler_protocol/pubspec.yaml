@@ -1,0 +1,14 @@
+
+name: devtools_profiler_protocol
+description: Shared protocol models for the pure-Dart DevTools profiler packages.
+publish_to: none
+
+version: 0.1.0
+
+environment:
+  sdk: ^3.6.0
+
+resolution: workspace
+
+dev_dependencies:
+  test: ^1.25.8
