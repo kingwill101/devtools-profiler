@@ -1,15 +1,9 @@
-<!--
-Copyright 2026 The Flutter Authors
-Use of this source code is governed by a BSD-style license that can be
-found in the LICENSE file or at https://developers.google.com/open-source/licenses/bsd.
--->
-
 # Dart DevTools Profiler CLI
 
 Profile Dart VM programs from the terminal and get results that are useful to
 humans and AI agents without opening the DevTools UI.
 
-This workspace is for CLI-first profiling:
+This package set is for CLI-first profiling:
 
 - run a Dart or Flutter command under the VM profiler
 - capture the whole process even when the target code is not instrumented
@@ -18,23 +12,28 @@ This workspace is for CLI-first profiling:
 - summarize, explain, compare, and inspect stored profile artifacts
 - expose the same workflow through a local stdio MCP server for agents
 
-It intentionally does not use the DevTools Flutter or web UI. Everything here
-lives under `profiler/` so this fork can keep only the pure-Dart profiling
-pieces it needs.
+It intentionally does not use the DevTools Flutter or web UI.
 
 ## Fast Start
 
-Prepare the local workspace:
+Install the CLI once:
 
 ```bash
-cd profiler
-dart pub get
+dart pub global activate devtools_profiler_cli
+devtools-profiler help
+```
+
+When testing an unpublished checkout, activate the local CLI package instead:
+
+```bash
+dart pub global activate --source path packages/devtools_profiler_cli
+devtools-profiler help
 ```
 
 Run the bundled sample app:
 
 ```bash
-dart run packages/devtools_profiler_cli/bin/devtools_profiler.dart run \
+devtools-profiler run \
   --hide-sdk \
   --hide-runtime-helpers \
   --call-tree \
@@ -46,7 +45,7 @@ dart run packages/devtools_profiler_cli/bin/devtools_profiler.dart run \
 Profile your own Dart command:
 
 ```bash
-dart run packages/devtools_profiler_cli/bin/devtools_profiler.dart run \
+devtools-profiler run \
   --hide-sdk \
   --hide-runtime-helpers \
   --call-tree \
@@ -62,7 +61,7 @@ Everything after `--` is the command being profiled. The first token must be
 Profile a Flutter test run:
 
 ```bash
-dart run packages/devtools_profiler_cli/bin/devtools_profiler.dart run \
+devtools-profiler run \
   --json \
   --duration 15s \
   --hide-sdk \
@@ -76,7 +75,7 @@ dart run packages/devtools_profiler_cli/bin/devtools_profiler.dart run \
 Profile a Flutter app run:
 
 ```bash
-dart run packages/devtools_profiler_cli/bin/devtools_profiler.dart run \
+devtools-profiler run \
   --json \
   --duration 15s \
   --hide-sdk \
@@ -106,7 +105,7 @@ flutter run -d linux -t lib/main_relic_breach.dart --host-vmservice-port=0
 Copy the VM service URI printed by Flutter, then run:
 
 ```bash
-dart run packages/devtools_profiler_cli/bin/devtools_profiler.dart attach \
+devtools-profiler attach \
   --duration 15s \
   --hide-sdk \
   --hide-runtime-helpers \
@@ -155,13 +154,14 @@ does mark regions, the session includes both the full view and each region view.
 
 ## Mark A Region In Your Code
 
-Add the local helper package to the target app:
+Add the helper package to the target app:
 
-```yaml
-dependencies:
-  devtools_region_profiler:
-    path: /absolute/path/to/devtools/profiler/packages/devtools_region_profiler
+```bash
+dart pub add devtools_region_profiler
 ```
+
+When testing an unpublished checkout, use a path dependency to the local
+`packages/devtools_region_profiler` directory instead.
 
 Wrap the code you want to measure:
 
@@ -254,7 +254,7 @@ automation and AI agents.
 Use human output while exploring:
 
 ```bash
-dart run packages/devtools_profiler_cli/bin/devtools_profiler.dart summarize \
+devtools-profiler summarize \
   --hide-sdk \
   --hide-runtime-helpers \
   --call-tree \
@@ -265,7 +265,7 @@ dart run packages/devtools_profiler_cli/bin/devtools_profiler.dart summarize \
 Use JSON output when another tool or agent will consume the result:
 
 ```bash
-dart run packages/devtools_profiler_cli/bin/devtools_profiler.dart summarize \
+devtools-profiler summarize \
   --json \
   --hide-sdk \
   --hide-runtime-helpers \
@@ -314,7 +314,7 @@ want shorter terminal output.
 ### Profile A Whole Script
 
 ```bash
-dart run packages/devtools_profiler_cli/bin/devtools_profiler.dart run \
+devtools-profiler run \
   --json \
   --duration 15s \
   --hide-sdk \
@@ -330,7 +330,7 @@ This works even if the script has no region instrumentation.
 ### Profile A Flutter Test Or App
 
 ```bash
-dart run packages/devtools_profiler_cli/bin/devtools_profiler.dart run \
+devtools-profiler run \
   --json \
   --hide-sdk \
   --hide-runtime-helpers \
@@ -370,13 +370,14 @@ For a lower-overhead runtime closer to deployed Flutter behavior, use profile
 mode instead of debug mode when your target supports it:
 
 ```bash
-flutter run --profile -d linux -t lib/main_relic_breach.dart --host-vmservice-port=0
+flutter run --profile -d linux -t lib/main_relic_breach.dart \
+  --host-vmservice-port=0
 ```
 
 Then copy the VM service URI from Flutter's output and attach:
 
 ```bash
-dart run packages/devtools_profiler_cli/bin/devtools_profiler.dart attach \
+devtools-profiler attach \
   --json \
   --duration 15s \
   --hide-sdk \
@@ -384,7 +385,7 @@ dart run packages/devtools_profiler_cli/bin/devtools_profiler.dart attach \
   --call-tree \
   --bottom-up \
   --method-table \
-  --cwd /run/media/kingwill101/disk2/code/code/dart_packages/lualike/pkgs/love2d/example \
+  --cwd /path/to/flutter/app \
   http://127.0.0.1:8181/abcd/
 ```
 
@@ -398,7 +399,7 @@ profiling of long-running games, desktop apps, servers, and demos.
 Run the app normally through the profiler:
 
 ```bash
-dart run packages/devtools_profiler_cli/bin/devtools_profiler.dart run \
+devtools-profiler run \
   --json \
   --call-tree \
   --bottom-up \
@@ -414,7 +415,7 @@ session output.
 ### Explain The Hottest Code
 
 ```bash
-dart run packages/devtools_profiler_cli/bin/devtools_profiler.dart explain \
+devtools-profiler explain \
   --json \
   --profile-id overall \
   /path/to/session
@@ -423,7 +424,7 @@ dart run packages/devtools_profiler_cli/bin/devtools_profiler.dart explain \
 Use a generated region id instead of `overall` to explain only that region:
 
 ```bash
-dart run packages/devtools_profiler_cli/bin/devtools_profiler.dart explain \
+devtools-profiler explain \
   --json \
   --profile-id <checkout-region-id> \
   /path/to/session
@@ -437,7 +438,7 @@ representative bottom-up paths, and method context for likely problem areas.
 Find candidate methods:
 
 ```bash
-dart run packages/devtools_profiler_cli/bin/devtools_profiler.dart search-methods \
+devtools-profiler search-methods \
   --json \
   --query Checkout \
   --sort total \
@@ -447,7 +448,7 @@ dart run packages/devtools_profiler_cli/bin/devtools_profiler.dart search-method
 Inspect one method:
 
 ```bash
-dart run packages/devtools_profiler_cli/bin/devtools_profiler.dart inspect \
+devtools-profiler inspect \
   --json \
   --method CheckoutService.priceCart \
   --profile-id <checkout-region-id> \
@@ -460,7 +461,7 @@ paths.
 ### Compare Two Runs
 
 ```bash
-dart run packages/devtools_profiler_cli/bin/devtools_profiler.dart compare \
+devtools-profiler compare \
   --json \
   --method-table \
   /path/to/baseline-session \
@@ -483,7 +484,7 @@ or compare specific regions by copying their generated ids from each session:
 ### Compare One Method Across Two Runs
 
 ```bash
-dart run packages/devtools_profiler_cli/bin/devtools_profiler.dart compare-method \
+devtools-profiler compare-method \
   --json \
   --method CheckoutService.priceCart \
   --baseline-profile-id <baseline-checkout-region-id> \
@@ -497,7 +498,7 @@ dart run packages/devtools_profiler_cli/bin/devtools_profiler.dart compare-metho
 Pass sessions oldest to newest:
 
 ```bash
-dart run packages/devtools_profiler_cli/bin/devtools_profiler.dart trends \
+devtools-profiler trends \
   --json \
   /path/to/session-1 \
   /path/to/session-2 \
@@ -512,13 +513,13 @@ comparison, recurring regressions, and prioritized overall regressions.
 Run:
 
 ```bash
-dart run packages/devtools_profiler_cli/bin/devtools_profiler.dart <command>
+devtools-profiler <command>
 ```
 
 Show built-in help:
 
 ```bash
-dart run packages/devtools_profiler_cli/bin/devtools_profiler.dart help
+devtools-profiler help
 ```
 
 Commands:
@@ -584,7 +585,7 @@ Path arguments accepted by read/analyze commands:
 Start the server:
 
 ```bash
-dart run packages/devtools_profiler_cli/bin/devtools_profiler.dart mcp
+devtools-profiler mcp
 ```
 
 The MCP server uses local stdio transport. A client configuration usually points
@@ -592,13 +593,8 @@ at the same command:
 
 ```json
 {
-  "command": "dart",
-  "args": [
-    "run",
-    "packages/devtools_profiler_cli/bin/devtools_profiler.dart",
-    "mcp"
-  ],
-  "cwd": "/absolute/path/to/devtools/profiler"
+  "command": "devtools-profiler",
+  "args": ["mcp"]
 }
 ```
 
@@ -667,17 +663,18 @@ Important files:
 
 ## Package Layout
 
-This local workspace contains:
+This repository contains:
 
 - [`packages/devtools_profiler_cli`](packages/devtools_profiler_cli/README.md):
   CLI executable and local stdio MCP server.
-- [`packages/devtools_region_profiler`](packages/devtools_region_profiler/README.md):
+- [Region profiler](packages/devtools_region_profiler/README.md):
   helper package used by target programs to mark profiling regions.
-- [`packages/devtools_profiler_core`](packages/devtools_profiler_core/README.md):
+- [Profiler core](packages/devtools_profiler_core/README.md):
   pure-Dart backend for launch, VM service attachment, DTD coordination, region
   handling, artifacts, comparison, hotspot explanation, and trend analysis.
-- [`packages/devtools_profiler_protocol`](packages/devtools_profiler_protocol/README.md):
+- [Profiler protocol](packages/devtools_profiler_protocol/README.md):
   shared protocol models used between the helper and backend.
+
 The profiler uses the hosted `devtools_shared` package for shared VM and memory
 models. It does not depend on `packages/devtools_app`,
 `packages/devtools_app_shared`, or other Flutter/web UI packages.
