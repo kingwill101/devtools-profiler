@@ -57,7 +57,10 @@ class ProfileArtifacts {
       case FileSystemEntityType.pipe:
       default:
         throw ArgumentError.value(
-            targetPath, 'targetPath', 'Artifact not found');
+          targetPath,
+          'targetPath',
+          'Artifact not found',
+        );
     }
   }
 
@@ -67,7 +70,8 @@ class ProfileArtifacts {
   /// into a synthesized [ProfileRegionResult]-style summary so downstream tools
   /// can treat them like other profiler artifacts.
   static Future<Map<String, Object?>> summarizeArtifact(
-      String targetPath) async {
+    String targetPath,
+  ) async {
     final entityType = FileSystemEntity.typeSync(targetPath);
     if (entityType == FileSystemEntityType.directory) {
       return (await readSession(targetPath)).toJson();
@@ -81,7 +85,8 @@ class ProfileArtifacts {
       );
       if (cpuSamples == null) {
         throw StateError(
-            'Failed to parse CPU samples artifact at $targetPath.');
+          'Failed to parse CPU samples artifact at $targetPath.',
+        );
       }
       return summarizeCpuSamples(
         regionId: path.basenameWithoutExtension(targetPath),
@@ -91,7 +96,8 @@ class ProfileArtifacts {
         isolateIds: const ['unknown'],
         captureKinds: const [ProfileCaptureKind.cpu],
         startTimestampMicros: cpuSamples.timeOriginMicros ?? 0,
-        endTimestampMicros: (cpuSamples.timeOriginMicros ?? 0) +
+        endTimestampMicros:
+            (cpuSamples.timeOriginMicros ?? 0) +
             (cpuSamples.timeExtentMicros ?? 0),
         cpuSamples: cpuSamples,
         summaryPath: targetPath,
@@ -298,8 +304,9 @@ class ProfileArtifactStore {
 
   /// Writes the session summary file.
   Future<void> writeSession(ProfileRunResult result) async {
-    final sessionFile =
-        File(path.join(sessionDirectory.path, _sessionFileName));
+    final sessionFile = File(
+      path.join(sessionDirectory.path, _sessionFileName),
+    );
     await sessionFile.writeAsString(result.toPrettyJson());
   }
 
@@ -344,10 +351,12 @@ class ProfileArtifactStore {
     final summaryFile = File(path.join(directory.path, _summaryFileName));
     String? rawProfilePath;
     if (cpuSamples != null) {
-      final rawProfileFile =
-          File(path.join(directory.path, _rawProfileFileName));
-      final rawJson =
-          const JsonEncoder.withIndent('  ').convert(cpuSamples.toJson());
+      final rawProfileFile = File(
+        path.join(directory.path, _rawProfileFileName),
+      );
+      final rawJson = const JsonEncoder.withIndent(
+        '  ',
+      ).convert(cpuSamples.toJson());
       await rawProfileFile.writeAsString(rawJson);
       rawProfilePath = rawProfileFile.path;
     }
@@ -358,9 +367,9 @@ class ProfileArtifactStore {
         path.join(directory.path, _rawMemoryProfileFileName),
       );
       await rawMemoryFile.writeAsString(
-        const JsonEncoder.withIndent('  ').convert(
-          rawMemoryPayload ?? memory.toJson(),
-        ),
+        const JsonEncoder.withIndent(
+          '  ',
+        ).convert(rawMemoryPayload ?? memory.toJson()),
       );
       storedMemory = memory.copyWith(rawProfilePath: rawMemoryFile.path);
     }

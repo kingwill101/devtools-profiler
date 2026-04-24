@@ -52,10 +52,7 @@ ProfileRegionResult summarizeCpuSamples({
     for (final frame in frames) {
       if (!seenFrames.add(frame.key)) continue;
       statsByFrameKey
-          .putIfAbsent(
-            frame.key,
-            () => _MutableFrameStats.fromFrame(frame),
-          )
+          .putIfAbsent(frame.key, () => _MutableFrameStats.fromFrame(frame))
           .totalSamples++;
     }
   }

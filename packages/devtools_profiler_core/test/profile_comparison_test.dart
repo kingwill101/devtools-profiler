@@ -240,8 +240,9 @@ void main() {
     expect(regressions.insights.first.kind, 'duration');
     expect(regressions.insights.first.severity, ProfileRegressionSeverity.high);
     expect(
-      regressions.insights
-          .any((insight) => insight.subject == 'Worker.hotLeaf'),
+      regressions.insights.any(
+        (insight) => insight.subject == 'Worker.hotLeaf',
+      ),
       isTrue,
     );
     expect(
@@ -284,15 +285,10 @@ void main() {
       comparison.warnings,
       contains('The compared profile attributes differ.'),
     );
+    expect(comparison.warnings, contains('The compared capture kinds differ.'));
     expect(
       comparison.warnings,
-      contains('The compared capture kinds differ.'),
-    );
-    expect(
-      comparison.warnings,
-      contains(
-        'The compared isolate scopes differ: current vs all.',
-      ),
+      contains('The compared isolate scopes differ: current vs all.'),
     );
     expect(
       comparison.warnings,

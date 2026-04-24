@@ -264,8 +264,9 @@ int _compareRegressionInsights(
   if (severityCompare != 0) {
     return severityCompare;
   }
-  final deltaCompare =
-      right.delta.delta.abs().compareTo(left.delta.delta.abs());
+  final deltaCompare = right.delta.delta.abs().compareTo(
+    left.delta.delta.abs(),
+  );
   if (deltaCompare != 0) {
     return deltaCompare;
   }

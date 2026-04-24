@@ -21,11 +21,7 @@ void main() {
       ),
       ProfileFunction(
         kind: 'Dart',
-        function: FuncRef(
-          id: 'functions/run',
-          name: 'run',
-          owner: workerClass,
-        ),
+        function: FuncRef(id: 'functions/run', name: 'run', owner: workerClass),
         resolvedUrl: 'package:fixture/run.dart',
       ),
       ProfileFunction(
@@ -73,10 +69,7 @@ void main() {
   });
 
   test('returns unavailable without a method table', () {
-    final result = searchProfileMethods(
-      methodTable: null,
-      query: 'run',
-    );
+    final result = searchProfileMethods(methodTable: null, query: 'run');
 
     expect(result.status, ProfileMethodSearchStatus.unavailable);
     expect(result.methods, isEmpty);

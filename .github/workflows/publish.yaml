@@ -24,5 +24,6 @@ jobs:
   publish:
     uses: dart-lang/ecosystem/.github/workflows/publish.yaml@main
     permissions:
+      contents: read
       id-token: write
       pull-requests: write

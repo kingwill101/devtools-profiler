@@ -226,10 +226,12 @@ void writeMethodComparison(
           '${formatSignedCount(methodDelta.selfSamples.delta.toInt())} samples',
       'Total delta':
           '${formatSignedCount(methodDelta.totalSamples.delta.toInt())} samples',
-      'Self percent delta':
-          formatSignedPercent(methodDelta.selfPercent.delta.toDouble()),
-      'Total percent delta':
-          formatSignedPercent(methodDelta.totalPercent.delta.toDouble()),
+      'Self percent delta': formatSignedPercent(
+        methodDelta.selfPercent.delta.toDouble(),
+      ),
+      'Total percent delta': formatSignedPercent(
+        methodDelta.totalPercent.delta.toDouble(),
+      ),
     });
   }
 

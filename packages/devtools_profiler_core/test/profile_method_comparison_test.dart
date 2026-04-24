@@ -21,11 +21,7 @@ void main() {
       ),
       ProfileFunction(
         kind: 'Dart',
-        function: FuncRef(
-          id: 'functions/run',
-          name: 'run',
-          owner: workerClass,
-        ),
+        function: FuncRef(id: 'functions/run', name: 'run', owner: workerClass),
         resolvedUrl: 'package:fixture/run.dart',
       ),
       ProfileFunction(

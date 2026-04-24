@@ -66,10 +66,7 @@ class ProfileCallTree {
   /// Returns a copy of this tree limited to [maxDepth] and [maxChildren].
   ///
   /// A value of `null` or `<= 0` disables the corresponding limit.
-  ProfileCallTree limited({
-    int? maxDepth,
-    int? maxChildren,
-  }) {
+  ProfileCallTree limited({int? maxDepth, int? maxChildren}) {
     return ProfileCallTree(
       sampleCount: sampleCount,
       samplePeriodMicros: samplePeriodMicros,
@@ -84,11 +81,11 @@ class ProfileCallTree {
 
   /// Converts this call tree to JSON.
   Map<String, Object?> toJson() => {
-        'sampleCount': sampleCount,
-        'samplePeriodMicros': samplePeriodMicros,
-        'view': view.name,
-        'root': root.toJson(),
-      };
+    'sampleCount': sampleCount,
+    'samplePeriodMicros': samplePeriodMicros,
+    'view': view.name,
+    'root': root.toJson(),
+  };
 }
 
 /// A single node in a hierarchical CPU profile tree.
@@ -166,10 +163,12 @@ class ProfileCallTreeNode {
     int? maxDepth,
     int? maxChildren,
   }) {
-    final normalizedMaxDepth =
-        maxDepth == null || maxDepth <= 0 ? null : maxDepth;
-    final normalizedMaxChildren =
-        maxChildren == null || maxChildren <= 0 ? null : maxChildren;
+    final normalizedMaxDepth = maxDepth == null || maxDepth <= 0
+        ? null
+        : maxDepth;
+    final normalizedMaxChildren = maxChildren == null || maxChildren <= 0
+        ? null
+        : maxChildren;
 
     if (normalizedMaxDepth != null && currentDepth >= normalizedMaxDepth) {
       return ProfileCallTreeNode(
@@ -212,17 +211,17 @@ class ProfileCallTreeNode {
 
   /// Converts this node to JSON.
   Map<String, Object?> toJson() => {
-        'name': name,
-        'kind': kind,
-        'location': location,
-        'selfSamples': selfSamples,
-        'totalSamples': totalSamples,
-        'selfPercent': selfPercent,
-        'totalPercent': totalPercent,
-        'selfMicros': selfMicros,
-        'totalMicros': totalMicros,
-        'children': children.map((child) => child.toJson()).toList(),
-      };
+    'name': name,
+    'kind': kind,
+    'location': location,
+    'selfSamples': selfSamples,
+    'totalSamples': totalSamples,
+    'selfPercent': selfPercent,
+    'totalPercent': totalPercent,
+    'selfMicros': selfMicros,
+    'totalMicros': totalMicros,
+    'children': children.map((child) => child.toJson()).toList(),
+  };
 }
 
 /// Builds a top-down call tree from raw VM CPU samples.
@@ -265,9 +264,9 @@ ProfileCallTree buildBottomUpTree({
   }
 
   final mergedRoots = _mergeBottomUpNodes(bottomUpRoots);
-  final syntheticRoot =
-      _MutableBottomUpNode.root(sampleCount: buildResult.sampleCount)
-        ..children.addAll(mergedRoots);
+  final syntheticRoot = _MutableBottomUpNode.root(
+    sampleCount: buildResult.sampleCount,
+  )..children.addAll(mergedRoots);
 
   return ProfileCallTree(
     sampleCount: buildResult.sampleCount,
@@ -342,7 +341,8 @@ void _generateBottomUpRoots({
 }
 
 List<_MutableBottomUpNode> _mergeBottomUpNodes(
-    List<_MutableBottomUpNode> nodes) {
+  List<_MutableBottomUpNode> nodes,
+) {
   final mergedByKey = <String, _MutableBottomUpNode>{};
 
   for (final node in nodes) {
@@ -385,11 +385,8 @@ final class _MutableCallTreeNode {
     required this.location,
   });
 
-  factory _MutableCallTreeNode.root() => _MutableCallTreeNode(
-        name: _rootFrameName,
-        kind: 'root',
-        location: null,
-      );
+  factory _MutableCallTreeNode.root() =>
+      _MutableCallTreeNode(name: _rootFrameName, kind: 'root', location: null);
 
   factory _MutableCallTreeNode.fromFrame(ProfileFrame frame) {
     return _MutableCallTreeNode(
@@ -421,15 +418,16 @@ final class _MutableCallTreeNode {
     required int samplePeriodMicros,
   }) {
     final divisor = totalSampleCount == 0 ? 1 : totalSampleCount;
-    final children = _childrenByKey.values
-        .map(
-          (child) => child.freeze(
-            totalSampleCount: totalSampleCount,
-            samplePeriodMicros: samplePeriodMicros,
-          ),
-        )
-        .toList()
-      ..sort(_compareCallTreeNodes);
+    final children =
+        _childrenByKey.values
+            .map(
+              (child) => child.freeze(
+                totalSampleCount: totalSampleCount,
+                samplePeriodMicros: samplePeriodMicros,
+              ),
+            )
+            .toList()
+          ..sort(_compareCallTreeNodes);
 
     return ProfileCallTreeNode(
       name: name,
@@ -509,15 +507,16 @@ final class _MutableBottomUpNode {
     required int samplePeriodMicros,
   }) {
     final divisor = totalSampleCount == 0 ? 1 : totalSampleCount;
-    final frozenChildren = children
-        .map(
-          (child) => child.freeze(
-            totalSampleCount: totalSampleCount,
-            samplePeriodMicros: samplePeriodMicros,
-          ),
-        )
-        .toList()
-      ..sort(_compareCallTreeNodes);
+    final frozenChildren =
+        children
+            .map(
+              (child) => child.freeze(
+                totalSampleCount: totalSampleCount,
+                samplePeriodMicros: samplePeriodMicros,
+              ),
+            )
+            .toList()
+          ..sort(_compareCallTreeNodes);
 
     return ProfileCallTreeNode(
       name: name,

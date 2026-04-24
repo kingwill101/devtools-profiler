@@ -29,12 +29,12 @@ class ProfileRunResult {
     this.terminatedByProfiler = false,
     this.overallProfile,
     this.vmServiceUri,
-  })  : supportedCaptureKinds = List.unmodifiable(
-          normalizeProfileCaptureKinds(supportedCaptureKinds),
-        ),
-        supportedIsolateScopes = List.unmodifiable(
-          normalizeProfileIsolateScopes(supportedIsolateScopes),
-        );
+  }) : supportedCaptureKinds = List.unmodifiable(
+         normalizeProfileCaptureKinds(supportedCaptureKinds),
+       ),
+       supportedIsolateScopes = List.unmodifiable(
+         normalizeProfileIsolateScopes(supportedIsolateScopes),
+       );
 
   /// Deserializes a profiling session result from JSON.
   factory ProfileRunResult.fromJson(Map<String, Object?> json) {
@@ -50,21 +50,22 @@ class ProfileRunResult {
       terminatedByProfiler: json['terminatedByProfiler'] as bool? ?? false,
       supportedCaptureKinds: switch (json['supportedCaptureKinds']) {
         final List<Object?> values => [
-            for (final value in values)
-              ProfileCaptureKind.parse(value.toString()),
-          ],
+          for (final value in values)
+            ProfileCaptureKind.parse(value.toString()),
+        ],
         _ => defaultProfileCaptureKinds,
       },
       supportedIsolateScopes: switch (json['supportedIsolateScopes']) {
         final List<Object?> values => [
-            for (final value in values)
-              ProfileIsolateScope.parse(value.toString()),
-          ],
+          for (final value in values)
+            ProfileIsolateScope.parse(value.toString()),
+        ],
         _ => const [ProfileIsolateScope.current, ProfileIsolateScope.all],
       },
       overallProfile: switch (json['overallProfile']) {
-        final Map<Object?, Object?> profile =>
-          ProfileRegionResult.fromJson(castJsonMap(profile)),
+        final Map<Object?, Object?> profile => ProfileRegionResult.fromJson(
+          castJsonMap(profile),
+        ),
         _ => null,
       },
       regions: (json['regions'] as List<Object?>? ?? const [])
@@ -120,23 +121,23 @@ class ProfileRunResult {
 
   /// Converts this session result to JSON.
   Map<String, Object?> toJson() => {
-        'sessionId': sessionId,
-        'command': command,
-        'workingDirectory': workingDirectory,
-        'exitCode': exitCode,
-        'terminatedByProfiler': terminatedByProfiler,
-        'artifactDirectory': artifactDirectory,
-        'vmServiceUri': vmServiceUri,
-        'supportedCaptureKinds': [
-          for (final kind in supportedCaptureKinds) kind.name,
-        ],
-        'supportedIsolateScopes': [
-          for (final scope in supportedIsolateScopes) scope.name,
-        ],
-        if (overallProfile != null) 'overallProfile': overallProfile!.toJson(),
-        'regions': regions.map((region) => region.toJson()).toList(),
-        'warnings': warnings,
-      };
+    'sessionId': sessionId,
+    'command': command,
+    'workingDirectory': workingDirectory,
+    'exitCode': exitCode,
+    'terminatedByProfiler': terminatedByProfiler,
+    'artifactDirectory': artifactDirectory,
+    'vmServiceUri': vmServiceUri,
+    'supportedCaptureKinds': [
+      for (final kind in supportedCaptureKinds) kind.name,
+    ],
+    'supportedIsolateScopes': [
+      for (final scope in supportedIsolateScopes) scope.name,
+    ],
+    if (overallProfile != null) 'overallProfile': overallProfile!.toJson(),
+    'regions': regions.map((region) => region.toJson()).toList(),
+    'warnings': warnings,
+  };
 
   /// Encodes this session result as pretty-printed JSON.
   ///

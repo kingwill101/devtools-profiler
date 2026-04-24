@@ -50,13 +50,13 @@ class RunCommand extends ProfilerCommand {
 
   @override
   String formatUsage({bool includeDescription = true}) => usageWithExamples(
-        super.formatUsage(includeDescription: includeDescription),
-        const [
-          'devtools-profiler run -- dart run bin/main.dart',
-          'devtools-profiler run --cwd path/to/app -- dart run bin/main.dart',
-          'devtools-profiler run --duration 15s --cwd path/to/flutter_app -- flutter run -d linux -t lib/main.dart',
-        ],
-      );
+    super.formatUsage(includeDescription: includeDescription),
+    const [
+      'devtools-profiler run -- dart run bin/main.dart',
+      'devtools-profiler run --cwd path/to/app -- dart run bin/main.dart',
+      'devtools-profiler run --duration 15s --cwd path/to/flutter_app -- flutter run -d linux -t lib/main.dart',
+    ],
+  );
 
   @override
   Future<int> run() async {
@@ -157,12 +157,12 @@ class AttachCommand extends ProfilerCommand {
 
   @override
   String formatUsage({bool includeDescription = true}) => usageWithExamples(
-        super.formatUsage(includeDescription: includeDescription),
-        const [
-          'devtools-profiler attach --duration 15s http://127.0.0.1:8181/abcd/',
-          'devtools-profiler attach --duration 30s --call-tree --hide-sdk http://127.0.0.1:8181/abcd/',
-        ],
-      );
+    super.formatUsage(includeDescription: includeDescription),
+    const [
+      'devtools-profiler attach --duration 15s http://127.0.0.1:8181/abcd/',
+      'devtools-profiler attach --duration 30s --call-tree --hide-sdk http://127.0.0.1:8181/abcd/',
+    ],
+  );
 
   @override
   Future<int> run() async {
@@ -179,7 +179,8 @@ class AttachCommand extends ProfilerCommand {
     );
     if (duration == null) {
       usageException(
-          'Attach requires --duration so the capture window is bounded.');
+        'Attach requires --duration so the capture window is bounded.',
+      );
     }
 
     final session = await profileRunner.attach(

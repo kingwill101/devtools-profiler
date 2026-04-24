@@ -21,11 +21,7 @@ void main() {
       ),
       ProfileFunction(
         kind: 'Dart',
-        function: FuncRef(
-          id: 'functions/run',
-          name: 'run',
-          owner: workerClass,
-        ),
+        function: FuncRef(id: 'functions/run', name: 'run', owner: workerClass),
         resolvedUrl: 'package:fixture/run.dart',
       ),
       ProfileFunction(
@@ -45,31 +41,35 @@ void main() {
     ],
   );
 
-  test('inspects a method with representative top-down and bottom-up paths',
-      () {
-    final methodTable = buildMethodTable(cpuSamples: cpuSamples);
-    final callTree = buildCallTree(cpuSamples: cpuSamples);
-    final bottomUpTree = buildBottomUpTree(cpuSamples: cpuSamples);
+  test(
+    'inspects a method with representative top-down and bottom-up paths',
+    () {
+      final methodTable = buildMethodTable(cpuSamples: cpuSamples);
+      final callTree = buildCallTree(cpuSamples: cpuSamples);
+      final bottomUpTree = buildBottomUpTree(cpuSamples: cpuSamples);
 
-    final inspection = inspectProfileMethod(
-      query: 'Worker.hotLeaf',
-      queryKind: 'methodName',
-      methodTable: methodTable,
-      callTree: callTree,
-      bottomUpTree: bottomUpTree,
-    );
+      final inspection = inspectProfileMethod(
+        query: 'Worker.hotLeaf',
+        queryKind: 'methodName',
+        methodTable: methodTable,
+        callTree: callTree,
+        bottomUpTree: bottomUpTree,
+      );
 
-    expect(inspection.status, ProfileMethodInspectionStatus.found);
-    expect(inspection.method?.name, 'Worker.hotLeaf');
-    expect(
-      inspection.topDownPaths.single.frames.map((frame) => frame.name),
-      ['all', 'Worker.run', '_Future._completeWithValue', 'Worker.hotLeaf'],
-    );
-    expect(
-      inspection.bottomUpPaths.single.frames.map((frame) => frame.name),
-      ['all', 'Worker.hotLeaf'],
-    );
-  });
+      expect(inspection.status, ProfileMethodInspectionStatus.found);
+      expect(inspection.method?.name, 'Worker.hotLeaf');
+      expect(inspection.topDownPaths.single.frames.map((frame) => frame.name), [
+        'all',
+        'Worker.run',
+        '_Future._completeWithValue',
+        'Worker.hotLeaf',
+      ]);
+      expect(
+        inspection.bottomUpPaths.single.frames.map((frame) => frame.name),
+        ['all', 'Worker.hotLeaf'],
+      );
+    },
+  );
 
   test('returns ambiguous candidates for duplicate method names', () {
     final methodTable = ProfileMethodTable(

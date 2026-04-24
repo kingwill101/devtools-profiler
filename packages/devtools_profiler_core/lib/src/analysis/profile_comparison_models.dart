@@ -3,10 +3,7 @@
 /// A numeric baseline/current comparison with derived delta values.
 class ProfileNumericDelta {
   /// Creates a numeric delta.
-  const ProfileNumericDelta({
-    required this.baseline,
-    required this.current,
-  });
+  const ProfileNumericDelta({required this.baseline, required this.current});
 
   /// The baseline value.
   final num baseline;
@@ -28,11 +25,11 @@ class ProfileNumericDelta {
 
   /// Converts this delta to JSON.
   Map<String, Object?> toJson() => {
-        'baseline': baseline,
-        'current': current,
-        'delta': delta,
-        'percentChange': percentChange,
-      };
+    'baseline': baseline,
+    'current': current,
+    'delta': delta,
+    'percentChange': percentChange,
+  };
 }
 
 /// A delta for a merged frame between two prepared profile summaries.
@@ -75,15 +72,15 @@ class ProfileFrameDelta {
 
   /// Converts this delta to JSON.
   Map<String, Object?> toJson() => {
-        'frameId': frameId,
-        'name': name,
-        'kind': kind,
-        'location': location,
-        'selfSamples': selfSamples.toJson(),
-        'totalSamples': totalSamples.toJson(),
-        'selfPercent': selfPercent.toJson(),
-        'totalPercent': totalPercent.toJson(),
-      };
+    'frameId': frameId,
+    'name': name,
+    'kind': kind,
+    'location': location,
+    'selfSamples': selfSamples.toJson(),
+    'totalSamples': totalSamples.toJson(),
+    'selfPercent': selfPercent.toJson(),
+    'totalPercent': totalPercent.toJson(),
+  };
 }
 
 /// A delta for a merged method between two method tables.
@@ -134,17 +131,17 @@ class ProfileMethodDelta {
 
   /// Converts this delta to JSON.
   Map<String, Object?> toJson() => {
-        'methodId': methodId,
-        'name': name,
-        'kind': kind,
-        'location': location,
-        'selfSamples': selfSamples.toJson(),
-        'totalSamples': totalSamples.toJson(),
-        'selfPercent': selfPercent.toJson(),
-        'totalPercent': totalPercent.toJson(),
-        'selfMicros': selfMicros.toJson(),
-        'totalMicros': totalMicros.toJson(),
-      };
+    'methodId': methodId,
+    'name': name,
+    'kind': kind,
+    'location': location,
+    'selfSamples': selfSamples.toJson(),
+    'totalSamples': totalSamples.toJson(),
+    'selfPercent': selfPercent.toJson(),
+    'totalPercent': totalPercent.toJson(),
+    'selfMicros': selfMicros.toJson(),
+    'totalMicros': totalMicros.toJson(),
+  };
 }
 
 /// A per-class memory delta between two profiled windows.
@@ -187,15 +184,15 @@ class ProfileMemoryClassDelta {
 
   /// Converts this delta to JSON.
   Map<String, Object?> toJson() => {
-        'className': className,
-        'libraryUri': libraryUri,
-        'allocationBytesDelta': allocationBytesDelta.toJson(),
-        'allocationInstancesDelta': allocationInstancesDelta.toJson(),
-        'liveBytes': liveBytes.toJson(),
-        'liveBytesDelta': liveBytesDelta.toJson(),
-        'liveInstances': liveInstances.toJson(),
-        'liveInstancesDelta': liveInstancesDelta.toJson(),
-      };
+    'className': className,
+    'libraryUri': libraryUri,
+    'allocationBytesDelta': allocationBytesDelta.toJson(),
+    'allocationInstancesDelta': allocationInstancesDelta.toJson(),
+    'liveBytes': liveBytes.toJson(),
+    'liveBytesDelta': liveBytesDelta.toJson(),
+    'liveInstances': liveInstances.toJson(),
+    'liveInstancesDelta': liveInstancesDelta.toJson(),
+  };
 }
 
 /// A memory diff between two profiled windows.
@@ -226,12 +223,12 @@ class ProfileMemoryComparison {
 
   /// Converts this comparison to JSON.
   Map<String, Object?> toJson() => {
-        'heapBytes': heapBytes.toJson(),
-        'externalBytes': externalBytes.toJson(),
-        'capacityBytes': capacityBytes.toJson(),
-        'classCount': classCount.toJson(),
-        'topClasses': [for (final item in topClasses) item.toJson()],
-      };
+    'heapBytes': heapBytes.toJson(),
+    'externalBytes': externalBytes.toJson(),
+    'capacityBytes': capacityBytes.toJson(),
+    'classCount': classCount.toJson(),
+    'topClasses': [for (final item in topClasses) item.toJson()],
+  };
 }
 
 /// A structured comparison between two profiled regions or session profiles.
@@ -252,12 +249,12 @@ class ProfileRegionComparison {
     required List<String> warnings,
     this.memory,
     List<ProfileMethodDelta> methods = const [],
-  })  : baselineAttributes = Map.unmodifiable(baselineAttributes),
-        currentAttributes = Map.unmodifiable(currentAttributes),
-        topSelfFrames = List.unmodifiable(topSelfFrames),
-        topTotalFrames = List.unmodifiable(topTotalFrames),
-        methods = List.unmodifiable(methods),
-        warnings = List.unmodifiable(warnings);
+  }) : baselineAttributes = Map.unmodifiable(baselineAttributes),
+       currentAttributes = Map.unmodifiable(currentAttributes),
+       topSelfFrames = List.unmodifiable(topSelfFrames),
+       topTotalFrames = List.unmodifiable(topTotalFrames),
+       methods = List.unmodifiable(methods),
+       warnings = List.unmodifiable(warnings);
 
   /// The baseline region identifier.
   final String baselineRegionId;
@@ -303,21 +300,21 @@ class ProfileRegionComparison {
 
   /// Converts this comparison to JSON.
   Map<String, Object?> toJson() => {
-        'baselineRegionId': baselineRegionId,
-        'currentRegionId': currentRegionId,
-        'baselineName': baselineName,
-        'currentName': currentName,
-        'baselineAttributes': baselineAttributes,
-        'currentAttributes': currentAttributes,
-        'durationMicros': durationMicros.toJson(),
-        'sampleCount': sampleCount.toJson(),
-        'samplePeriodMicros': samplePeriodMicros.toJson(),
-        'topSelfFrames': [for (final item in topSelfFrames) item.toJson()],
-        'topTotalFrames': [for (final item in topTotalFrames) item.toJson()],
-        'methods': [for (final item in methods) item.toJson()],
-        if (memory != null) 'memory': memory!.toJson(),
-        'warnings': warnings,
-      };
+    'baselineRegionId': baselineRegionId,
+    'currentRegionId': currentRegionId,
+    'baselineName': baselineName,
+    'currentName': currentName,
+    'baselineAttributes': baselineAttributes,
+    'currentAttributes': currentAttributes,
+    'durationMicros': durationMicros.toJson(),
+    'sampleCount': sampleCount.toJson(),
+    'samplePeriodMicros': samplePeriodMicros.toJson(),
+    'topSelfFrames': [for (final item in topSelfFrames) item.toJson()],
+    'topTotalFrames': [for (final item in topTotalFrames) item.toJson()],
+    'methods': [for (final item in methods) item.toJson()],
+    if (memory != null) 'memory': memory!.toJson(),
+    'warnings': warnings,
+  };
 }
 
 /// Severity for a regression insight.
@@ -332,10 +329,10 @@ enum ProfileRegressionSeverity {
   low;
 
   int get weight => switch (this) {
-        high => 3,
-        medium => 2,
-        low => 1,
-      };
+    high => 3,
+    medium => 2,
+    low => 1,
+  };
 }
 
 /// A structured regression insight derived from a profile comparison.
@@ -378,15 +375,15 @@ class ProfileRegressionInsight {
 
   /// Converts this insight to JSON.
   Map<String, Object?> toJson() => {
-        'kind': kind,
-        'subject': subject,
-        'metric': metric,
-        'title': title,
-        'summary': summary,
-        'severity': severity.name,
-        'delta': delta.toJson(),
-        'location': location,
-      };
+    'kind': kind,
+    'subject': subject,
+    'metric': metric,
+    'title': title,
+    'summary': summary,
+    'severity': severity.name,
+    'delta': delta.toJson(),
+    'location': location,
+  };
 }
 
 /// A prioritized regression summary for a profile comparison.
@@ -396,8 +393,8 @@ class ProfileRegressionSummary {
     required this.status,
     required List<ProfileRegressionInsight> insights,
     required List<String> warnings,
-  })  : insights = List.unmodifiable(insights),
-        warnings = List.unmodifiable(warnings);
+  }) : insights = List.unmodifiable(insights),
+       warnings = List.unmodifiable(warnings);
 
   /// Overall comparison status.
   final String status;
@@ -410,8 +407,8 @@ class ProfileRegressionSummary {
 
   /// Converts this summary to JSON.
   Map<String, Object?> toJson() => {
-        'status': status,
-        'insights': [for (final insight in insights) insight.toJson()],
-        'warnings': warnings,
-      };
+    'status': status,
+    'insights': [for (final insight in insights) insight.toJson()],
+    'warnings': warnings,
+  };
 }

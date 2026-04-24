@@ -123,12 +123,8 @@ final Tool profileInspectMethodTool = Tool(
         description:
             'Optional explicit region id to inspect. Defaults to "overall" when available.',
       ),
-      'methodId': Schema.string(
-        description: 'Exact method id to inspect.',
-      ),
-      'methodName': Schema.string(
-        description: 'Method name query to inspect.',
-      ),
+      'methodId': Schema.string(description: 'Exact method id to inspect.'),
+      'methodName': Schema.string(description: 'Method name query to inspect.'),
       'pathLimit': Schema.int(
         description:
             'Maximum representative top-down and bottom-up paths to include. Use 0 for unlimited.',
@@ -296,12 +292,8 @@ final Tool profileCompareMethodTool = Tool(
         description:
             'Optional profile id to select from the current session. Use "overall" for the whole-session profile.',
       ),
-      'methodId': Schema.string(
-        description: 'Exact method id to compare.',
-      ),
-      'methodName': Schema.string(
-        description: 'Method name query to compare.',
-      ),
+      'methodId': Schema.string(description: 'Exact method id to compare.'),
+      'methodName': Schema.string(description: 'Method name query to compare.'),
       'pathLimit': Schema.int(
         description:
             'Maximum representative top-down and bottom-up paths to include. Use 0 for unlimited.',

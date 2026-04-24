@@ -79,8 +79,9 @@ void writeSessionSummary(
       ],
     );
 
-    for (final region
-        in session.regions.where((region) => region.error != null)) {
+    for (final region in session.regions.where(
+      (region) => region.error != null,
+    )) {
       console.error('${region.name}: ${region.error}');
     }
   } else if (overallProfile != null) {
@@ -261,8 +262,9 @@ void writeHotspotExplanation(
 
   console.section('Hotspot Insights');
   if (explanation.hotspots.insights.isEmpty) {
-    console
-        .warn('No strong hotspots were detected from the current heuristics.');
+    console.warn(
+      'No strong hotspots were detected from the current heuristics.',
+    );
   } else {
     console.components.bulletList([
       for (final insight in explanation.hotspots.insights)
@@ -341,11 +343,13 @@ void writeTrendSummary(
     console.components.definitionList({
       'Duration delta':
           '${formatSignedCount(overallComparison.durationMicros.delta.toInt())} us',
-      'Sample delta':
-          formatSignedCount(overallComparison.sampleCount.delta.toInt()),
+      'Sample delta': formatSignedCount(
+        overallComparison.sampleCount.delta.toInt(),
+      ),
       if (overallComparison.memory != null)
         'Heap delta': formatSignedBytes(
-            overallComparison.memory!.heapBytes.delta.toInt()),
+          overallComparison.memory!.heapBytes.delta.toInt(),
+        ),
     });
   }
   if (overallRegressions != null) {
@@ -412,7 +416,8 @@ String _hotspotInsightLine(
   required ProfilePresentationOptions options,
 }) {
   final buffer = StringBuffer(
-      '[${insight.severity.name}] ${insight.title}: ${insight.summary}');
+    '[${insight.severity.name}] ${insight.title}: ${insight.summary}',
+  );
   void writePath(ProfileHotspotPath? path, String label) {
     if (path == null || path.frames.isEmpty) {
       return;
@@ -483,7 +488,8 @@ void _writeRegressionInsights(
   });
   if (regressions.insights.isEmpty) {
     console.warn(
-        'No strong regressions were detected from the current heuristics.');
+      'No strong regressions were detected from the current heuristics.',
+    );
     return;
   }
   console.components.bulletList([

@@ -10,15 +10,15 @@ void main() {
   final fixtureDirectory = _fixtureDirectory();
 
   setUpAll(() async {
-    final result = await Process.run(
-      Platform.resolvedExecutable,
-      const ['pub', 'get'],
-      workingDirectory: fixtureDirectory.path,
-    );
+    final result = await Process.run(Platform.resolvedExecutable, const [
+      'pub',
+      'get',
+    ], workingDirectory: fixtureDirectory.path);
     expect(
       result.exitCode,
       0,
-      reason: 'Fixture pub get failed:\nstdout: ${result.stdout}\nstderr: '
+      reason:
+          'Fixture pub get failed:\nstdout: ${result.stdout}\nstderr: '
           '${result.stderr}',
     );
   });
@@ -76,9 +76,10 @@ void main() {
       return;
     }
 
-    final testArguments = await _recordedFlutterArguments(
-      const ['test', 'test/widget_test.dart'],
-    );
+    final testArguments = await _recordedFlutterArguments(const [
+      'test',
+      'test/widget_test.dart',
+    ]);
     expect(testArguments, contains('--enable-vmservice'));
     expect(
       testArguments,
@@ -93,9 +94,11 @@ void main() {
       contains('--dart-define=DEVTOOLS_PROFILER_PROTOCOL_VERSION=1'),
     );
 
-    final runArguments = await _recordedFlutterArguments(
-      const ['run', '-d', 'linux'],
-    );
+    final runArguments = await _recordedFlutterArguments(const [
+      'run',
+      '-d',
+      'linux',
+    ]);
     expect(runArguments, contains('--host-vmservice-port=0'));
   });
 
@@ -172,8 +175,9 @@ sleep 5
     expect(File(region.summaryPath).existsSync(), isTrue);
     expect(File(region.rawProfilePath!).existsSync(), isTrue);
 
-    final session =
-        await ProfileArtifacts.readSession(result.artifactDirectory);
+    final session = await ProfileArtifacts.readSession(
+      result.artifactDirectory,
+    );
     expect(session.sessionId, result.sessionId);
     expect(session.overallProfile, isNotNull);
     expect(session.regions, hasLength(1));
@@ -224,9 +228,7 @@ Future<void> main() async {
     expect(result.overallProfile!.sampleCount, greaterThan(0));
     expect(
       result.warnings,
-      contains(
-        contains('Attached to an existing VM service'),
-      ),
+      contains(contains('Attached to an existing VM service')),
     );
     expect(File(result.overallProfile!.summaryPath).existsSync(), isTrue);
     expect(File(result.overallProfile!.rawProfilePath!).existsSync(), isTrue);
@@ -291,10 +293,10 @@ Future<void> main() async {
 
     final region = result.regions.single;
     expect(region.name, 'multi-isolate-burn');
-    expect(
-      region.captureKinds,
-      [ProfileCaptureKind.cpu, ProfileCaptureKind.memory],
-    );
+    expect(region.captureKinds, [
+      ProfileCaptureKind.cpu,
+      ProfileCaptureKind.memory,
+    ]);
     expect(region.isolateScope, ProfileIsolateScope.all);
     expect(region.isolateIds.length, greaterThan(1));
     expect(region.sampleCount, greaterThan(0));
@@ -437,12 +439,7 @@ Future<void> main() async {
 
 Directory _fixtureDirectory() {
   final candidates = [
-    path.join(
-      Directory.current.path,
-      'test',
-      'fixtures',
-      'profiled_app',
-    ),
+    path.join(Directory.current.path, 'test', 'fixtures', 'profiled_app'),
     path.join(
       Directory.current.path,
       'packages',
@@ -520,10 +517,11 @@ class _ObservedDartProcess {
 }
 
 Future<_ObservedDartProcess> _startObservedDartScript(File script) async {
-  final process = await Process.start(
-    Platform.resolvedExecutable,
-    ['--observe=0', '--pause-isolates-on-exit=false', script.path],
-  );
+  final process = await Process.start(Platform.resolvedExecutable, [
+    '--observe=0',
+    '--pause-isolates-on-exit=false',
+    script.path,
+  ]);
   final serviceUriCompleter = Completer<Uri>();
 
   void handleLine(String line) {

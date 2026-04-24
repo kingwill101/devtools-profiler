@@ -49,35 +49,32 @@ Future<T> profileRegion<T>(
   );
   final regionStack = [..._currentRegionStack(), handle.regionId];
 
-  return runZoned(
-    () async {
-      Object? pendingError;
-      StackTrace? pendingStackTrace;
-      T? result;
+  return runZoned(() async {
+    Object? pendingError;
+    StackTrace? pendingStackTrace;
+    T? result;
 
-      try {
-        result = await body();
-      } catch (error, stackTrace) {
-        pendingError = error;
-        pendingStackTrace = stackTrace;
+    try {
+      result = await body();
+    } catch (error, stackTrace) {
+      pendingError = error;
+      pendingStackTrace = stackTrace;
+    }
+
+    try {
+      await handle.stop();
+    } catch (error, stackTrace) {
+      if (pendingError == null) {
+        Error.throwWithStackTrace(error, stackTrace);
       }
+    }
 
-      try {
-        await handle.stop();
-      } catch (error, stackTrace) {
-        if (pendingError == null) {
-          Error.throwWithStackTrace(error, stackTrace);
-        }
-      }
+    if (pendingError != null) {
+      Error.throwWithStackTrace(pendingError, pendingStackTrace!);
+    }
 
-      if (pendingError != null) {
-        Error.throwWithStackTrace(pendingError, pendingStackTrace!);
-      }
-
-      return result as T;
-    },
-    zoneValues: {_activeRegionStackZoneKey: regionStack},
-  );
+    return result as T;
+  }, zoneValues: {_activeRegionStackZoneKey: regionStack});
 }
 
 /// Starts a profiling region and returns a handle that can stop it later.

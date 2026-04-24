@@ -20,10 +20,10 @@ final class DtdProcessSession {
 
   /// Starts a local tooling-daemon process and connects to it.
   static Future<DtdProcessSession> start() async {
-    final process = await Process.start(
-      Platform.resolvedExecutable,
-      const ['tooling-daemon', '--machine'],
-    );
+    final process = await Process.start(Platform.resolvedExecutable, const [
+      'tooling-daemon',
+      '--machine',
+    ]);
     final completer = Completer<DtdConnectionInfo>();
 
     final stdoutBuffer = StringBuffer();

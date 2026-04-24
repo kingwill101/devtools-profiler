@@ -123,7 +123,8 @@ Future<PreparedProfileExplanation> prepareProfileExplanation(
     requestedProfileId: profileId,
     options: options,
   );
-  final needsAnalysisTarget = target.presentation.methodTable == null ||
+  final needsAnalysisTarget =
+      target.presentation.methodTable == null ||
       target.presentation.callTree == null ||
       target.presentation.bottomUpTree == null;
   final analysisTarget = needsAnalysisTarget
@@ -172,7 +173,8 @@ Future<PreparedProfileMethodInspection> prepareProfileMethodInspection(
     requestedProfileId: profileId,
     options: options,
   );
-  final needsAnalysisTarget = target.presentation.methodTable == null ||
+  final needsAnalysisTarget =
+      target.presentation.methodTable == null ||
       target.presentation.callTree == null ||
       target.presentation.bottomUpTree == null;
   final analysisTarget = needsAnalysisTarget
@@ -194,8 +196,9 @@ Future<PreparedProfileMethodInspection> prepareProfileMethodInspection(
       query: methodId?.trim().isNotEmpty == true
           ? methodId!.trim()
           : methodName!.trim(),
-      queryKind:
-          methodId?.trim().isNotEmpty == true ? 'methodId' : 'methodName',
+      queryKind: methodId?.trim().isNotEmpty == true
+          ? 'methodId'
+          : 'methodName',
       methodTable: analysisTarget.presentation.methodTable,
       callTree: analysisTarget.presentation.callTree,
       bottomUpTree: analysisTarget.presentation.bottomUpTree,
@@ -242,7 +245,8 @@ Future<PreparedProfileMethodComparison> prepareProfileMethodComparison(
     String targetPath,
     String? requestedProfileId,
   ) async {
-    final needsAnalysisTarget = target.presentation.methodTable == null ||
+    final needsAnalysisTarget =
+        target.presentation.methodTable == null ||
         target.presentation.callTree == null ||
         target.presentation.bottomUpTree == null;
     if (!needsAnalysisTarget) {
@@ -274,8 +278,9 @@ Future<PreparedProfileMethodComparison> prepareProfileMethodComparison(
   final query = methodId?.trim().isNotEmpty == true
       ? methodId!.trim()
       : methodName!.trim();
-  final queryKind =
-      methodId?.trim().isNotEmpty == true ? 'methodId' : 'methodName';
+  final queryKind = methodId?.trim().isNotEmpty == true
+      ? 'methodId'
+      : 'methodName';
 
   return PreparedProfileMethodComparison(
     baseline: baseline,
@@ -434,19 +439,13 @@ Future<PreparedRegionPresentation> prepareRegionPresentation(
       ? buildCallTree(
           cpuSamples: cpuSamples,
           includeFrame: options.framePredicate,
-        ).limited(
-          maxDepth: options.maxDepth,
-          maxChildren: options.maxChildren,
-        )
+        ).limited(maxDepth: options.maxDepth, maxChildren: options.maxChildren)
       : null;
   final bottomUpTree = options.includeBottomUpTree
       ? buildBottomUpTree(
           cpuSamples: cpuSamples,
           includeFrame: options.framePredicate,
-        ).limited(
-          maxDepth: options.maxDepth,
-          maxChildren: options.maxChildren,
-        )
+        ).limited(maxDepth: options.maxDepth, maxChildren: options.maxChildren)
       : null;
   final methodTable = options.includeMethodTable
       ? _limitMethodTable(

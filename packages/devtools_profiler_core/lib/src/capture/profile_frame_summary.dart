@@ -50,12 +50,12 @@ class ProfileFrameSummary {
 
   /// Converts this frame summary to JSON.
   Map<String, Object?> toJson() => {
-        'name': name,
-        'kind': kind,
-        'location': location,
-        'selfSamples': selfSamples,
-        'totalSamples': totalSamples,
-        'selfPercent': selfPercent,
-        'totalPercent': totalPercent,
-      };
+    'name': name,
+    'kind': kind,
+    'location': location,
+    'selfSamples': selfSamples,
+    'totalSamples': totalSamples,
+    'selfPercent': selfPercent,
+    'totalPercent': totalPercent,
+  };
 }

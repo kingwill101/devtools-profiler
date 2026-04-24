@@ -205,29 +205,23 @@ void main() {
       (insight) => insight.kind == 'selfFrame',
     );
     expect(selfInsight.path, isNotNull);
-    expect(
-      selfInsight.path!.frames.map((frame) => frame.name),
-      ['all', 'Worker.run', 'Worker.hotLeaf'],
-    );
+    expect(selfInsight.path!.frames.map((frame) => frame.name), [
+      'all',
+      'Worker.run',
+      'Worker.hotLeaf',
+    ]);
     expect(selfInsight.bottomUpPath, isNotNull);
-    expect(
-      selfInsight.bottomUpPath!.frames.map((frame) => frame.name),
-      ['all', 'Worker.hotLeaf'],
-    );
+    expect(selfInsight.bottomUpPath!.frames.map((frame) => frame.name), [
+      'all',
+      'Worker.hotLeaf',
+    ]);
     expect(selfInsight.focusMethod, isNotNull);
     expect(selfInsight.focusMethod!.methodId, 'method/hotLeaf');
-    expect(
-      selfInsight.focusMethod!.callers.map((caller) => caller.name),
-      ['Worker.run'],
-    );
-    expect(
-      summary.insights.any((insight) => insight.kind == 'memory'),
-      isTrue,
-    );
-    expect(
-      summary.insights.any((insight) => insight.kind == 'callee'),
-      isTrue,
-    );
+    expect(selfInsight.focusMethod!.callers.map((caller) => caller.name), [
+      'Worker.run',
+    ]);
+    expect(summary.insights.any((insight) => insight.kind == 'memory'), isTrue);
+    expect(summary.insights.any((insight) => insight.kind == 'callee'), isTrue);
   });
 
   test('explainProfileHotspots warns when method table is unavailable', () {

@@ -54,15 +54,15 @@ class ProfileMemoryClassSummary {
 
   /// Converts this class summary to JSON.
   Map<String, Object?> toJson() => {
-        'className': className,
-        'libraryUri': libraryUri,
-        'allocationBytesDelta': allocationBytesDelta,
-        'allocationInstancesDelta': allocationInstancesDelta,
-        'liveBytes': liveBytes,
-        'liveBytesDelta': liveBytesDelta,
-        'liveInstances': liveInstances,
-        'liveInstancesDelta': liveInstancesDelta,
-      };
+    'className': className,
+    'libraryUri': libraryUri,
+    'allocationBytesDelta': allocationBytesDelta,
+    'allocationInstancesDelta': allocationInstancesDelta,
+    'liveBytes': liveBytes,
+    'liveBytesDelta': liveBytesDelta,
+    'liveInstances': liveInstances,
+    'liveInstancesDelta': liveInstancesDelta,
+  };
 }
 
 /// Memory summary data captured for a profiled region or session.
@@ -148,20 +148,21 @@ class ProfileMemoryResult {
       deltaCapacityBytes: deltaCapacityBytes ?? this.deltaCapacityBytes,
       classCount: classCount ?? this.classCount,
       topClasses: topClasses ?? this.topClasses,
-      rawProfilePath:
-          clearRawProfilePath ? null : rawProfilePath ?? this.rawProfilePath,
+      rawProfilePath: clearRawProfilePath
+          ? null
+          : rawProfilePath ?? this.rawProfilePath,
     );
   }
 
   /// Converts this memory result to JSON.
   Map<String, Object?> toJson() => {
-        'start': start.toJson(),
-        'end': end.toJson(),
-        'deltaHeapBytes': deltaHeapBytes,
-        'deltaExternalBytes': deltaExternalBytes,
-        'deltaCapacityBytes': deltaCapacityBytes,
-        'classCount': classCount,
-        'topClasses': [for (final item in topClasses) item.toJson()],
-        'rawProfilePath': rawProfilePath,
-      };
+    'start': start.toJson(),
+    'end': end.toJson(),
+    'deltaHeapBytes': deltaHeapBytes,
+    'deltaExternalBytes': deltaExternalBytes,
+    'deltaCapacityBytes': deltaCapacityBytes,
+    'classCount': classCount,
+    'topClasses': [for (final item in topClasses) item.toJson()],
+    'rawProfilePath': rawProfilePath,
+  };
 }

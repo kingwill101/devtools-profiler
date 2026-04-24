@@ -23,10 +23,10 @@ enum ProfileHotspotSeverity {
   low;
 
   int get weight => switch (this) {
-        high => 3,
-        medium => 2,
-        low => 1,
-      };
+    high => 3,
+    medium => 2,
+    low => 1,
+  };
 }
 
 /// A single hotspot insight derived from a prepared profile.
@@ -73,16 +73,16 @@ class ProfileHotspotInsight {
 
   /// Converts this insight to JSON.
   Map<String, Object?> toJson() => {
-        'kind': kind,
-        'subject': subject,
-        'title': title,
-        'summary': summary,
-        'severity': severity.name,
-        'location': location,
-        if (path != null) 'path': path!.toJson(),
-        if (bottomUpPath != null) 'bottomUpPath': bottomUpPath!.toJson(),
-        if (focusMethod != null) 'focusMethod': focusMethod!.toJson(),
-      };
+    'kind': kind,
+    'subject': subject,
+    'title': title,
+    'summary': summary,
+    'severity': severity.name,
+    'location': location,
+    if (path != null) 'path': path!.toJson(),
+    if (bottomUpPath != null) 'bottomUpPath': bottomUpPath!.toJson(),
+    if (focusMethod != null) 'focusMethod': focusMethod!.toJson(),
+  };
 }
 
 /// Compact method context attached to a hotspot insight.
@@ -99,8 +99,8 @@ class ProfileHotspotMethodContext {
     required List<ProfileMethodRelation> callers,
     required List<ProfileMethodRelation> callees,
     this.location,
-  })  : callers = List.unmodifiable(callers),
-        callees = List.unmodifiable(callees);
+  }) : callers = List.unmodifiable(callers),
+       callees = List.unmodifiable(callees);
 
   /// Builds compact context from a method summary.
   factory ProfileHotspotMethodContext.fromMethodSummary(
@@ -108,7 +108,8 @@ class ProfileHotspotMethodContext {
     int relationLimit = 3,
   }) {
     List<ProfileMethodRelation> limitRelations(
-        List<ProfileMethodRelation> list) {
+      List<ProfileMethodRelation> list,
+    ) {
       if (relationLimit <= 0 || list.length <= relationLimit) {
         return list;
       }
@@ -161,17 +162,17 @@ class ProfileHotspotMethodContext {
 
   /// Converts this context to JSON.
   Map<String, Object?> toJson() => {
-        'methodId': methodId,
-        'name': name,
-        'kind': kind,
-        'location': location,
-        'selfSamples': selfSamples,
-        'totalSamples': totalSamples,
-        'selfPercent': selfPercent,
-        'totalPercent': totalPercent,
-        'callers': [for (final caller in callers) caller.toJson()],
-        'callees': [for (final callee in callees) callee.toJson()],
-      };
+    'methodId': methodId,
+    'name': name,
+    'kind': kind,
+    'location': location,
+    'selfSamples': selfSamples,
+    'totalSamples': totalSamples,
+    'selfPercent': selfPercent,
+    'totalPercent': totalPercent,
+    'callers': [for (final caller in callers) caller.toJson()],
+    'callees': [for (final callee in callees) callee.toJson()],
+  };
 }
 
 /// A frame in a representative hotspot call path.
@@ -202,12 +203,12 @@ class ProfileHotspotPathFrame {
 
   /// Converts this path frame to JSON.
   Map<String, Object?> toJson() => {
-        'name': name,
-        'kind': kind,
-        'selfSamples': selfSamples,
-        'totalSamples': totalSamples,
-        'location': location,
-      };
+    'name': name,
+    'kind': kind,
+    'selfSamples': selfSamples,
+    'totalSamples': totalSamples,
+    'location': location,
+  };
 }
 
 /// A representative call path for a hotspot insight.
@@ -226,9 +227,9 @@ class ProfileHotspotPath {
 
   /// Converts this path to JSON.
   Map<String, Object?> toJson() => {
-        'view': view.name,
-        'frames': [for (final frame in frames) frame.toJson()],
-      };
+    'view': view.name,
+    'frames': [for (final frame in frames) frame.toJson()],
+  };
 }
 
 /// A structured explanation of a prepared profile's hotspots.
@@ -238,8 +239,8 @@ class ProfileHotspotSummary {
     required this.status,
     required List<ProfileHotspotInsight> insights,
     required List<String> warnings,
-  })  : insights = List.unmodifiable(insights),
-        warnings = List.unmodifiable(warnings);
+  }) : insights = List.unmodifiable(insights),
+       warnings = List.unmodifiable(warnings);
 
   /// Overall analysis status.
   final String status;
@@ -252,10 +253,10 @@ class ProfileHotspotSummary {
 
   /// Converts this summary to JSON.
   Map<String, Object?> toJson() => {
-        'status': status,
-        'insights': [for (final insight in insights) insight.toJson()],
-        'warnings': warnings,
-      };
+    'status': status,
+    'insights': [for (final insight in insights) insight.toJson()],
+    'warnings': warnings,
+  };
 }
 
 /// Builds prioritized hotspot insights from a prepared profile summary.
@@ -291,7 +292,7 @@ ProfileHotspotSummary explainProfileHotspots(
       status: 'noData',
       insights: const [],
       warnings: const [
-        'The selected profile did not contain CPU or memory data.'
+        'The selected profile did not contain CPU or memory data.',
       ],
     );
   }
@@ -302,10 +303,12 @@ ProfileHotspotSummary explainProfileHotspots(
     );
   }
 
-  final topSelf =
-      region.topSelfFrames.isEmpty ? null : region.topSelfFrames.first;
-  final topTotal =
-      region.topTotalFrames.isEmpty ? null : region.topTotalFrames.first;
+  final topSelf = region.topSelfFrames.isEmpty
+      ? null
+      : region.topSelfFrames.first;
+  final topTotal = region.topTotalFrames.isEmpty
+      ? null
+      : region.topTotalFrames.first;
 
   if (topSelf != null) {
     final focusMethod = _findFocusMethod(
@@ -428,11 +431,13 @@ ProfileHotspotSummary explainProfileHotspots(
     );
   }
 
-  final topMethod =
-      methodTable?.methods.isEmpty ?? true ? null : methodTable!.methods.first;
+  final topMethod = methodTable?.methods.isEmpty ?? true
+      ? null
+      : methodTable!.methods.first;
   if (topMethod != null) {
-    final dominantCallee =
-        topMethod.callees.isEmpty ? null : topMethod.callees.first;
+    final dominantCallee = topMethod.callees.isEmpty
+        ? null
+        : topMethod.callees.first;
     if (dominantCallee != null && dominantCallee.percent >= 0.5) {
       final focusMethod = _findFocusMethod(
         methodTable,
@@ -476,8 +481,9 @@ ProfileHotspotSummary explainProfileHotspots(
       );
     }
 
-    final dominantCaller =
-        topMethod.callers.isEmpty ? null : topMethod.callers.first;
+    final dominantCaller = topMethod.callers.isEmpty
+        ? null
+        : topMethod.callers.first;
     if (dominantCaller != null && dominantCaller.percent >= 0.5) {
       final focusMethod = ProfileHotspotMethodContext.fromMethodSummary(
         topMethod,
@@ -674,17 +680,9 @@ ProfileHotspotPath? _representativePath(
   List<ProfileCallTreeNode>? bestPath;
   var bestScore = -1;
 
-  void visit(
-    ProfileCallTreeNode node,
-    List<ProfileCallTreeNode> currentPath,
-  ) {
+  void visit(ProfileCallTreeNode node, List<ProfileCallTreeNode> currentPath) {
     final nextPath = [...currentPath, node];
-    if (_matchesPathNode(
-      node,
-      name: name,
-      kind: kind,
-      location: location,
-    )) {
+    if (_matchesPathNode(node, name: name, kind: kind, location: location)) {
       final nodeScore = score(node);
       if (nodeScore > bestScore) {
         bestScore = nodeScore;

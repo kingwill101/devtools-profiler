@@ -91,9 +91,8 @@ class ProfileRegionOptions {
   factory ProfileRegionOptions.fromJson(Map<String, Object?> json) {
     final captureKinds = switch (json['captureKinds']) {
       final List<Object?> values => [
-          for (final value in values)
-            ProfileCaptureKind.parse(value.toString()),
-        ],
+        for (final value in values) ProfileCaptureKind.parse(value.toString()),
+      ],
       _ => defaultProfileCaptureKinds,
     };
     final isolateScope = switch (json['isolateScope']) {
@@ -138,17 +137,18 @@ class ProfileRegionOptions {
     return ProfileRegionOptions(
       captureKinds: captureKinds ?? this.captureKinds,
       isolateScope: isolateScope ?? this.isolateScope,
-      parentRegionId:
-          clearParentRegionId ? null : parentRegionId ?? this.parentRegionId,
+      parentRegionId: clearParentRegionId
+          ? null
+          : parentRegionId ?? this.parentRegionId,
     );
   }
 
   /// Converts these options to JSON-compatible data.
   Map<String, Object?> toJson() => {
-        'captureKinds': [for (final kind in captureKinds) kind.name],
-        'isolateScope': isolateScope.name,
-        'parentRegionId': parentRegionId,
-      };
+    'captureKinds': [for (final kind in captureKinds) kind.name],
+    'isolateScope': isolateScope.name,
+    'parentRegionId': parentRegionId,
+  };
 }
 
 /// Normalizes capture kinds by removing duplicates while preserving order.

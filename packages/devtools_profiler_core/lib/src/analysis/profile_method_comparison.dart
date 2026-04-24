@@ -51,19 +51,25 @@ class ProfileMethodRelationDelta {
       kind: json['kind'] as String? ?? 'unknown',
       location: json['location'] as String?,
       sampleCount: ProfileNumericDelta(
-        baseline: (json['sampleCount'] as Map<Object?, Object?>? ??
-                const {})['baseline'] as num? ??
+        baseline:
+            (json['sampleCount'] as Map<Object?, Object?>? ??
+                    const {})['baseline']
+                as num? ??
             0,
-        current: (json['sampleCount'] as Map<Object?, Object?>? ??
-                const {})['current'] as num? ??
+        current:
+            (json['sampleCount'] as Map<Object?, Object?>? ??
+                    const {})['current']
+                as num? ??
             0,
       ),
       percent: ProfileNumericDelta(
-        baseline: (json['percent'] as Map<Object?, Object?>? ??
-                const {})['baseline'] as num? ??
+        baseline:
+            (json['percent'] as Map<Object?, Object?>? ?? const {})['baseline']
+                as num? ??
             0.0,
-        current: (json['percent'] as Map<Object?, Object?>? ??
-                const {})['current'] as num? ??
+        current:
+            (json['percent'] as Map<Object?, Object?>? ?? const {})['current']
+                as num? ??
             0.0,
       ),
     );
@@ -89,13 +95,13 @@ class ProfileMethodRelationDelta {
 
   /// Converts this delta to JSON.
   Map<String, Object?> toJson() => {
-        'methodId': methodId,
-        'name': name,
-        'kind': kind,
-        'location': location,
-        'sampleCount': sampleCount.toJson(),
-        'percent': percent.toJson(),
-      };
+    'methodId': methodId,
+    'name': name,
+    'kind': kind,
+    'location': location,
+    'sampleCount': sampleCount.toJson(),
+    'percent': percent.toJson(),
+  };
 }
 
 /// A structured comparison for one selected method across two profiles.
@@ -111,9 +117,9 @@ class ProfileMethodComparison {
     this.methodDelta,
     List<ProfileMethodRelationDelta> callerDeltas = const [],
     List<ProfileMethodRelationDelta> calleeDeltas = const [],
-  })  : warnings = List.unmodifiable(warnings),
-        callerDeltas = List.unmodifiable(callerDeltas),
-        calleeDeltas = List.unmodifiable(calleeDeltas);
+  }) : warnings = List.unmodifiable(warnings),
+       callerDeltas = List.unmodifiable(callerDeltas),
+       calleeDeltas = List.unmodifiable(calleeDeltas);
 
   /// Deserializes a method comparison from JSON.
   factory ProfileMethodComparison.fromJson(Map<String, Object?> json) {
@@ -133,8 +139,9 @@ class ProfileMethodComparison {
             .cast<String, Object?>(),
       ),
       methodDelta: switch (json['methodDelta']) {
-        final Map<Object?, Object?> value =>
-          _methodDeltaFromJson(value.cast<String, Object?>()),
+        final Map<Object?, Object?> value => _methodDeltaFromJson(
+          value.cast<String, Object?>(),
+        ),
         _ => null,
       },
       callerDeltas: (json['callerDeltas'] as List<Object?>? ?? const [])
@@ -188,16 +195,16 @@ class ProfileMethodComparison {
 
   /// Converts this comparison to JSON.
   Map<String, Object?> toJson() => {
-        'query': query,
-        'queryKind': queryKind,
-        'status': status.name,
-        'baseline': baseline.toJson(),
-        'current': current.toJson(),
-        'methodDelta': methodDelta?.toJson(),
-        'callerDeltas': [for (final delta in callerDeltas) delta.toJson()],
-        'calleeDeltas': [for (final delta in calleeDeltas) delta.toJson()],
-        'warnings': warnings,
-      };
+    'query': query,
+    'queryKind': queryKind,
+    'status': status.name,
+    'baseline': baseline.toJson(),
+    'current': current.toJson(),
+    'methodDelta': methodDelta?.toJson(),
+    'callerDeltas': [for (final delta in callerDeltas) delta.toJson()],
+    'calleeDeltas': [for (final delta in calleeDeltas) delta.toJson()],
+    'warnings': warnings,
+  };
 }
 
 ProfileMethodDelta _methodDeltaFromJson(Map<String, Object?> json) {
@@ -256,24 +263,16 @@ ProfileMethodComparison compareProfileMethods({
       ProfileMethodInspectionStatus.found,
     ) =>
       ProfileMethodComparisonStatus.compared,
-    (
-      ProfileMethodInspectionStatus.unavailable,
-      _,
-    ) ||
+    (ProfileMethodInspectionStatus.unavailable, _) ||
     (
       _,
       ProfileMethodInspectionStatus.unavailable,
-    ) =>
-      ProfileMethodComparisonStatus.unavailable,
-    (
-      ProfileMethodInspectionStatus.found,
-      _,
-    ) ||
+    ) => ProfileMethodComparisonStatus.unavailable,
+    (ProfileMethodInspectionStatus.found, _) ||
     (
       _,
       ProfileMethodInspectionStatus.found,
-    ) =>
-      ProfileMethodComparisonStatus.partial,
+    ) => ProfileMethodComparisonStatus.partial,
     _ => ProfileMethodComparisonStatus.unresolved,
   };
 
@@ -386,10 +385,7 @@ List<ProfileMethodRelationDelta> _buildRelationDeltas(
   final methodIds = <String>{...baselineById.keys, ...currentById.keys};
   final deltas = <ProfileMethodRelationDelta>[
     for (final methodId in methodIds)
-      _buildRelationDelta(
-        baselineById[methodId],
-        currentById[methodId],
-      ),
+      _buildRelationDelta(baselineById[methodId], currentById[methodId]),
   ];
   deltas.sort(_compareRelationDeltas);
   return deltas;
@@ -427,8 +423,9 @@ int _compareRelationDeltas(
   ProfileMethodRelationDelta left,
   ProfileMethodRelationDelta right,
 ) {
-  final sampleCompare =
-      right.sampleCount.delta.compareTo(left.sampleCount.delta);
+  final sampleCompare = right.sampleCount.delta.compareTo(
+    left.sampleCount.delta,
+  );
   if (sampleCompare != 0) {
     return sampleCompare;
   }

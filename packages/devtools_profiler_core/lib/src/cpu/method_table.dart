@@ -47,13 +47,13 @@ class ProfileMethodRelation {
 
   /// Converts this method relation to JSON.
   Map<String, Object?> toJson() => {
-        'methodId': methodId,
-        'name': name,
-        'kind': kind,
-        'location': location,
-        'sampleCount': sampleCount,
-        'percent': percent,
-      };
+    'methodId': methodId,
+    'name': name,
+    'kind': kind,
+    'location': location,
+    'sampleCount': sampleCount,
+    'percent': percent,
+  };
 }
 
 /// A method-table entry summarizing a merged method across the CPU profile.
@@ -72,8 +72,8 @@ class ProfileMethodSummary {
     required List<ProfileMethodRelation> callers,
     required List<ProfileMethodRelation> callees,
     this.location,
-  })  : callers = List.unmodifiable(callers),
-        callees = List.unmodifiable(callees);
+  }) : callers = List.unmodifiable(callers),
+       callees = List.unmodifiable(callees);
 
   /// Deserializes a method summary from JSON.
   factory ProfileMethodSummary.fromJson(Map<String, Object?> json) {
@@ -91,17 +91,15 @@ class ProfileMethodSummary {
       callers: (json['callers'] as List<Object?>? ?? const [])
           .cast<Map<Object?, Object?>>()
           .map(
-            (caller) => ProfileMethodRelation.fromJson(
-              caller.cast<String, Object?>(),
-            ),
+            (caller) =>
+                ProfileMethodRelation.fromJson(caller.cast<String, Object?>()),
           )
           .toList(),
       callees: (json['callees'] as List<Object?>? ?? const [])
           .cast<Map<Object?, Object?>>()
           .map(
-            (callee) => ProfileMethodRelation.fromJson(
-              callee.cast<String, Object?>(),
-            ),
+            (callee) =>
+                ProfileMethodRelation.fromJson(callee.cast<String, Object?>()),
           )
           .toList(),
     );
@@ -166,19 +164,19 @@ class ProfileMethodSummary {
 
   /// Converts this method summary to JSON.
   Map<String, Object?> toJson() => {
-        'methodId': methodId,
-        'name': name,
-        'kind': kind,
-        'location': location,
-        'selfSamples': selfSamples,
-        'totalSamples': totalSamples,
-        'selfPercent': selfPercent,
-        'totalPercent': totalPercent,
-        'selfMicros': selfMicros,
-        'totalMicros': totalMicros,
-        'callers': [for (final caller in callers) caller.toJson()],
-        'callees': [for (final callee in callees) callee.toJson()],
-      };
+    'methodId': methodId,
+    'name': name,
+    'kind': kind,
+    'location': location,
+    'selfSamples': selfSamples,
+    'totalSamples': totalSamples,
+    'selfPercent': selfPercent,
+    'totalPercent': totalPercent,
+    'selfMicros': selfMicros,
+    'totalMicros': totalMicros,
+    'callers': [for (final caller in callers) caller.toJson()],
+    'callees': [for (final callee in callees) callee.toJson()],
+  };
 }
 
 /// A DevTools-style method table for a CPU profile.
@@ -198,9 +196,8 @@ class ProfileMethodTable {
       methods: (json['methods'] as List<Object?>? ?? const [])
           .cast<Map<Object?, Object?>>()
           .map(
-            (method) => ProfileMethodSummary.fromJson(
-              method.cast<String, Object?>(),
-            ),
+            (method) =>
+                ProfileMethodSummary.fromJson(method.cast<String, Object?>()),
           )
           .toList(),
     );
@@ -216,9 +213,7 @@ class ProfileMethodTable {
   final List<ProfileMethodSummary> methods;
 
   /// Returns a copy with selected fields replaced.
-  ProfileMethodTable copyWith({
-    List<ProfileMethodSummary>? methods,
-  }) {
+  ProfileMethodTable copyWith({List<ProfileMethodSummary>? methods}) {
     return ProfileMethodTable(
       sampleCount: sampleCount,
       samplePeriodMicros: samplePeriodMicros,
@@ -228,10 +223,10 @@ class ProfileMethodTable {
 
   /// Converts this method table to JSON.
   Map<String, Object?> toJson() => {
-        'sampleCount': sampleCount,
-        'samplePeriodMicros': samplePeriodMicros,
-        'methods': [for (final method in methods) method.toJson()],
-      };
+    'sampleCount': sampleCount,
+    'samplePeriodMicros': samplePeriodMicros,
+    'methods': [for (final method in methods) method.toJson()],
+  };
 }
 
 /// Builds a DevTools-style method table from raw VM CPU samples.
@@ -275,15 +270,16 @@ ProfileMethodTable buildMethodTable({
     );
   }
 
-  final summaries = methodsById.values
-      .map(
-        (entry) => entry.freeze(
-          totalSampleCount: sampleCount,
-          samplePeriodMicros: samplePeriodMicros,
-        ),
-      )
-      .toList()
-    ..sort(_compareMethodSummaries);
+  final summaries =
+      methodsById.values
+          .map(
+            (entry) => entry.freeze(
+              totalSampleCount: sampleCount,
+              samplePeriodMicros: samplePeriodMicros,
+            ),
+          )
+          .toList()
+        ..sort(_compareMethodSummaries);
 
   return ProfileMethodTable(
     sampleCount: sampleCount,
@@ -303,8 +299,9 @@ void _walkMethodTableOccurrences({
     () => _MutableMethodEntry.fromNode(node),
   );
 
-  final shouldMergeTotal =
-      !entry.contributingOccurrenceIds.any(ancestorOccurrenceIds.contains);
+  final shouldMergeTotal = !entry.contributingOccurrenceIds.any(
+    ancestorOccurrenceIds.contains,
+  );
   entry.merge(node, mergeTotal: shouldMergeTotal);
 
   if (parentEntry != null) {
@@ -326,15 +323,12 @@ void _walkMethodTableOccurrences({
 }
 
 final class _MethodTableOccurrence {
-  _MethodTableOccurrence({
-    required this.occurrenceId,
-    required this.frame,
-  });
+  _MethodTableOccurrence({required this.occurrenceId, required this.frame});
 
   factory _MethodTableOccurrence.root() => _MethodTableOccurrence(
-        occurrenceId: 0,
-        frame: const ProfileFrame(name: 'all', kind: 'root', location: null),
-      );
+    occurrenceId: 0,
+    frame: const ProfileFrame(name: 'all', kind: 'root', location: null),
+  );
 
   final int occurrenceId;
   final ProfileFrame frame;
@@ -417,8 +411,10 @@ final class _MutableMethodEntry {
   }
 
   List<ProfileMethodRelation> _freezeRelations(Map<String, int> edgeCounts) {
-    final totalEdges =
-        edgeCounts.values.fold<int>(0, (sum, count) => sum + count);
+    final totalEdges = edgeCounts.values.fold<int>(
+      0,
+      (sum, count) => sum + count,
+    );
     final divisor = totalEdges == 0 ? 1 : totalEdges;
     final relations = <ProfileMethodRelation>[
       for (final entry in edgeCounts.entries)
