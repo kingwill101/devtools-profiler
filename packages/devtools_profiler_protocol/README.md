@@ -1,9 +1,3 @@
-<!--
-Copyright 2026 The Flutter Authors
-Use of this source code is governed by a BSD-style license that can be
-found in the LICENSE file or at https://developers.google.com/open-source/licenses/bsd.
--->
-
 # DevTools Profiler Protocol
 
 `devtools_profiler_protocol` contains the small set of shared types used by the
@@ -15,7 +9,14 @@ Most users should not need this package directly. Import
 only when you are building another integration that needs to share the same
 region options and wire values.
 
-For the full workspace guide, see [the profiler README](../../README.md).
+End users normally install and run the CLI with:
+
+```bash
+dart pub global activate devtools_profiler_cli
+devtools-profiler help
+```
+
+For the full CLI guide, see [the profiler README](../../README.md).
 
 ## Shared Types
 
@@ -107,5 +108,5 @@ kinds.
 ## Package Role
 
 This package intentionally has no dependency on the CLI, backend, DTD, VM
-service, Flutter, or web UI packages. It is the shared contract between packages
-inside the profiler workspace.
+service, Flutter, or web UI packages. It is the shared contract between the
+profiler packages.

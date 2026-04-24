@@ -1,4 +1,3 @@
-
 import 'package:devtools_profiler_protocol/devtools_profiler_protocol.dart';
 import 'package:test/test.dart';
 
