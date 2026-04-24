@@ -20,6 +20,11 @@ on:
       - '*-v*.*.*'
   workflow_dispatch:
 
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: write
+
 jobs:
   publish:
     uses: dart-lang/ecosystem/.github/workflows/publish.yaml@main
