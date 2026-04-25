@@ -165,6 +165,37 @@ Map<String, Object?> _trendTargetJson(PreparedComparisonTarget target) {
   };
 }
 
+/// Converts prepared memory class inspection data to structured JSON.
+Map<String, Object?> memoryClassInspectionJson(
+  PreparedMemoryClassInspection inspection,
+) {
+  final memory = inspection.memory;
+  return {
+    'kind': 'memoryClassInspection',
+    'targetPath': inspection.targetPath,
+    'classQuery': inspection.classQuery,
+    'minLiveBytes': inspection.minLiveBytes,
+    'totalClassCount': memory.classCount,
+    'matchedClassCount': memory.topClasses.length,
+    'deltaHeapBytes': memory.deltaHeapBytes,
+    'deltaExternalBytes': memory.deltaExternalBytes,
+    'deltaCapacityBytes': memory.deltaCapacityBytes,
+    'classes': [
+      for (final item in memory.topClasses)
+        {
+          'className': item.className,
+          'libraryUri': item.libraryUri,
+          'liveBytes': item.liveBytes,
+          'liveBytesDelta': item.liveBytesDelta,
+          'liveInstances': item.liveInstances,
+          'liveInstancesDelta': item.liveInstancesDelta,
+          'allocationBytesDelta': item.allocationBytesDelta,
+          'allocationInstancesDelta': item.allocationInstancesDelta,
+        },
+    ],
+  };
+}
+
 String _presentationScope(ProfileRegionResult region) {
   if (region.regionId == 'overall' || region.attributes['scope'] == 'session') {
     return 'session';

@@ -280,3 +280,85 @@ class SearchMethodsCommand extends ProfilerCommand {
     return successExitCode;
   }
 }
+
+/// Command that inspects memory class data in a stored profile artifact.
+class InspectClassesCommand extends ProfilerCommand {
+  /// Creates an inspect-classes command.
+  InspectClassesCommand(super.profileRunner) {
+    argParser
+      ..addOption(
+        'class',
+        help:
+            'Filter to classes whose name contains this query (case-insensitive).',
+      )
+      ..addOption(
+        'min-live-bytes',
+        help:
+            'Only include classes with at least this many live bytes at the '
+            'end of the capture window.',
+      )
+      ..addOption(
+        'limit',
+        defaultsTo: '$defaultFrameLimit',
+        help: 'Maximum classes to show. Use 0 for unlimited.',
+      );
+  }
+
+  @override
+  String get name => 'inspect-classes';
+
+  @override
+  String get description =>
+      'Inspect memory class data in a stored session or region artifact.';
+
+  @override
+  String get invocation =>
+      '${runner!.executableName} inspect-classes [options] <path>';
+
+  @override
+  String formatUsage({bool includeDescription = true}) => usageWithExamples(
+    super.formatUsage(includeDescription: includeDescription),
+    const [
+      'devtools-profiler inspect-classes path/to/session',
+      'devtools-profiler inspect-classes --class LoveColor path/to/session',
+      'devtools-profiler inspect-classes --min-live-bytes 1048576 path/to/session',
+    ],
+  );
+
+  @override
+  Future<int> run() async {
+    if (argResults!.rest.length != 1) {
+      usageException(
+        'Inspect-classes requires exactly one session directory or '
+        'profile artifact path.',
+      );
+    }
+
+    final limitStr = argResults!['limit'] as String;
+    final limit = parseLimit(limitStr, optionName: 'limit');
+    final minLiveBytesStr = argResults!['min-live-bytes'] as String?;
+    int? minLiveBytes;
+    if (minLiveBytesStr != null && minLiveBytesStr.isNotEmpty) {
+      minLiveBytes = int.tryParse(minLiveBytesStr);
+      if (minLiveBytes == null) {
+        usageException('--min-live-bytes must be a non-negative integer.');
+      }
+    }
+
+    final inspection = await prepareMemoryClassInspection(
+      profileRunner,
+      argResults!.rest.single,
+      classQuery: argResults!['class'] as String?,
+      minLiveBytes: minLiveBytes,
+      topClassCount: limit ?? 0,
+    );
+
+    if (printJson) {
+      writeJson(memoryClassInspectionJson(inspection));
+    } else {
+      writeMemoryClassInspection(io, inspection);
+    }
+
+    return successExitCode;
+  }
+}

@@ -161,6 +161,29 @@ class PreparedSessionPresentation {
   final Map<String, ProfileMethodTable> regionMethodTables;
 }
 
+/// Prepared memory class inspection data for CLI or MCP output.
+class PreparedMemoryClassInspection {
+  /// Creates prepared memory class inspection data.
+  const PreparedMemoryClassInspection({
+    required this.targetPath,
+    required this.memory,
+    required this.classQuery,
+    required this.minLiveBytes,
+  });
+
+  /// The user-supplied target path that was inspected.
+  final String targetPath;
+
+  /// The rebuilt memory result containing filtered classes.
+  final ProfileMemoryResult memory;
+
+  /// The class name query used for filtering, or null if none was supplied.
+  final String? classQuery;
+
+  /// The minimum live-bytes threshold used for filtering, or null if none.
+  final int? minLiveBytes;
+}
+
 /// Prepared region data for CLI or MCP output.
 class PreparedRegionPresentation {
   /// Creates prepared region data.

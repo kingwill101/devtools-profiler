@@ -5,6 +5,7 @@ import 'package:path/path.dart' as path;
 import 'package:vm_service/vm_service.dart';
 
 import '../cpu/call_tree.dart';
+import '../memory/memory_models.dart';
 import 'artifacts.dart';
 import 'models.dart';
 import 'runner/dtd_process_session.dart';
@@ -241,5 +242,30 @@ class ProfileRunner {
   /// Use [buildBottomUpTree] directly when a bottom-up view is required.
   Future<ProfileCallTree> readCallTree(String targetPath) {
     return ProfileArtifacts.readCallTree(targetPath);
+  }
+
+  /// Reads and filters memory class data from a stored profiling artifact.
+  ///
+  /// [targetPath] may be a session directory, a region `summary.json` file,
+  /// or a raw `memory_profile.json` file.
+  ///
+  /// When [classQuery] is provided, only classes whose name contains the query
+  /// (case-insensitive) are included. When [minLiveBytes] is provided, only
+  /// classes with at least that many live bytes at the end of the window are
+  /// included.
+  ///
+  /// Pass [topClassCount] as 0 for unlimited results.
+  Future<ProfileMemoryResult> readMemoryClasses(
+    String targetPath, {
+    String? classQuery,
+    int? minLiveBytes,
+    int topClassCount = 50,
+  }) {
+    return ProfileArtifacts.readMemoryClasses(
+      targetPath,
+      classQuery: classQuery,
+      minLiveBytes: minLiveBytes,
+      topClassCount: topClassCount,
+    );
   }
 }

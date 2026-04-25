@@ -594,3 +594,45 @@ final Tool profileFindRegressionsTool = Tool(
     title: 'Profile Find Regressions',
   ),
 );
+
+final Tool profileInspectClassesTool = Tool(
+  name: 'profile_inspect_classes',
+  title: 'Profile Inspect Classes',
+  description:
+      'Inspect memory class data in a stored session or region artifact. '
+      'Re-reads the raw memory artifact to provide the full class list, '
+      'with optional filtering by class name or live-byte threshold.',
+  inputSchema: Schema.object(
+    properties: {
+      'path': Schema.string(
+        description:
+            'A session directory, region summary.json, or raw memory_profile.json.',
+      ),
+      'classQuery': Schema.string(
+        description:
+            'Filter to classes whose name contains this query (case-insensitive).',
+      ),
+      'minLiveBytes': Schema.int(
+        description:
+            'Only include classes with at least this many live bytes at '
+            'the end of the capture window.',
+      ),
+      'limit': Schema.int(
+        description: 'Maximum classes to return. Use 0 for unlimited.',
+      ),
+    },
+    required: ['path'],
+    additionalProperties: false,
+  ),
+  outputSchema: Schema.object(
+    description: 'Memory class inspection result.',
+    additionalProperties: true,
+  ),
+  annotations: ToolAnnotations(
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: false,
+    readOnlyHint: true,
+    title: 'Profile Inspect Classes',
+  ),
+);

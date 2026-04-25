@@ -405,6 +405,32 @@ Future<PreparedProfileTrends> prepareProfileTrends(
   );
 }
 
+/// Prepares memory class inspection data for CLI or MCP output.
+///
+/// Reads the raw memory artifact at [targetPath], rebuilds the full class
+/// list with optional [classQuery] and [minLiveBytes] filtering, and returns
+/// a [PreparedMemoryClassInspection].
+Future<PreparedMemoryClassInspection> prepareMemoryClassInspection(
+  ProfileRunner runner,
+  String targetPath, {
+  String? classQuery,
+  int? minLiveBytes,
+  int topClassCount = 50,
+}) async {
+  final memory = await runner.readMemoryClasses(
+    targetPath,
+    classQuery: classQuery,
+    minLiveBytes: minLiveBytes,
+    topClassCount: topClassCount,
+  );
+  return PreparedMemoryClassInspection(
+    targetPath: targetPath,
+    memory: memory,
+    classQuery: classQuery,
+    minLiveBytes: minLiveBytes,
+  );
+}
+
 /// Rebuilds a single region summary and tree to match [options].
 Future<PreparedRegionPresentation> prepareRegionPresentation(
   ProfileRunner runner,

@@ -8,6 +8,7 @@ import 'package:vm_service/vm_service.dart';
 import '../cpu/call_tree.dart';
 import '../cpu/cpu_profile_summary.dart';
 import '../memory/memory_models.dart';
+import '../memory/memory_profile_summary.dart';
 import 'models.dart';
 
 /// Utilities for reading and summarizing profiler artifacts.
@@ -130,6 +131,91 @@ class ProfileArtifacts {
   /// This always returns a top-down tree built by [buildCallTree].
   static Future<ProfileCallTree> readCallTree(String targetPath) async {
     return buildCallTree(cpuSamples: await readCpuSamples(targetPath));
+  }
+
+  /// Reads and filters memory class data from a stored profiling artifact.
+  ///
+  /// [targetPath] may be a session directory, a region `summary.json` file,
+  /// or a raw `memory_profile.json` file. Session directories resolve to the
+  /// whole-session overall profile.
+  ///
+  /// When [classQuery] is provided, only classes whose name contains the query
+  /// (case-insensitive) are included. When [minLiveBytes] is provided, only
+  /// classes with at least that many live bytes at the end of the window are
+  /// included. When both are provided, both conditions must hold.
+  ///
+  /// Pass [topClassCount] as 0 for unlimited results; otherwise the result is
+  /// truncated to that many classes after sorting by allocation-bytes delta.
+  static Future<ProfileMemoryResult> readMemoryClasses(
+    String targetPath, {
+    String? classQuery,
+    int? minLiveBytes,
+    int topClassCount = 50,
+  }) async {
+    final rawMemoryPath = await _resolveRawMemoryPath(targetPath);
+
+    ProfileMemoryClassPredicate? predicate;
+    final query = classQuery?.toLowerCase().trim();
+    if (query != null && query.isNotEmpty && minLiveBytes != null) {
+      predicate = (s) =>
+          s.className.toLowerCase().contains(query) &&
+          s.liveBytes >= minLiveBytes;
+    } else if (query != null && query.isNotEmpty) {
+      predicate = (s) => s.className.toLowerCase().contains(query);
+    } else if (minLiveBytes != null) {
+      predicate = (s) => s.liveBytes >= minLiveBytes;
+    }
+
+    return readMemoryClassesFromArtifact(
+      rawMemoryPath,
+      includeClass: predicate,
+      topClassCount: topClassCount,
+    );
+  }
+
+  static Future<String> _resolveRawMemoryPath(String targetPath) async {
+    final entityType = FileSystemEntity.typeSync(targetPath);
+    if (entityType == FileSystemEntityType.directory) {
+      final session = await readSession(targetPath);
+      final rawPath = session.overallProfile?.memory?.rawProfilePath;
+      if (rawPath == null || rawPath.isEmpty) {
+        throw StateError(
+          'No memory profile is available for the session at "$targetPath". '
+          'Re-run the target with memory capture enabled.',
+        );
+      }
+      return rawPath;
+    }
+    if (entityType != FileSystemEntityType.file) {
+      throw ArgumentError.value(targetPath, 'targetPath', 'Artifact not found');
+    }
+
+    final json =
+        jsonDecode(await File(targetPath).readAsString())
+            as Map<Object?, Object?>;
+    final map = json.cast<String, Object?>();
+
+    if (map['type'] == 'ProfileMemoryArtifact') {
+      return targetPath;
+    }
+
+    if (map case {'topSelfFrames': final Object? _}) {
+      final region = ProfileRegionResult.fromJson(map);
+      final rawPath = region.memory?.rawProfilePath;
+      if (rawPath == null || rawPath.isEmpty) {
+        throw StateError(
+          'No memory profile is available for the region at "$targetPath". '
+          'Re-run the target with memory capture enabled.',
+        );
+      }
+      return rawPath;
+    }
+
+    throw ArgumentError.value(
+      targetPath,
+      'targetPath',
+      'Unsupported artifact type for memory class inspection.',
+    );
   }
 
   static Future<CpuSamples> _cpuSamplesFromArtifact(
