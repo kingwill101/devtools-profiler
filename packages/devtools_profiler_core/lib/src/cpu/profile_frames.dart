@@ -53,7 +53,7 @@ class ProfileFrame {
   /// Whether the frame belongs to SDK-managed libraries.
   bool get isSdk => isDartCore || isFlutterCore;
 
-  /// The package name for `package:` or pub-cache sourced frames.
+  /// The package name for `package:`, pub-cache, or local package frames.
   String? get packageName {
     final source = location;
     if (source == null || source.isEmpty) {
@@ -70,17 +70,7 @@ class ProfileFrame {
       return null;
     }
 
-    final filePath = parsedUri.toFilePath();
-    final segments = path.split(path.normalize(filePath));
-    final pubCacheIndex = segments.lastIndexOf('.pub-cache');
-    if (pubCacheIndex == -1) {
-      return null;
-    }
-    final libIndex = segments.indexOf('lib', pubCacheIndex);
-    if (libIndex == -1 || libIndex <= pubCacheIndex + 1) {
-      return null;
-    }
-    return _packageNameFromPubCacheFolder(segments[libIndex - 1]);
+    return _packageNameFromFilePath(parsedUri.toFilePath());
   }
 
   /// Whether the frame represents native code.
@@ -92,6 +82,29 @@ class ProfileFrame {
     return (source == null || source.isEmpty) &&
         !name.startsWith(_flutterEnginePrefix);
   }
+}
+
+String? _packageNameFromFilePath(String filePath) {
+  final segments = path.split(path.normalize(filePath));
+
+  final pubCacheIndex = segments.lastIndexOf('.pub-cache');
+  if (pubCacheIndex != -1) {
+    final libIndex = segments.indexOf('lib', pubCacheIndex);
+    if (libIndex == -1 || libIndex <= pubCacheIndex + 1) {
+      return null;
+    }
+    return _packageNameFromPubCacheFolder(segments[libIndex - 1]);
+  }
+
+  final libIndex = segments.lastIndexOf('lib');
+  if (libIndex <= 0) {
+    return null;
+  }
+  final packageDirectoryName = segments[libIndex - 1];
+  if (packageDirectoryName.isEmpty || packageDirectoryName == path.separator) {
+    return null;
+  }
+  return packageDirectoryName;
 }
 
 String _packageNameFromPubCacheFolder(String folder) {
