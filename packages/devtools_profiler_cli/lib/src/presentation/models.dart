@@ -169,6 +169,7 @@ class PreparedRegionPresentation {
     this.callTree,
     this.bottomUpTree,
     this.methodTable,
+    this.warnings = const [],
   });
 
   /// The region summary adjusted for the view options.
@@ -182,4 +183,9 @@ class PreparedRegionPresentation {
 
   /// The optional region method table.
   final ProfileMethodTable? methodTable;
+
+  /// Warnings generated while preparing this region, such as a mismatch
+  /// between the stored sample count and the count re-derived from the raw
+  /// CPU profile artifact.
+  final List<String> warnings;
 }
