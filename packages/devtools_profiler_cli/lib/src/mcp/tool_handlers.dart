@@ -488,6 +488,14 @@ class McpToolHandlers {
           sessionIdKey: 'currentSessionId',
         );
         progress(1, 3, 'Preparing comparison views.');
+        final minLiveBytesArg = arguments['minLiveBytes'];
+        final int? minLiveBytes = minLiveBytesArg is int
+            ? minLiveBytesArg
+            : null;
+        final memoryClassLimitArg = arguments['memoryClassLimit'];
+        final int? memoryClassLimit = memoryClassLimitArg is int
+            ? memoryClassLimitArg
+            : null;
         final comparison = await prepareProfileComparison(
           runner,
           baselinePath: baselinePath,
@@ -500,6 +508,8 @@ class McpToolHandlers {
             arguments,
             key: 'currentProfileId',
           ),
+          minLiveBytes: minLiveBytes,
+          memoryClassLimit: memoryClassLimit,
           options: treeOptions,
         );
         progress(2, 3, 'Building comparison response.');

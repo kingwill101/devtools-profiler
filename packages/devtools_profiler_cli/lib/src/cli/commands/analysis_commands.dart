@@ -18,6 +18,21 @@ class CompareCommand extends ProfilerCommand {
       ..addOption(
         'current-profile-id',
         help: 'Profile id to select from the current session directory.',
+      )
+      ..addOption(
+        'min-live-bytes',
+        help:
+            'Re-read raw memory artifacts and include only classes with at '
+            'least this many live bytes at the end of each capture window. '
+            'Useful for surfacing large retained classes missed by the stored '
+            'top-class list.',
+      )
+      ..addOption(
+        'memory-class-limit',
+        help:
+            'Maximum memory classes to compare. Use 0 for unlimited. '
+            'When set, re-reads raw memory artifacts to expand beyond the '
+            'stored top-class list.',
       );
   }
 
@@ -28,6 +43,16 @@ class CompareCommand extends ProfilerCommand {
   String get description => 'Compare two session/profile artifacts.';
 
   @override
+  String formatUsage({bool includeDescription = true}) => usageWithExamples(
+    super.formatUsage(includeDescription: includeDescription),
+    const [
+      'devtools-profiler compare path/to/baseline path/to/current',
+      'devtools-profiler compare --method-table path/to/baseline path/to/current',
+      'devtools-profiler compare --min-live-bytes 524288 path/to/baseline path/to/current',
+    ],
+  );
+
+  @override
   Future<int> run() async {
     if (argResults!.rest.length != 2) {
       usageException(
@@ -36,12 +61,32 @@ class CompareCommand extends ProfilerCommand {
     }
 
     final options = presentationOptions;
+
+    final minLiveBytesStr = argResults!['min-live-bytes'] as String?;
+    int? minLiveBytes;
+    if (minLiveBytesStr != null && minLiveBytesStr.isNotEmpty) {
+      minLiveBytes = int.tryParse(minLiveBytesStr);
+      if (minLiveBytes == null) {
+        usageException('--min-live-bytes must be a non-negative integer.');
+      }
+    }
+    final memoryClassLimitStr = argResults!['memory-class-limit'] as String?;
+    int? memoryClassLimit;
+    if (memoryClassLimitStr != null && memoryClassLimitStr.isNotEmpty) {
+      memoryClassLimit = int.tryParse(memoryClassLimitStr);
+      if (memoryClassLimit == null) {
+        usageException('--memory-class-limit must be a non-negative integer.');
+      }
+    }
+
     final comparison = await prepareProfileComparison(
       profileRunner,
       baselinePath: argResults!.rest.first,
       currentPath: argResults!.rest.last,
       baselineProfileId: argResults!['baseline-profile-id'] as String?,
       currentProfileId: argResults!['current-profile-id'] as String?,
+      minLiveBytes: minLiveBytes,
+      memoryClassLimit: memoryClassLimit,
       options: options,
     );
 
