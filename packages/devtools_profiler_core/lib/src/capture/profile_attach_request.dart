@@ -10,6 +10,7 @@ class ProfileAttachRequest {
     required this.duration,
     this.workingDirectory,
     this.artifactDirectory,
+    this.enableDtd = true,
   });
 
   /// The HTTP URI printed by the Dart or Flutter VM service.
@@ -25,4 +26,10 @@ class ProfileAttachRequest {
   ///
   /// When omitted, a session directory will be created under `.dart_tool`.
   final String? artifactDirectory;
+
+  /// Whether to start the Dart Tooling Daemon for this attach session.
+  ///
+  /// Set to false when region markers are not needed and the tooling daemon
+  /// would cause startup failures.
+  final bool enableDtd;
 }

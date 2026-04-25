@@ -109,6 +109,12 @@ final Tool profileAttachTool = Tool(
       'artifactDirectory': Schema.string(
         description: 'Where session artifacts should be written.',
       ),
+      'skipDtd': Schema.bool(
+        description:
+            'Skip the Dart Tooling Daemon for this attach session. '
+            'Explicit region markers will be unavailable. '
+            'Use this when the tooling daemon fails to start or is not needed.',
+      ),
       'includeCallTree': Schema.bool(
         description: 'Whether to attach top-down region call trees.',
       ),

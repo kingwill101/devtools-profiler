@@ -170,11 +170,13 @@ class ProfileRunner {
     final artifactStore = ProfileArtifactStore(artifactDirectory);
     await artifactStore.create();
 
-    final dtdSession = await DtdProcessSession.start();
+    final DtdProcessSession? dtdSession = request.enableDtd
+        ? await DtdProcessSession.start()
+        : null;
     final sessionController = ProfileSessionController(
       artifactStore: artifactStore,
       childProcessId: null,
-      dtd: dtdSession.daemon,
+      dtd: dtdSession?.daemon,
       sessionId: sessionId,
     );
 
@@ -183,6 +185,11 @@ class ProfileRunner {
       sessionController.addWarning(
         'Attached to an existing VM service. Explicit region markers are only available if the target process was started with this profiler session configuration.',
       );
+      if (!request.enableDtd) {
+        sessionController.addWarning(
+          'The Dart Tooling Daemon was disabled for this attach session. Explicit region markers are unavailable.',
+        );
+      }
       await sessionController.attachToVmService(
         request.vmServiceUri,
         clearCpuSamples: true,
@@ -201,7 +208,7 @@ class ProfileRunner {
       return result;
     } finally {
       await sessionController.dispose();
-      await dtdSession.dispose();
+      await dtdSession?.dispose();
     }
   }
 

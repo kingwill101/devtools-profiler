@@ -17,7 +17,12 @@ final class ProfileSessionContext {
   });
 
   final ProfileArtifactStore artifactStore;
-  final DartToolingDaemon dtd;
+
+  /// Whether to start the Dart Tooling Daemon for this attach session.
+  ///
+  /// When null, region markers are unavailable but whole-session VM-service
+  /// capture still works.
+  final DartToolingDaemon? dtd;
   final String sessionId;
 
   final List<ProfileRegionResult> regions = [];
