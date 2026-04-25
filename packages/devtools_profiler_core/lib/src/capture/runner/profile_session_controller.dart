@@ -14,7 +14,7 @@ final class ProfileSessionController {
   ProfileSessionController({
     required ProfileArtifactStore artifactStore,
     required int? childProcessId,
-    required DartToolingDaemon dtd,
+    required DartToolingDaemon? dtd,
     required String sessionId,
   }) : context = ProfileSessionContext(
          artifactStore: artifactStore,
@@ -47,22 +47,23 @@ final class ProfileSessionController {
 
   /// Registers the profiler DTD services for this session.
   Future<void> registerServices() async {
-    await context.dtd.registerService(
+    if (context.dtd == null) return;
+    await context.dtd!.registerService(
       profilerControlService,
       getSessionInfoMethod,
       handleGetSessionInfo,
     );
-    await context.dtd.registerService(
+    await context.dtd!.registerService(
       profilerControlService,
       pingMethod,
       handlePing,
     );
-    await context.dtd.registerService(
+    await context.dtd!.registerService(
       profilerControlService,
       startRegionMethod,
       handleStartRegion,
     );
-    await context.dtd.registerService(
+    await context.dtd!.registerService(
       profilerControlService,
       stopRegionMethod,
       handleStopRegion,

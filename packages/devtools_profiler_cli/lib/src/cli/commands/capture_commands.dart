@@ -141,6 +141,15 @@ class AttachCommand extends ProfilerCommand {
         'duration',
         help:
             'Required profiling duration. Supports raw seconds, "10s", "500ms", or "2m".',
+      )
+      ..addFlag(
+        'skip-dtd',
+        defaultsTo: false,
+        negatable: false,
+        help:
+            'Skip the Dart Tooling Daemon for this attach session. '
+            'Explicit region markers will be unavailable. Use this when the '
+            'tooling daemon fails to start or is not needed.',
       );
   }
 
@@ -161,6 +170,7 @@ class AttachCommand extends ProfilerCommand {
     const [
       'devtools-profiler attach --duration 15s http://127.0.0.1:8181/abcd/',
       'devtools-profiler attach --duration 30s --call-tree --hide-sdk http://127.0.0.1:8181/abcd/',
+      'devtools-profiler attach --skip-dtd --duration 30s http://127.0.0.1:8181/abcd/',
     ],
   );
 
@@ -189,6 +199,7 @@ class AttachCommand extends ProfilerCommand {
         duration: duration,
         vmServiceUri: parseVmServiceUriArgument(argResults!.rest.single),
         workingDirectory: argResults!['cwd'] as String?,
+        enableDtd: !(argResults!['skip-dtd'] as bool),
       ),
     );
     final options = presentationOptions;

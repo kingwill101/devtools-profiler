@@ -997,6 +997,71 @@ void main() {
     );
     expect(stderrCapture.text, isEmpty);
   });
+
+  group('prepareRegionPresentation sample-count fallback', () {
+    test(
+      'emits warning and preserves stored count when raw profile produces 0 samples',
+      () async {
+        final stdoutCapture = _OutputCapture();
+        final stderrCapture = _OutputCapture();
+        addTearDown(() async {
+          await stdoutCapture.close();
+          await stderrCapture.close();
+        });
+
+        final exitCode = await runCli(
+          const ['run', '--', 'dart', 'run', 'bin/main.dart'],
+          runner: _FakeRunnerWithZeroSamples(),
+          output: stdoutCapture.sink,
+          errorOutput: stderrCapture.sink,
+        );
+        await stdoutCapture.flush();
+        await stderrCapture.flush();
+
+        expect(exitCode, 0);
+        expect(
+          stdoutCapture.text,
+          contains('0 samples when re-read'),
+          reason: 'warning about zero re-read samples should appear',
+        );
+        expect(
+          stdoutCapture.text,
+          contains('50 samples'),
+          reason: 'warning should mention the stored sample count',
+        );
+        expect(stderrCapture.text, isEmpty);
+      },
+    );
+
+    test(
+      'no warning emitted when raw CPU profile produces non-zero samples',
+      () async {
+        final stdoutCapture = _OutputCapture();
+        final stderrCapture = _OutputCapture();
+        addTearDown(() async {
+          await stdoutCapture.close();
+          await stderrCapture.close();
+        });
+
+        final exitCode = await runCli(
+          const ['run', '--', 'dart', 'run', 'bin/main.dart'],
+          runner: _FakeProfileRunner(),
+          output: stdoutCapture.sink,
+          errorOutput: stderrCapture.sink,
+        );
+        await stdoutCapture.flush();
+        await stderrCapture.flush();
+
+        expect(exitCode, 0);
+        expect(
+          stdoutCapture.text,
+          isNot(contains('produced 0 samples when re-read')),
+          reason: 'no fallback warning when samples are healthy',
+        );
+        expect(stderrCapture.text, isEmpty);
+      },
+    );
+  });
 }
 
 class _FakeProfileRunner extends ProfileRunner {
@@ -1097,6 +1162,15 @@ class _FakeProfileRunner extends ProfileRunner {
       CpuSample(timestamp: 110, stack: const [1]),
       CpuSample(timestamp: 111, stack: const [3, 1]),
     ],
+  );
+
+  static final _cpuSamplesEmpty = CpuSamples(
+    sampleCount: 0,
+    samplePeriod: 0,
+    timeOriginMicros: 0,
+    timeExtentMicros: 0,
+    functions: const [],
+    samples: const [],
   );
 
   static final _region = ProfileRegionResult(
@@ -1311,6 +1385,9 @@ class _FakeProfileRunner extends ProfileRunner {
 
   @override
   Future<CpuSamples> readCpuSamples(String targetPath) async {
+    if (targetPath.contains('zero-samples')) {
+      return _cpuSamplesEmpty;
+    }
     if (targetPath == '/tmp/helper_profile.cpu.json') {
       return _cpuSamplesWithHelper;
     }
@@ -1321,6 +1398,60 @@ class _FakeProfileRunner extends ProfileRunner {
       return _cpuSamplesCurrent;
     }
     return _cpuSamples;
+  }
+}
+
+class _FakeRunnerWithZeroSamples extends _FakeProfileRunner {
+  static const _zeroRawPath =
+      '/tmp/zero-samples/regions/zero-region/cpu_profile.json';
+
+  static final _zeroRegion = ProfileRegionResult(
+    regionId: 'zero-region',
+    name: 'zero-render',
+    attributes: const {},
+    isolateId: 'isolates/1',
+    captureKinds: const [ProfileCaptureKind.cpu],
+    startTimestampMicros: 0,
+    endTimestampMicros: 1_000_000,
+    durationMicros: 1_000_000,
+    sampleCount: 50,
+    samplePeriodMicros: 1_000,
+    topSelfFrames: const [],
+    topTotalFrames: const [],
+    summaryPath: '/tmp/zero-samples/regions/zero-region/summary.json',
+    rawProfilePath: _zeroRawPath,
+  );
+
+  static final _zeroOverall = ProfileRegionResult(
+    regionId: 'overall',
+    name: 'whole-session',
+    attributes: const {'scope': 'session'},
+    isolateId: 'isolates/1',
+    captureKinds: const [ProfileCaptureKind.cpu],
+    startTimestampMicros: 0,
+    endTimestampMicros: 1_000_000,
+    durationMicros: 1_000_000,
+    sampleCount: 50,
+    samplePeriodMicros: 1_000,
+    topSelfFrames: const [],
+    topTotalFrames: const [],
+    summaryPath: '/tmp/zero-samples/overall/summary.json',
+    rawProfilePath: '/tmp/zero-samples/overall/cpu_profile.json',
+  );
+
+  @override
+  Future<ProfileRunResult> run(ProfileRunRequest request) async {
+    return ProfileRunResult(
+      sessionId: 'session-zero',
+      command: request.command,
+      workingDirectory: request.workingDirectory ?? '/workspace',
+      exitCode: 0,
+      artifactDirectory: '/tmp/zero-samples',
+      vmServiceUri: 'http://127.0.0.1:8181/zero/',
+      overallProfile: _zeroOverall,
+      regions: [_zeroRegion],
+      warnings: const [],
+    );
   }
 }
 

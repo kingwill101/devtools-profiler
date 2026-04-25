@@ -271,8 +271,9 @@ final class ProfileSessionRegionRpcHandler {
     required int timestampMicros,
     Map<String, Object?> extraData = const {},
   }) async {
+    if (context.dtd == null) return;
     try {
-      await context.dtd.postEvent(regionEventStream, kind, {
+      await context.dtd!.postEvent(regionEventStream, kind, {
         'sessionId': context.sessionId,
         'regionId': region.regionId,
         'name': region.name,
