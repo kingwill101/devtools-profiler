@@ -42,16 +42,17 @@ class ProfileRunner {
     final workingDirectory = path.normalize(
       request.workingDirectory ?? Directory.current.path,
     );
-    final artifactDirectory = Directory(
-      request.artifactDirectory ??
-          path.join(
-            workingDirectory,
-            '.dart_tool',
-            'devtools_profiler',
-            'sessions',
-            sessionId,
-          ),
-    );
+    final artifactDirectory = Directory(switch (request.artifactDirectory) {
+      final String dir when path.isAbsolute(dir) => dir,
+      final String dir => path.normalize(path.join(workingDirectory, dir)),
+      null => path.join(
+        workingDirectory,
+        '.dart_tool',
+        'devtools_profiler',
+        'sessions',
+        sessionId,
+      ),
+    });
     final artifactStore = ProfileArtifactStore(artifactDirectory);
     await artifactStore.create();
 
@@ -155,16 +156,17 @@ class ProfileRunner {
     final workingDirectory = path.normalize(
       request.workingDirectory ?? Directory.current.path,
     );
-    final artifactDirectory = Directory(
-      request.artifactDirectory ??
-          path.join(
-            workingDirectory,
-            '.dart_tool',
-            'devtools_profiler',
-            'sessions',
-            sessionId,
-          ),
-    );
+    final artifactDirectory = Directory(switch (request.artifactDirectory) {
+      final String dir when path.isAbsolute(dir) => dir,
+      final String dir => path.normalize(path.join(workingDirectory, dir)),
+      null => path.join(
+        workingDirectory,
+        '.dart_tool',
+        'devtools_profiler',
+        'sessions',
+        sessionId,
+      ),
+    });
     final artifactStore = ProfileArtifactStore(artifactDirectory);
     await artifactStore.create();
 
