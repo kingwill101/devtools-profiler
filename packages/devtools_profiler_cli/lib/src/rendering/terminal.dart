@@ -186,9 +186,14 @@ void writeComparisonSummary(
 
   _writeRegressionInsights(console, comparison.regressions);
 
-  if (delta.warnings.isNotEmpty) {
+  final allWarnings = [
+    ...delta.warnings,
+    ...comparison.baseline.presentation.warnings,
+    ...comparison.current.presentation.warnings,
+  ];
+  if (allWarnings.isNotEmpty) {
     console.section('Warnings');
-    console.components.bulletList(delta.warnings);
+    console.components.bulletList(allWarnings);
   }
 
   _writeFrameDeltaTable(
