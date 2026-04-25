@@ -82,6 +82,8 @@ Future<PreparedProfileComparison> prepareProfileComparison(
   required String currentPath,
   String? baselineProfileId,
   String? currentProfileId,
+  int? minLiveBytes,
+  int? memoryClassLimit,
   required ProfilePresentationOptions options,
 }) async {
   final baseline = await _resolveComparisonTarget(
@@ -96,6 +98,38 @@ Future<PreparedProfileComparison> prepareProfileComparison(
     requestedProfileId: currentProfileId,
     options: options,
   );
+
+  ProfileMemoryResult? baselineMemoryOverride;
+  ProfileMemoryResult? currentMemoryOverride;
+
+  if (minLiveBytes != null || memoryClassLimit != null) {
+    final baselineRawPath = baseline.presentation.region.memory?.rawProfilePath;
+    final currentRawPath = current.presentation.region.memory?.rawProfilePath;
+
+    if (baselineRawPath != null && baselineRawPath.isNotEmpty) {
+      try {
+        baselineMemoryOverride = await runner.readMemoryClasses(
+          baselineRawPath,
+          minLiveBytes: minLiveBytes,
+          topClassCount: memoryClassLimit ?? 0,
+        );
+      } catch (_) {
+        // Raw artifact unavailable; fall back to stored classes.
+      }
+    }
+    if (currentRawPath != null && currentRawPath.isNotEmpty) {
+      try {
+        currentMemoryOverride = await runner.readMemoryClasses(
+          currentRawPath,
+          minLiveBytes: minLiveBytes,
+          topClassCount: memoryClassLimit ?? 0,
+        );
+      } catch (_) {
+        // Raw artifact unavailable; fall back to stored classes.
+      }
+    }
+  }
+
   final comparison = compareProfileRegions(
     baseline: baseline.presentation.region,
     current: current.presentation.region,
@@ -103,7 +137,9 @@ Future<PreparedProfileComparison> prepareProfileComparison(
     currentMethodTable: current.presentation.methodTable,
     frameLimit: options.frameLimit,
     methodLimit: options.methodLimit,
-    memoryClassLimit: options.frameLimit,
+    memoryClassLimit: memoryClassLimit ?? options.frameLimit,
+    baselineMemoryOverride: baselineMemoryOverride,
+    currentMemoryOverride: currentMemoryOverride,
   );
   return PreparedProfileComparison(
     baseline: baseline,

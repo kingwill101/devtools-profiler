@@ -412,6 +412,17 @@ final Tool profileCompareTool = Tool(
         description:
             'Maximum methods to include in the method comparison. Use 0 for unlimited.',
       ),
+      'minLiveBytes': Schema.int(
+        description:
+            'Re-read raw memory artifacts and include only classes with '
+            'at least this many live bytes. Useful for surfacing large '
+            'retained classes missed by the stored top-class list.',
+      ),
+      'memoryClassLimit': Schema.int(
+        description:
+            'Maximum memory classes to compare when re-reading raw '
+            'memory artifacts. Use 0 for unlimited.',
+      ),
       'treeDepth': Schema.int(
         description:
             'Maximum call tree depth when trees are included. Use 0 for unlimited.',

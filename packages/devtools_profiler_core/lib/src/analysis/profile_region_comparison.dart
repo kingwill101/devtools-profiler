@@ -15,6 +15,8 @@ ProfileRegionComparison compareProfileRegions({
   int? frameLimit,
   int? methodLimit,
   int? memoryClassLimit,
+  ProfileMemoryResult? baselineMemoryOverride,
+  ProfileMemoryResult? currentMemoryOverride,
 }) {
   final warnings = <String>[];
   if (baseline.name != current.name) {
@@ -74,7 +76,10 @@ ProfileRegionComparison compareProfileRegions({
           methodLimit,
         );
 
-  final memory = switch ((baseline.memory, current.memory)) {
+  final memory = switch ((
+    baselineMemoryOverride ?? baseline.memory,
+    currentMemoryOverride ?? current.memory,
+  )) {
     (null, null) => null,
     (final ProfileMemoryResult left, final ProfileMemoryResult right) =>
       _buildMemoryComparison(left, right, memoryClassLimit: memoryClassLimit),
