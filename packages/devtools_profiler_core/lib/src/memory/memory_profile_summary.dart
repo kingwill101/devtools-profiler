@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:devtools_shared/devtools_shared.dart';
 import 'package:vm_service/vm_service.dart';
 
@@ -59,6 +62,87 @@ ProfileMemoryResult summarizeMemoryProfile({
     topClasses: summaries,
     rawProfilePath: rawProfilePath,
   );
+}
+
+/// Parses a raw `ProfileMemoryArtifact` JSON map and returns a
+/// [ProfileMemoryResult] with optional class filtering.
+///
+/// [rawArtifact] must be the decoded JSON of a `memory_profile.json` file
+/// produced by [buildRawMemoryPayload].
+///
+/// When [includeClass] is supplied, only classes that pass the predicate are
+/// included in [ProfileMemoryResult.topClasses].
+///
+/// Pass [topClassCount] as 0 for unlimited results; otherwise the result is
+/// truncated to that many classes after sorting.
+ProfileMemoryResult rebuildMemoryProfileFromArtifact(
+  Map<String, Object?> rawArtifact, {
+  required String rawProfilePath,
+  ProfileMemoryClassPredicate? includeClass,
+  int topClassCount = 50,
+}) {
+  final startMap = (rawArtifact['start'] as Map<Object?, Object?>)
+      .cast<String, Object?>();
+  final endMap = (rawArtifact['end'] as Map<Object?, Object?>)
+      .cast<String, Object?>();
+
+  final start = HeapSample.fromJson(
+    (startMap['heapSample'] as Map<Object?, Object?>).cast<String, Object?>(),
+  );
+  final end = HeapSample.fromJson(
+    (endMap['heapSample'] as Map<Object?, Object?>).cast<String, Object?>(),
+  );
+
+  final startClasses = _extractClassStats(startMap);
+  final endClasses = _extractClassStats(endMap);
+
+  return summarizeMemoryProfile(
+    start: start,
+    end: end,
+    startClasses: startClasses,
+    endClasses: endClasses,
+    rawProfilePath: rawProfilePath,
+    topClassCount: topClassCount,
+    includeClass: includeClass,
+  );
+}
+
+/// Reads a raw `memory_profile.json` artifact from [rawProfilePath] and
+/// returns a [ProfileMemoryResult] with optional class filtering.
+///
+/// When [includeClass] is supplied, only classes that pass the predicate are
+/// included in [ProfileMemoryResult.topClasses].
+///
+/// Pass [topClassCount] as 0 for unlimited results.
+Future<ProfileMemoryResult> readMemoryClassesFromArtifact(
+  String rawProfilePath, {
+  ProfileMemoryClassPredicate? includeClass,
+  int topClassCount = 50,
+}) async {
+  final json =
+      jsonDecode(await File(rawProfilePath).readAsString())
+          as Map<Object?, Object?>;
+  return rebuildMemoryProfileFromArtifact(
+    json.cast<String, Object?>(),
+    rawProfilePath: rawProfilePath,
+    includeClass: includeClass,
+    topClassCount: topClassCount,
+  );
+}
+
+/// Extracts the flat list of [ClassHeapStats] from one snapshot half of a
+/// raw `ProfileMemoryArtifact` (either the `start` or `end` map).
+List<ClassHeapStats> _extractClassStats(Map<String, Object?> snapshot) {
+  final profiles = (snapshot['profiles'] as List<Object?>? ?? const [])
+      .cast<Map<Object?, Object?>>();
+  final result = <ClassHeapStats>[];
+  for (final profile in profiles) {
+    final apJson = (profile['allocationProfile'] as Map<Object?, Object?>?)
+        ?.cast<String, dynamic>();
+    final ap = AllocationProfile.parse(apJson);
+    result.addAll(ap?.members ?? const []);
+  }
+  return result;
 }
 
 HeapSample heapSampleFromMemoryUsage({

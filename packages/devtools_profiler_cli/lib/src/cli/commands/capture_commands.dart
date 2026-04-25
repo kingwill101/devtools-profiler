@@ -239,18 +239,6 @@ class AttachCommand extends ProfilerCommand {
   }
 }
 
-/// Appends a stable examples section to a formatted command usage string.
-String usageWithExamples(String usage, List<String> examples) {
-  final buffer = StringBuffer(usage.trimRight())
-    ..writeln()
-    ..writeln()
-    ..writeln('Examples:');
-  for (final example in examples) {
-    buffer.writeln('  $example');
-  }
-  return buffer.toString().trimRight();
-}
-
 /// Command that starts the stdio MCP server.
 class McpCommand extends Command<int> {
   /// Creates an MCP command.

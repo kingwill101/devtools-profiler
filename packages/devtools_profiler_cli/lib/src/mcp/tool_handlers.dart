@@ -603,6 +603,43 @@ class McpToolHandlers {
     );
   }
 
+  Future<CallToolResult> profileInspectClasses(CallToolRequest request) {
+    return _runTool(
+      request: request,
+      successMessage: 'Memory class inspection completed.',
+      action: (progress) async {
+        final arguments = request.arguments ?? const <String, Object?>{};
+        final path = _requiredStringArgument(arguments, key: 'path');
+        final classQuery = _optionalStringArgument(
+          arguments,
+          key: 'classQuery',
+        );
+        final minLiveBytesArg = arguments['minLiveBytes'];
+        final int? minLiveBytes = minLiveBytesArg is int
+            ? minLiveBytesArg
+            : null;
+        final limit = _treeLimitFromArgument(
+          arguments,
+          key: 'limit',
+          defaultValue: defaultFrameLimit,
+        );
+
+        progress(0, 2, 'Reading memory class data.');
+        final inspection = await prepareMemoryClassInspection(
+          runner,
+          path,
+          classQuery: classQuery,
+          minLiveBytes: minLiveBytes,
+          topClassCount: limit ?? 0,
+        );
+        progress(1, 2, 'Building class inspection response.');
+        final response = memoryClassInspectionJson(inspection);
+        progress(2, 2, 'Memory class inspection completed.');
+        return response;
+      },
+    );
+  }
+
   Future<CallToolResult> _runTool({
     required CallToolRequest request,
     required String successMessage,

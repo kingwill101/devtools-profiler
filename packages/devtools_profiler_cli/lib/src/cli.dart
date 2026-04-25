@@ -42,6 +42,7 @@ Future<int> runCli(
         ..addCommand(InspectCommand(profiler))
         ..addCommand(CompareMethodCommand(profiler))
         ..addCommand(SearchMethodsCommand(profiler))
+        ..addCommand(InspectClassesCommand(profiler))
         ..addCommand(McpCommand(profiler));
 
   try {

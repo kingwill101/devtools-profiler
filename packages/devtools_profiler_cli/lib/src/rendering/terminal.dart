@@ -415,6 +415,57 @@ void writeTrendSummary(
   }
 }
 
+/// Writes a memory class inspection summary to [console].
+void writeMemoryClassInspection(
+  Console console,
+  PreparedMemoryClassInspection inspection,
+) {
+  final memory = inspection.memory;
+  console.title('Memory Class Inspection');
+  console.components.definitionList({
+    'Path': inspection.targetPath,
+    'Class query': inspection.classQuery ?? '(all classes)',
+    'Min live bytes': inspection.minLiveBytes != null
+        ? formatBytes(inspection.minLiveBytes!)
+        : '(none)',
+    'Heap delta': formatSignedBytes(memory.deltaHeapBytes),
+    'External delta': formatSignedBytes(memory.deltaExternalBytes),
+    'Capacity delta': formatSignedBytes(memory.deltaCapacityBytes),
+    'Matched classes':
+        '${memory.topClasses.length} of ${memory.classCount} total',
+  });
+
+  if (memory.topClasses.isEmpty) {
+    console.warn('No classes matched the current filter criteria.');
+    return;
+  }
+
+  console.section('Classes');
+  console.table(
+    headers: const [
+      'Class',
+      'Library',
+      'Live',
+      'Live Δ',
+      'Instances',
+      'Inst Δ',
+      'Alloc Δ',
+    ],
+    rows: [
+      for (final item in memory.topClasses)
+        [
+          item.className,
+          item.libraryUri ?? '-',
+          formatBytes(item.liveBytes),
+          formatSignedBytes(item.liveBytesDelta),
+          item.liveInstances,
+          formatSignedCount(item.liveInstancesDelta),
+          formatSignedBytes(item.allocationBytesDelta),
+        ],
+    ],
+  );
+}
+
 String _hotspotInsightLine(
   ProfileHotspotInsight insight, {
   required String? workingDirectory,
