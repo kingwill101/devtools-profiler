@@ -13,6 +13,7 @@ Future<PreparedSessionPresentation> prepareSessionPresentation(
   ProfileCallTree? overallTree;
   ProfileCallTree? overallBottomUpTree;
   ProfileMethodTable? overallMethodTable;
+  final preparationWarnings = <String>[];
   final storedOverall = session.overallProfile;
   if (storedOverall != null) {
     final prepared = await prepareRegionPresentation(
@@ -24,6 +25,7 @@ Future<PreparedSessionPresentation> prepareSessionPresentation(
     overallTree = prepared.callTree;
     overallBottomUpTree = prepared.bottomUpTree;
     overallMethodTable = prepared.methodTable;
+    preparationWarnings.addAll(prepared.warnings);
   }
 
   final preparedRegions = <ProfileRegionResult>[];
@@ -38,6 +40,7 @@ Future<PreparedSessionPresentation> prepareSessionPresentation(
       options: options,
     );
     preparedRegions.add(prepared.region);
+    preparationWarnings.addAll(prepared.warnings);
     if (prepared.callTree != null) {
       regionTrees[prepared.region.regionId] = prepared.callTree!;
     }
@@ -60,7 +63,7 @@ Future<PreparedSessionPresentation> prepareSessionPresentation(
       supportedIsolateScopes: session.supportedIsolateScopes,
       overallProfile: overallProfile,
       regions: preparedRegions,
-      warnings: session.warnings,
+      warnings: [...session.warnings, ...preparationWarnings],
       vmServiceUri: session.vmServiceUri,
     ),
     overallTree: overallTree,
@@ -435,6 +438,31 @@ Future<PreparedRegionPresentation> prepareRegionPresentation(
     topFrameCount: options.frameLimit ?? 0,
     includeFrame: options.framePredicate,
   );
+
+  // When no frame filter is active but the re-derived sample count is zero
+  // while the stored summary reports a positive count, the raw CPU profile
+  // round-trip produced an empty sample list (a known serialization edge case
+  // with certain VM builds). Fall back to the stored region summary so that
+  // the terminal and JSON output matches what was written to session.json.
+  // Call trees and the method table are still derived from the re-read data;
+  // they will be empty in this case, which is transparent to the caller.
+  final warnings = <String>[];
+  final ProfileRegionResult regionForSummary;
+  if (rebuiltRegion.sampleCount == 0 &&
+      region.sampleCount > 0 &&
+      options.framePredicate == null) {
+    warnings.add(
+      'Region "${region.name}": the raw CPU profile artifact at '
+      '"$rawProfilePath" produced 0 samples when re-read, but the stored '
+      'summary reported ${region.sampleCount} samples. The stored summary '
+      'data is used for this output. Re-run with --call-tree or '
+      '--method-table to inspect whether the artifact can be parsed.',
+    );
+    regionForSummary = _filterStoredRegion(region, options);
+  } else {
+    regionForSummary = rebuiltRegion;
+  }
+
   final callTree = options.includeCallTree
       ? buildCallTree(
           cpuSamples: cpuSamples,
@@ -458,10 +486,11 @@ Future<PreparedRegionPresentation> prepareRegionPresentation(
       : null;
 
   return PreparedRegionPresentation(
-    region: rebuiltRegion,
+    region: regionForSummary,
     callTree: callTree,
     bottomUpTree: bottomUpTree,
     methodTable: methodTable,
+    warnings: warnings,
   );
 }
 

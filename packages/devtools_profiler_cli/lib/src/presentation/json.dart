@@ -52,12 +52,18 @@ Map<String, Object?> regionPresentationJson(
 Map<String, Object?> comparisonPresentationJson(
   PreparedProfileComparison comparison,
 ) {
+  final preparationWarnings = [
+    ...comparison.baseline.presentation.warnings,
+    ...comparison.current.presentation.warnings,
+  ];
   return {
     'kind': 'profileComparison',
     'baseline': _comparisonTargetJson(comparison.baseline),
     'current': _comparisonTargetJson(comparison.current),
     'comparison': comparison.comparison.toJson(),
     'regressions': comparison.regressions.toJson(),
+    if (preparationWarnings.isNotEmpty)
+      'preparationWarnings': preparationWarnings,
   };
 }
 
@@ -65,10 +71,13 @@ Map<String, Object?> comparisonPresentationJson(
 Map<String, Object?> hotspotExplanationJson(
   PreparedProfileExplanation explanation,
 ) {
+  final preparationWarnings = explanation.target.presentation.warnings;
   return {
     'kind': 'hotspotExplanation',
     'target': _comparisonTargetJson(explanation.target),
     'hotspots': explanation.hotspots.toJson(),
+    if (preparationWarnings.isNotEmpty)
+      'preparationWarnings': preparationWarnings,
   };
 }
 
@@ -76,10 +85,13 @@ Map<String, Object?> hotspotExplanationJson(
 Map<String, Object?> methodInspectionJson(
   PreparedProfileMethodInspection inspection,
 ) {
+  final preparationWarnings = inspection.target.presentation.warnings;
   return {
     'kind': 'methodInspection',
     'target': _comparisonTargetJson(inspection.target),
     'inspection': inspection.inspection.toJson(),
+    if (preparationWarnings.isNotEmpty)
+      'preparationWarnings': preparationWarnings,
   };
 }
 
@@ -87,20 +99,29 @@ Map<String, Object?> methodInspectionJson(
 Map<String, Object?> methodComparisonJson(
   PreparedProfileMethodComparison comparison,
 ) {
+  final preparationWarnings = [
+    ...comparison.baseline.presentation.warnings,
+    ...comparison.current.presentation.warnings,
+  ];
   return {
     'kind': 'methodComparison',
     'baseline': _comparisonTargetJson(comparison.baseline),
     'current': _comparisonTargetJson(comparison.current),
     'comparison': comparison.comparison.toJson(),
+    if (preparationWarnings.isNotEmpty)
+      'preparationWarnings': preparationWarnings,
   };
 }
 
 /// Converts prepared method search data to structured JSON.
 Map<String, Object?> methodSearchJson(PreparedProfileMethodSearch search) {
+  final preparationWarnings = search.target.presentation.warnings;
   return {
     'kind': 'methodSearch',
     'target': _comparisonTargetJson(search.target),
     'search': search.search.toJson(),
+    if (preparationWarnings.isNotEmpty)
+      'preparationWarnings': preparationWarnings,
   };
 }
 
