@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.0-wip
+## 0.2.0
 
 - Added memory class artifact inspection helpers for stored session, region, and
   raw memory profile artifacts.

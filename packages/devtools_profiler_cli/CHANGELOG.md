@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.0-wip
+## 0.2.0
 
 - Added `inspect-classes` and the `profile_inspect_classes` MCP tool for
   inspecting memory class allocations from stored artifacts.
