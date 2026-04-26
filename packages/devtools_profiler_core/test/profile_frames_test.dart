@@ -18,7 +18,7 @@ void main() {
       name: 'Value.toString',
       kind: 'Dart',
       location: Uri.file(
-        path.join(
+        path.posix.join(
           '/',
           'home',
           'user',
@@ -30,6 +30,7 @@ void main() {
           'src',
           'value.dart',
         ),
+        windows: false,
       ).toString(),
     );
 
@@ -41,7 +42,39 @@ void main() {
       name: 'Value.toString',
       kind: 'Dart',
       location: Uri.file(
-        path.join('/', 'repo', 'pkgs', 'lualike', 'lib', 'src', 'value.dart'),
+        path.posix.join(
+          '/',
+          'repo',
+          'pkgs',
+          'lualike',
+          'lib',
+          'src',
+          'value.dart',
+        ),
+        windows: false,
+      ).toString(),
+    );
+
+    expect(frame.packageName, 'lualike');
+  });
+
+  test('packageName resolves local packages before nested lib folders', () {
+    final frame = ProfileFrame(
+      name: 'Value.toString',
+      kind: 'Dart',
+      location: Uri.file(
+        path.posix.join(
+          '/',
+          'repo',
+          'pkgs',
+          'lualike',
+          'lib',
+          'src',
+          'generated',
+          'lib',
+          'value.dart',
+        ),
+        windows: false,
       ).toString(),
     );
 
@@ -53,7 +86,7 @@ void main() {
       name: 'Value.toString',
       kind: 'Dart',
       location: Uri.file(
-        path.join(
+        path.posix.join(
           '/',
           'workspace',
           'cache',
@@ -62,6 +95,7 @@ void main() {
           'src',
           'value.dart',
         ),
+        windows: false,
       ).toString(),
     );
 
@@ -73,7 +107,8 @@ void main() {
       name: 'main',
       kind: 'Dart',
       location: Uri.file(
-        path.join('/', 'repo', 'tool', 'main.dart'),
+        path.posix.join('/', 'repo', 'tool', 'main.dart'),
+        windows: false,
       ).toString(),
     );
 

@@ -337,7 +337,7 @@ class InspectClassesCommand extends ProfilerCommand {
       )
       ..addOption(
         'limit',
-        defaultsTo: '$defaultFrameLimit',
+        defaultsTo: '$defaultMemoryClassLimit',
         help: 'Maximum classes to show. Use 0 for unlimited.',
       );
   }

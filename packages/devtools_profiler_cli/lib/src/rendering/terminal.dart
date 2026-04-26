@@ -192,11 +192,12 @@ void writeComparisonSummary(
 
   _writeRegressionInsights(console, comparison.regressions);
 
-  final allWarnings = [
+  final allWarnings = uniqueWarnings([
     ...delta.warnings,
+    ...comparison.warnings,
     ...comparison.baseline.presentation.warnings,
     ...comparison.current.presentation.warnings,
-  ];
+  ]);
   if (allWarnings.isNotEmpty) {
     console.section('Warnings');
     console.components.bulletList(allWarnings);
@@ -571,8 +572,8 @@ void _writeReproductionBlock(
 }) {
   console.section('Reproduce');
   console.components.definitionList({
-    'Profiler command': _sessionCliCommand(session),
-    'Target command': _isAttachSession(session)
+    'Profiler command': sessionCliCommand(session),
+    'Target command': isAttachSession(session)
         ? '-'
         : shellJoin(session.command),
     'Target cwd': session.workingDirectory,
@@ -581,37 +582,6 @@ void _writeReproductionBlock(
     'Artifact dir': session.artifactDirectory,
     'Active filters': options.activeFrameFilterLabel,
   });
-}
-
-String _sessionCliCommand(ProfileRunResult session) {
-  final base = <String>['devtools-profiler'];
-  if (_isAttachSession(session)) {
-    final duration = _durationOptionForSession(session);
-    base.addAll([
-      'attach',
-      if (duration != null) ...['--duration', duration],
-      '--cwd',
-      session.workingDirectory,
-      '--artifact-dir',
-      session.artifactDirectory,
-      session.vmServiceUri ?? session.command.skip(1).join(' '),
-    ]);
-  } else {
-    base.addAll([
-      'run',
-      '--cwd',
-      session.workingDirectory,
-      '--artifact-dir',
-      session.artifactDirectory,
-      '--',
-      ...session.command,
-    ]);
-  }
-  return shellJoin(base);
-}
-
-bool _isAttachSession(ProfileRunResult session) {
-  return session.command.isNotEmpty && session.command.first == 'attach';
 }
 
 String _captureDurationForSession(ProfileRunResult session) {
@@ -628,18 +598,6 @@ String _captureDurationForSession(ProfileRunResult session) {
   }
   regionDurations.sort();
   return formatMicros(regionDurations.last);
-}
-
-String? _durationOptionForSession(ProfileRunResult session) {
-  final micros = session.overallProfile?.durationMicros;
-  if (micros == null || micros <= 0) {
-    return null;
-  }
-  if (micros % Duration.microsecondsPerSecond == 0) {
-    return '${micros ~/ Duration.microsecondsPerSecond}s';
-  }
-  final milliseconds = (micros / Duration.microsecondsPerMillisecond).ceil();
-  return '${milliseconds}ms';
 }
 
 void _writeRegionDetails(

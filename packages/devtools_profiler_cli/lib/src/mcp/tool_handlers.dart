@@ -625,7 +625,7 @@ class McpToolHandlers {
       successMessage: 'Memory class inspection completed.',
       action: (progress) async {
         final arguments = request.arguments ?? const <String, Object?>{};
-        final path = _requiredStringArgument(arguments, key: 'path');
+        final targetPath = _requiredStringArgument(arguments, key: 'path');
         final classQuery = _optionalStringArgument(
           arguments,
           key: 'classQuery',
@@ -633,13 +633,13 @@ class McpToolHandlers {
         final limit = _treeLimitFromArgument(
           arguments,
           key: 'limit',
-          defaultValue: defaultFrameLimit,
+          defaultValue: defaultMemoryClassLimit,
         );
 
         progress(0, 2, 'Reading memory class data.');
         final inspection = await prepareMemoryClassInspection(
           runner,
-          path,
+          targetPath,
           classQuery: classQuery,
           minLiveBytes: _optionalNonNegativeIntArgument(
             arguments,

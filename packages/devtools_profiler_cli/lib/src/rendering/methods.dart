@@ -256,11 +256,11 @@ void writeMethodComparison(
     options: options,
   );
 
-  final warnings = [
+  final warnings = uniqueWarnings([
     ...comparison.comparison.warnings,
     ...comparison.baseline.presentation.warnings,
     ...comparison.current.presentation.warnings,
-  ];
+  ]);
   if (warnings.isNotEmpty) {
     console.section('Warnings');
     console.components.bulletList(warnings);

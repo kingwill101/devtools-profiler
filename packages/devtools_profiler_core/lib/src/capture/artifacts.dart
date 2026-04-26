@@ -19,6 +19,7 @@ import 'models.dart';
 /// - session directories written by [ProfileArtifactStore]
 /// - region `summary.json` files
 /// - raw `cpu_profile.json` files
+/// - raw `memory_profile.json` files
 class ProfileArtifacts {
   /// Reads a session artifact directory and returns the stored session result.
   static Future<ProfileRunResult> readSession(String directoryPath) async {
@@ -109,6 +110,10 @@ class ProfileArtifacts {
       if (rawCpuFile.existsSync()) {
         return summarizeArtifact(rawCpuFile.path);
       }
+      final rawMemoryFile = _rawMemoryFileFor(targetPath);
+      if (rawMemoryFile.existsSync()) {
+        return summarizeArtifact(rawMemoryFile.path);
+      }
       throw ArgumentError.value(
         targetPath,
         'targetPath',
@@ -195,16 +200,14 @@ class ProfileArtifacts {
   }) async {
     final rawMemoryPath = await _resolveRawMemoryPath(targetPath);
 
-    ProfileMemoryClassPredicate? predicate;
     final query = classQuery?.toLowerCase().trim();
-    if (query != null && query.isNotEmpty && minLiveBytes != null) {
-      predicate = (s) =>
-          s.className.toLowerCase().contains(query) &&
-          s.liveBytes >= minLiveBytes;
-    } else if (query != null && query.isNotEmpty) {
-      predicate = (s) => s.className.toLowerCase().contains(query);
-    } else if (minLiveBytes != null) {
-      predicate = (s) => s.liveBytes >= minLiveBytes;
+    final normalizedQuery = query?.isEmpty == true ? null : query;
+    ProfileMemoryClassPredicate? predicate;
+    if (normalizedQuery != null || minLiveBytes != null) {
+      predicate = (summary) =>
+          (normalizedQuery == null ||
+              summary.className.toLowerCase().contains(normalizedQuery)) &&
+          (minLiveBytes == null || summary.liveBytes >= minLiveBytes);
     }
 
     return readMemoryClassesFromArtifact(
@@ -220,14 +223,7 @@ class ProfileArtifacts {
       final sessionFile = _sessionFileFor(targetPath);
       if (sessionFile.existsSync()) {
         final session = await readSession(targetPath);
-        final rawPath = session.overallProfile?.memory?.rawProfilePath;
-        if (rawPath == null || rawPath.isEmpty) {
-          throw StateError(
-            'No memory profile is available for the session at "$targetPath". '
-            'Re-run the target with memory capture enabled.',
-          );
-        }
-        return rawPath;
+        return _rawMemoryPathForSession(session, targetPath);
       }
       final summaryFile = _summaryFileFor(targetPath);
       if (summaryFile.existsSync()) {
@@ -264,11 +260,32 @@ class ProfileArtifacts {
       return rawPath;
     }
 
+    if (map case {'regions': final Object? _}) {
+      return _rawMemoryPathForSession(
+        ProfileRunResult.fromJson(map),
+        targetPath,
+      );
+    }
+
     throw ArgumentError.value(
       targetPath,
       'targetPath',
       'Unsupported artifact type for memory class inspection.',
     );
+  }
+
+  static String _rawMemoryPathForSession(
+    ProfileRunResult session,
+    String targetPath,
+  ) {
+    final rawPath = session.overallProfile?.memory?.rawProfilePath;
+    if (rawPath == null || rawPath.isEmpty) {
+      throw StateError(
+        'No memory profile is available for the session at "$targetPath". '
+        'Re-run the target with memory capture enabled.',
+      );
+    }
+    return rawPath;
   }
 
   static Future<CpuSamples> _cpuSamplesFromArtifact(

@@ -162,31 +162,19 @@ String formatDeltaCount(ProfileNumericDelta delta) {
       '(${formatCount(delta.baseline)} -> ${formatCount(delta.current)})';
 }
 
-String shellJoin(Iterable<String> arguments) {
-  return arguments.map(shellQuote).join(' ');
-}
-
-String shellQuote(String value) {
-  if (value.isEmpty) {
-    return "''";
-  }
-  const specialCharacters = "'\"\\\$`!|&;<>(){}[]*?";
-  final needsQuoting = value.runes.any(
-    (rune) =>
-        String.fromCharCode(rune).trim().isEmpty ||
-        specialCharacters.contains(String.fromCharCode(rune)),
-  );
-  if (!needsQuoting) {
-    return value;
-  }
-  return "'${value.replaceAll("'", "'\\''")}'";
-}
-
 String topFrameName(List<ProfileFrameSummary> frames) {
   if (frames.isEmpty) {
     return '-';
   }
   return frames.first.name;
+}
+
+List<String> uniqueWarnings(Iterable<String> warnings) {
+  final seen = <String>{};
+  return [
+    for (final warning in warnings)
+      if (seen.add(warning)) warning,
+  ];
 }
 
 String formatCaptureKinds(List<ProfileCaptureKind> captureKinds) {

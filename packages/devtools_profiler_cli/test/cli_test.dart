@@ -934,6 +934,8 @@ void main() {
     final json = await _runJsonCommand(const [
       'compare',
       '--json',
+      '--min-live-bytes',
+      '512',
       '--memory-class-limit',
       '0',
       '/tmp/memory/session-1',
@@ -941,10 +943,49 @@ void main() {
     ], runner: runner);
 
     expect(runner.readMemoryTopClassCounts, [0, 0]);
+    expect(
+      json['cliCommand'],
+      'devtools-profiler compare --min-live-bytes 512 '
+      '--memory-class-limit 0 /tmp/memory/session-1 /tmp/memory/session-2',
+    );
     final comparison = json['comparison'] as Map<String, Object?>;
     final memory = comparison['memory'] as Map<String, Object?>;
     final topClasses = memory['topClasses'] as List<Object?>;
-    expect(topClasses, hasLength(3));
+    expect(topClasses, hasLength(2));
+  });
+
+  test('compare warns when memory class re-read fails', () async {
+    final runner = _FakeMemoryProfileRunner(failMemoryReads: true);
+    final json = await _runJsonCommand(const [
+      'compare',
+      '--json',
+      '--min-live-bytes',
+      '512',
+      '/tmp/memory/session-1',
+      '/tmp/memory/session-2',
+    ], runner: runner);
+
+    final warnings = json['preparationWarnings'] as List<Object?>;
+    expect(
+      warnings,
+      contains(
+        allOf(
+          contains('readMemoryClasses could not build baselineMemoryOverride'),
+          contains('minLiveBytes=512'),
+          contains('memoryClassLimit=default'),
+        ),
+      ),
+    );
+    expect(
+      warnings,
+      contains(
+        allOf(
+          contains('readMemoryClasses could not build currentMemoryOverride'),
+          contains('minLiveBytes=512'),
+          contains('memoryClassLimit=default'),
+        ),
+      ),
+    );
   });
 
   test('compare rejects negative memory options', () async {
@@ -1118,6 +1159,12 @@ void main() {
     expect(json['kind'], 'memoryClassInspection');
     expect(json['classQuery'], 'Love');
     expect(json['minLiveBytes'], 512);
+    expect(json['topClassCount'], 1);
+    expect(
+      json['cliCommand'],
+      'devtools-profiler inspect-classes --class Love --min-live-bytes 512 '
+      '--limit 1 /tmp/memory/session-1',
+    );
     expect(runner.lastReadMemoryPath, '/tmp/memory/session-1');
     expect(runner.lastMemoryClassQuery, 'Love');
     expect(runner.lastMinLiveBytes, 512);
@@ -1666,6 +1713,9 @@ class _FakeProfileRunner extends ProfileRunner {
 }
 
 class _FakeMemoryProfileRunner extends _FakeProfileRunner {
+  _FakeMemoryProfileRunner({this.failMemoryReads = false});
+
+  final bool failMemoryReads;
   String? lastReadMemoryPath;
   String? lastMemoryClassQuery;
   int? lastMinLiveBytes;
@@ -1735,6 +1785,9 @@ class _FakeMemoryProfileRunner extends _FakeProfileRunner {
     lastMemoryClassQuery = classQuery;
     lastMinLiveBytes = minLiveBytes;
     readMemoryTopClassCounts.add(topClassCount);
+    if (failMemoryReads) {
+      throw StateError('raw memory artifact unavailable');
+    }
 
     var classes = _memoryClasses
         .where((item) {

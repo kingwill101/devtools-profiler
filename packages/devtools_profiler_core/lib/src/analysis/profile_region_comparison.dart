@@ -37,7 +37,9 @@ ProfileRegionComparison compareProfileRegions({
       '${baseline.isolateScope.name} vs ${current.isolateScope.name}.',
     );
   }
-  if ((baseline.memory == null) != (current.memory == null)) {
+  final effectiveBaselineMemory = baselineMemoryOverride ?? baseline.memory;
+  final effectiveCurrentMemory = currentMemoryOverride ?? current.memory;
+  if ((effectiveBaselineMemory == null) != (effectiveCurrentMemory == null)) {
     warnings.add('Memory data was only available for one compared profile.');
   }
   if ((baselineMethodTable == null) != (currentMethodTable == null)) {
@@ -76,10 +78,7 @@ ProfileRegionComparison compareProfileRegions({
           methodLimit,
         );
 
-  final memory = switch ((
-    baselineMemoryOverride ?? baseline.memory,
-    currentMemoryOverride ?? current.memory,
-  )) {
+  final memory = switch ((effectiveBaselineMemory, effectiveCurrentMemory)) {
     (null, null) => null,
     (final ProfileMemoryResult left, final ProfileMemoryResult right) =>
       _buildMemoryComparison(left, right, memoryClassLimit: memoryClassLimit),

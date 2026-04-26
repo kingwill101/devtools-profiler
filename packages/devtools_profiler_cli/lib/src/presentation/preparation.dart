@@ -103,10 +103,14 @@ Future<PreparedProfileComparison> prepareProfileComparison(
 
   ProfileMemoryResult? baselineMemoryOverride;
   ProfileMemoryResult? currentMemoryOverride;
+  final memoryWarnings = <String>[];
 
   if (minLiveBytes != null || memoryClassLimitSpecified) {
     final baselineRawPath = baseline.presentation.region.memory?.rawProfilePath;
     final currentRawPath = current.presentation.region.memory?.rawProfilePath;
+    final memoryLimitDescription = memoryClassLimitSpecified
+        ? '${memoryClassLimit ?? 0}'
+        : 'default';
 
     if (baselineRawPath != null && baselineRawPath.isNotEmpty) {
       try {
@@ -115,9 +119,22 @@ Future<PreparedProfileComparison> prepareProfileComparison(
           minLiveBytes: minLiveBytes,
           topClassCount: memoryClassLimit ?? 0,
         );
-      } catch (_) {
-        // Raw artifact unavailable; fall back to stored classes.
+      } catch (error) {
+        memoryWarnings.add(
+          'readMemoryClasses could not build baselineMemoryOverride from '
+          '"$baselineRawPath" (minLiveBytes=${minLiveBytes ?? 'none'}, '
+          'memoryClassLimit=$memoryLimitDescription): $error. Falling back '
+          'to stored memory summary classes.',
+        );
       }
+    } else {
+      memoryWarnings.add(
+        'readMemoryClasses could not build baselineMemoryOverride because no '
+        'raw memory artifact path was stored (minLiveBytes='
+        '${minLiveBytes ?? 'none'}, memoryClassLimit='
+        '$memoryLimitDescription). Falling back to stored memory summary '
+        'classes.',
+      );
     }
     if (currentRawPath != null && currentRawPath.isNotEmpty) {
       try {
@@ -126,9 +143,22 @@ Future<PreparedProfileComparison> prepareProfileComparison(
           minLiveBytes: minLiveBytes,
           topClassCount: memoryClassLimit ?? 0,
         );
-      } catch (_) {
-        // Raw artifact unavailable; fall back to stored classes.
+      } catch (error) {
+        memoryWarnings.add(
+          'readMemoryClasses could not build currentMemoryOverride from '
+          '"$currentRawPath" (minLiveBytes=${minLiveBytes ?? 'none'}, '
+          'memoryClassLimit=$memoryLimitDescription): $error. Falling back '
+          'to stored memory summary classes.',
+        );
       }
+    } else {
+      memoryWarnings.add(
+        'readMemoryClasses could not build currentMemoryOverride because no '
+        'raw memory artifact path was stored (minLiveBytes='
+        '${minLiveBytes ?? 'none'}, memoryClassLimit='
+        '$memoryLimitDescription). Falling back to stored memory summary '
+        'classes.',
+      );
     }
   }
 
@@ -150,6 +180,10 @@ Future<PreparedProfileComparison> prepareProfileComparison(
     current: current,
     comparison: comparison,
     regressions: summarizeProfileRegressions(comparison),
+    minLiveBytes: minLiveBytes,
+    memoryClassLimit: memoryClassLimit,
+    memoryClassLimitSpecified: memoryClassLimitSpecified,
+    warnings: memoryWarnings,
   );
 }
 
@@ -468,6 +502,7 @@ Future<PreparedMemoryClassInspection> prepareMemoryClassInspection(
     memory: memory,
     classQuery: classQuery,
     minLiveBytes: minLiveBytes,
+    topClassCount: topClassCount,
   );
 }
 
@@ -536,7 +571,7 @@ Future<PreparedRegionPresentation> prepareRegionPresentation(
   final ProfileRegionResult regionForSummary;
   if (rebuiltRegion.sampleCount == 0 &&
       region.sampleCount > 0 &&
-      options.framePredicate == null) {
+      !options.hasActiveFrameFilters) {
     warnings.add(
       'Region "${region.name}": the raw CPU profile artifact at '
       '"$rawProfilePath" produced 0 samples when re-read, but the stored '
