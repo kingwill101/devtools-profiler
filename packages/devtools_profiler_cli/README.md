@@ -135,6 +135,9 @@ A session can contain:
 If the target app has no marked regions, the CLI still captures the whole
 session.
 
+JSON responses include a `cliCommand` field for the command that can reproduce
+the same analysis selection.
+
 ## Read Existing Artifacts
 
 Summarize a session:
@@ -177,6 +180,19 @@ devtools-profiler inspect \
   /path/to/session
 ```
 
+Inspect memory classes:
+
+```bash
+devtools-profiler inspect-classes \
+  --json \
+  --class Parser \
+  --min-live-bytes 1048576 \
+  /path/to/session
+```
+
+Use `--limit 0` for an unlimited class list. The command can read a session
+directory, a region `summary.json`, or a raw `memory_profile.json` artifact.
+
 Compare two sessions:
 
 ```bash
@@ -214,6 +230,10 @@ devtools-profiler trends \
   duration. Examples: `15s`, `2m`, `500ms`.
 - `--vm-service-timeout <duration>` controls startup wait time before the VM
   service is available. Examples: `3m`, `300s`.
+- `--min-live-bytes <n>` filters memory class rows for `compare` and
+  `inspect-classes`.
+- `--memory-class-limit <n>` controls compared memory class rows for `compare`.
+  `0` means unlimited.
 
 Commands that operate on one profile use `--profile-id overall` for the
 whole-session profile or a generated region id for a marked region. Region names
@@ -250,6 +270,7 @@ Agent-facing tools include:
 - `profile_explain_hotspots`
 - `profile_search_methods`
 - `profile_inspect_method`
+- `profile_inspect_classes`
 - `profile_compare`
 - `profile_compare_method`
 - `profile_find_regressions`

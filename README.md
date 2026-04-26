@@ -275,6 +275,9 @@ devtools-profiler summarize \
   /path/to/session
 ```
 
+JSON responses include a `cliCommand` field for the command that can reproduce
+the same analysis selection.
+
 Important result sections:
 
 - `overallProfile`: the whole run from process start to process exit.
@@ -289,6 +292,7 @@ Important result sections:
   need to find the caller chain that led there.
 - `methodTable`: DevTools-style method context with callers and callees.
 - `memory`: heap and allocation summary when memory capture was available.
+- `classes`: memory class rows from `inspect-classes`.
 - `regressions` and `trends`: comparison output for reasoning across sessions.
 
 Filtering options keep the output readable:
@@ -458,6 +462,20 @@ devtools-profiler inspect \
 Inspection shows self cost, inclusive cost, callers, callees, and representative
 paths.
 
+### Inspect Memory Classes
+
+```bash
+devtools-profiler inspect-classes \
+  --json \
+  --class Cart \
+  --min-live-bytes 1048576 \
+  /path/to/session
+```
+
+`inspect-classes` re-reads the stored memory artifact and reports retained class
+rows, live instances, and allocation deltas. Use `--limit 0` for an unlimited
+class list.
+
 ### Compare Two Runs
 
 ```bash
@@ -532,6 +550,7 @@ Commands:
 - `compare <baseline> <current>` compares two profiles or sessions.
 - `trends <path>...` analyzes a sequence of profiles or sessions.
 - `inspect <path>` inspects one method in one profile.
+- `inspect-classes <path>` inspects memory classes in one profile.
 - `search-methods <path>` searches methods in one profile.
 - `compare-method <baseline> <current>` compares one method across two profiles.
 - `mcp` starts the local stdio MCP server.
@@ -554,6 +573,10 @@ Common presentation flags:
 - `--tree-depth <n>` controls call-tree depth. `0` means unlimited.
 - `--tree-children <n>` controls children per tree node. `0` means unlimited.
 - `--method-limit <n>` controls method rows and relations. `0` means unlimited.
+- `--min-live-bytes <n>` filters memory class rows for `compare` and
+  `inspect-classes`.
+- `--memory-class-limit <n>` controls compared memory class rows for `compare`.
+  `0` means unlimited.
 
 `run` options:
 
@@ -579,6 +602,7 @@ Path arguments accepted by read/analyze commands:
 - a session directory
 - a region `summary.json`
 - a raw `cpu_profile.json`
+- a raw `memory_profile.json` for memory-class inspection
 
 ## MCP For AI Agents
 
@@ -605,7 +629,8 @@ Tools by workflow:
   `profile_get_session`, `profile_list_regions`, `profile_get_region`.
 - Read artifacts: `profile_summarize`, `profile_read_artifact`.
 - Explain and drill down: `profile_explain_hotspots`,
-  `profile_search_methods`, `profile_inspect_method`.
+  `profile_search_methods`, `profile_inspect_method`,
+  `profile_inspect_classes`.
 - Compare: `profile_compare`, `profile_compare_method`,
   `profile_find_regressions`, `profile_analyze_trends`.
 
@@ -618,7 +643,8 @@ Useful agent pattern:
 3. If regions exist, call `profile_explain_hotspots` for the hottest region.
 4. Use `profile_search_methods` and `profile_inspect_method` for named
    functions mentioned by the explanation.
-5. Use `profile_compare` or `profile_find_regressions` after a code change.
+5. Use `profile_inspect_classes` when memory summaries show retained growth.
+6. Use `profile_compare` or `profile_find_regressions` after a code change.
 
 Most read-only tools accept either direct paths or stored-session selectors:
 
