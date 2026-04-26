@@ -35,6 +35,10 @@ class PreparedProfileComparison {
     required this.current,
     required this.comparison,
     required this.regressions,
+    required this.minLiveBytes,
+    required this.memoryClassLimit,
+    required this.memoryClassLimitSpecified,
+    this.warnings = const [],
   });
 
   /// The baseline comparison target.
@@ -48,6 +52,18 @@ class PreparedProfileComparison {
 
   /// Prioritized regression insights derived from the comparison.
   final ProfileRegressionSummary regressions;
+
+  /// The memory live-bytes threshold requested for class comparison.
+  final int? minLiveBytes;
+
+  /// The memory class limit requested for comparison.
+  final int? memoryClassLimit;
+
+  /// Whether the memory class limit was explicitly requested.
+  final bool memoryClassLimitSpecified;
+
+  /// Warnings generated while preparing comparison-specific data.
+  final List<String> warnings;
 }
 
 /// Prepared hotspot explanation data for CLI or MCP output.
@@ -169,6 +185,7 @@ class PreparedMemoryClassInspection {
     required this.memory,
     required this.classQuery,
     required this.minLiveBytes,
+    required this.topClassCount,
   });
 
   /// The user-supplied target path that was inspected.
@@ -182,6 +199,9 @@ class PreparedMemoryClassInspection {
 
   /// The minimum live-bytes threshold used for filtering, or null if none.
   final int? minLiveBytes;
+
+  /// The maximum class count requested, or 0 for unlimited results.
+  final int topClassCount;
 }
 
 /// Prepared region data for CLI or MCP output.

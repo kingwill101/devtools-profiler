@@ -9,6 +9,9 @@ const defaultTreeChildren = 12;
 /// Default number of rows to show in summary tables.
 const defaultFrameLimit = 12;
 
+/// Default number of memory classes to show in class-inspection output.
+const defaultMemoryClassLimit = 50;
+
 /// Package prefixes that belong to profiler transport/runtime helpers.
 const runtimeHelperPackagePrefixes = [
   'devtools_profiler_',

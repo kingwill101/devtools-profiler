@@ -1,6 +1,8 @@
 import 'package:devtools_profiler_core/devtools_profiler_core.dart';
 
+import 'cli_command.dart';
 import 'models.dart';
+import 'options.dart';
 
 /// Converts a prepared session to structured JSON.
 Map<String, Object?> sessionPresentationJson(
@@ -14,7 +16,7 @@ Map<String, Object?> sessionPresentationJson(
 ) {
   return {
     ...session.toJson(),
-    'cliCommand': _sessionCliCommand(session),
+    'cliCommand': sessionCliCommand(session),
     if (session.overallProfile != null)
       'overallProfile': regionPresentationJson(
         session.overallProfile!,
@@ -57,10 +59,11 @@ Map<String, Object?> regionPresentationJson(
 Map<String, Object?> comparisonPresentationJson(
   PreparedProfileComparison comparison,
 ) {
-  final preparationWarnings = [
+  final preparationWarnings = _uniqueStrings([
+    ...comparison.warnings,
     ...comparison.baseline.presentation.warnings,
     ...comparison.current.presentation.warnings,
-  ];
+  ]);
   return {
     'kind': 'profileComparison',
     'cliCommand': _compareCliCommand(comparison),
@@ -107,10 +110,10 @@ Map<String, Object?> methodInspectionJson(
 Map<String, Object?> methodComparisonJson(
   PreparedProfileMethodComparison comparison,
 ) {
-  final preparationWarnings = [
+  final preparationWarnings = _uniqueStrings([
     ...comparison.baseline.presentation.warnings,
     ...comparison.current.presentation.warnings,
-  ];
+  ]);
   return {
     'kind': 'methodComparison',
     'cliCommand': _compareMethodCliCommand(comparison),
@@ -188,6 +191,7 @@ Map<String, Object?> memoryClassInspectionJson(
     'targetPath': inspection.targetPath,
     'classQuery': inspection.classQuery,
     'minLiveBytes': inspection.minLiveBytes,
+    'topClassCount': inspection.topClassCount,
     'totalClassCount': memory.classCount,
     'matchedClassCount': memory.topClasses.length,
     'deltaHeapBytes': memory.deltaHeapBytes,
@@ -216,38 +220,12 @@ String _presentationScope(ProfileRegionResult region) {
   return 'region';
 }
 
-String _sessionCliCommand(ProfileRunResult session) {
-  if (session.command.isNotEmpty && session.command.first == 'attach') {
-    final duration = _durationOptionForSession(session);
-    return _shellJoin([
-      'devtools-profiler',
-      'attach',
-      if (duration != null) ...['--duration', duration],
-      '--cwd',
-      session.workingDirectory,
-      '--artifact-dir',
-      session.artifactDirectory,
-      session.vmServiceUri ?? session.command.skip(1).join(' '),
-    ]);
-  }
-  return _shellJoin([
-    'devtools-profiler',
-    'run',
-    '--cwd',
-    session.workingDirectory,
-    '--artifact-dir',
-    session.artifactDirectory,
-    '--',
-    ...session.command,
-  ]);
-}
-
 String _summarizeCliCommand(String targetPath) {
-  return _shellJoin(['devtools-profiler', 'summarize', targetPath]);
+  return shellJoin(['devtools-profiler', 'summarize', targetPath]);
 }
 
 String _compareCliCommand(PreparedProfileComparison comparison) {
-  return _shellJoin([
+  return shellJoin([
     'devtools-profiler',
     'compare',
     if (_usesProfileSelector(comparison.baseline)) ...[
@@ -258,13 +236,21 @@ String _compareCliCommand(PreparedProfileComparison comparison) {
       '--current-profile-id',
       comparison.current.selectedProfileId,
     ],
+    if (comparison.minLiveBytes != null) ...[
+      '--min-live-bytes',
+      '${comparison.minLiveBytes}',
+    ],
+    if (comparison.memoryClassLimitSpecified) ...[
+      '--memory-class-limit',
+      '${comparison.memoryClassLimit ?? 0}',
+    ],
     comparison.baseline.path,
     comparison.current.path,
   ]);
 }
 
 String _explainCliCommand(PreparedProfileExplanation explanation) {
-  return _shellJoin([
+  return shellJoin([
     'devtools-profiler',
     'explain',
     if (_usesProfileSelector(explanation.target)) ...[
@@ -279,7 +265,7 @@ String _inspectCliCommand(PreparedProfileMethodInspection inspection) {
   final queryOption = inspection.inspection.queryKind == 'methodId'
       ? '--method-id'
       : '--method';
-  return _shellJoin([
+  return shellJoin([
     'devtools-profiler',
     'inspect',
     if (_usesProfileSelector(inspection.target)) ...[
@@ -296,7 +282,7 @@ String _compareMethodCliCommand(PreparedProfileMethodComparison comparison) {
   final queryOption = comparison.comparison.queryKind == 'methodId'
       ? '--method-id'
       : '--method';
-  return _shellJoin([
+  return shellJoin([
     'devtools-profiler',
     'compare-method',
     if (_usesProfileSelector(comparison.baseline)) ...[
@@ -315,7 +301,7 @@ String _compareMethodCliCommand(PreparedProfileMethodComparison comparison) {
 }
 
 String _searchMethodsCliCommand(PreparedProfileMethodSearch search) {
-  return _shellJoin([
+  return shellJoin([
     'devtools-profiler',
     'search-methods',
     if (_usesProfileSelector(search.target)) ...[
@@ -334,7 +320,7 @@ String _searchMethodsCliCommand(PreparedProfileMethodSearch search) {
 
 String _trendsCliCommand(PreparedProfileTrends trends) {
   final profileId = _trendProfileSelector(trends.targets);
-  return _shellJoin([
+  return shellJoin([
     'devtools-profiler',
     'trends',
     if (profileId != null) ...['--profile-id', profileId],
@@ -364,7 +350,7 @@ String? _trendProfileSelector(List<PreparedComparisonTarget> targets) {
 }
 
 String _inspectClassesCliCommand(PreparedMemoryClassInspection inspection) {
-  return _shellJoin([
+  return shellJoin([
     'devtools-profiler',
     'inspect-classes',
     if (inspection.classQuery?.isNotEmpty == true) ...[
@@ -375,37 +361,18 @@ String _inspectClassesCliCommand(PreparedMemoryClassInspection inspection) {
       '--min-live-bytes',
       '${inspection.minLiveBytes}',
     ],
+    if (inspection.topClassCount != defaultMemoryClassLimit) ...[
+      '--limit',
+      '${inspection.topClassCount}',
+    ],
     inspection.targetPath,
   ]);
 }
 
-String _shellJoin(Iterable<String> arguments) {
-  return arguments.map(_shellQuote).join(' ');
-}
-
-String _shellQuote(String value) {
-  if (value.isEmpty) {
-    return "''";
-  }
-  const specialCharacters = "'\"\\\$`!|&;<>(){}[]*?";
-  final needsQuoting = value.runes.any((rune) {
-    final character = String.fromCharCode(rune);
-    return character.trim().isEmpty || specialCharacters.contains(character);
-  });
-  if (!needsQuoting) {
-    return value;
-  }
-  return "'${value.replaceAll("'", "'\\''")}'";
-}
-
-String? _durationOptionForSession(ProfileRunResult session) {
-  final micros = session.overallProfile?.durationMicros;
-  if (micros == null || micros <= 0) {
-    return null;
-  }
-  if (micros % Duration.microsecondsPerSecond == 0) {
-    return '${micros ~/ Duration.microsecondsPerSecond}s';
-  }
-  final milliseconds = (micros / Duration.microsecondsPerMillisecond).ceil();
-  return '${milliseconds}ms';
+List<String> _uniqueStrings(Iterable<String> values) {
+  final seen = <String>{};
+  return [
+    for (final value in values)
+      if (seen.add(value)) value,
+  ];
 }

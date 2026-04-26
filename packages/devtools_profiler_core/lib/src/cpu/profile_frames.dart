@@ -96,7 +96,7 @@ String? _packageNameFromFilePath(String filePath) {
     return _packageNameFromPubCacheFolder(segments[libIndex - 1]);
   }
 
-  final libIndex = segments.lastIndexOf('lib');
+  final libIndex = segments.indexOf('lib');
   if (libIndex <= 0) {
     return null;
   }

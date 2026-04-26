@@ -300,6 +300,26 @@ void main() {
     final regressions = summarizeProfileRegressions(comparison);
     expect(regressions.warnings, comparison.warnings);
   });
+
+  test(
+    'compareProfileRegions uses memory overrides for availability warnings',
+    () {
+      final comparison = compareProfileRegions(
+        baseline: _region(regionId: 'baseline'),
+        current: _region(regionId: 'current'),
+        baselineMemoryOverride: _memoryBaseline(),
+        currentMemoryOverride: _memoryCurrent(),
+      );
+
+      expect(comparison.memory, isNotNull);
+      expect(
+        comparison.warnings,
+        isNot(
+          contains('Memory data was only available for one compared profile.'),
+        ),
+      );
+    },
+  );
 }
 
 ProfileRegionResult _region({
@@ -331,5 +351,51 @@ ProfileRegionResult _region({
     topTotalFrames: topTotalFrames,
     memory: memory,
     summaryPath: '/tmp/$regionId/summary.json',
+  );
+}
+
+ProfileMemoryResult _memoryBaseline() {
+  return ProfileMemoryResult(
+    start: HeapSample(1, 0, 2048, 1024, 0, false, null, null, null),
+    end: HeapSample(2, 0, 3072, 1536, 0, false, null, null, null),
+    deltaHeapBytes: 512,
+    deltaExternalBytes: 0,
+    deltaCapacityBytes: 1024,
+    classCount: 1,
+    topClasses: const [
+      ProfileMemoryClassSummary(
+        className: 'Buffer',
+        libraryUri: 'package:fixture/buffer.dart',
+        allocationBytesDelta: 512,
+        allocationInstancesDelta: 1,
+        liveBytes: 512,
+        liveBytesDelta: 512,
+        liveInstances: 1,
+        liveInstancesDelta: 1,
+      ),
+    ],
+  );
+}
+
+ProfileMemoryResult _memoryCurrent() {
+  return ProfileMemoryResult(
+    start: HeapSample(3, 0, 3072, 1536, 0, false, null, null, null),
+    end: HeapSample(4, 0, 4096, 2560, 0, false, null, null, null),
+    deltaHeapBytes: 1024,
+    deltaExternalBytes: 0,
+    deltaCapacityBytes: 1024,
+    classCount: 1,
+    topClasses: const [
+      ProfileMemoryClassSummary(
+        className: 'Buffer',
+        libraryUri: 'package:fixture/buffer.dart',
+        allocationBytesDelta: 1024,
+        allocationInstancesDelta: 2,
+        liveBytes: 1024,
+        liveBytesDelta: 1024,
+        liveInstances: 2,
+        liveInstancesDelta: 2,
+      ),
+    ],
   );
 }

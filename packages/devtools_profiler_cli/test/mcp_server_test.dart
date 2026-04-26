@@ -785,6 +785,24 @@ void main() {
     expect((classes.single as Map<String, Object?>)['className'], 'LoveImage');
   });
 
+  test('inspects memory classes with MCP default class limit', () async {
+    final runner = _FakeMemoryProfileRunner();
+    final environment = _McpTestEnvironment(runner);
+    addTearDown(environment.shutdown);
+    await _initializeServer(environment);
+
+    final result = await environment.serverConnection.callTool(
+      CallToolRequest(
+        name: 'profile_inspect_classes',
+        arguments: {'path': '/tmp/memory/session-1'},
+      ),
+    );
+
+    expect(result.isError, isNot(true));
+    expect(runner.readMemoryTopClassCounts, [50]);
+    expect(result.structuredContent!['topClassCount'], 50);
+  });
+
   test('rejects negative MCP inspect-classes minLiveBytes', () async {
     final environment = _McpTestEnvironment(_FakeProfileRunner());
     addTearDown(environment.shutdown);

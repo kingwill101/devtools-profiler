@@ -75,22 +75,39 @@ ProfileMemoryResult summarizeMemoryProfile({
 ///
 /// Pass [topClassCount] as 0 for unlimited results; otherwise the result is
 /// truncated to that many classes after sorting.
+///
+/// This rebuild path defaults to 50 classes for deep-dive inspection, while
+/// [summarizeMemoryProfile] defaults to 10 for brief capture summaries.
 ProfileMemoryResult rebuildMemoryProfileFromArtifact(
   Map<String, Object?> rawArtifact, {
   required String rawProfilePath,
   ProfileMemoryClassPredicate? includeClass,
   int topClassCount = 50,
 }) {
-  final startMap = (rawArtifact['start'] as Map<Object?, Object?>)
-      .cast<String, Object?>();
-  final endMap = (rawArtifact['end'] as Map<Object?, Object?>)
-      .cast<String, Object?>();
+  final startMap = _requiredArtifactMap(
+    rawArtifact['start'],
+    label: 'start',
+    rawProfilePath: rawProfilePath,
+  );
+  final endMap = _requiredArtifactMap(
+    rawArtifact['end'],
+    label: 'end',
+    rawProfilePath: rawProfilePath,
+  );
 
   final start = HeapSample.fromJson(
-    (startMap['heapSample'] as Map<Object?, Object?>).cast<String, Object?>(),
+    _requiredArtifactMap(
+      startMap['heapSample'],
+      label: 'start.heapSample',
+      rawProfilePath: rawProfilePath,
+    ),
   );
   final end = HeapSample.fromJson(
-    (endMap['heapSample'] as Map<Object?, Object?>).cast<String, Object?>(),
+    _requiredArtifactMap(
+      endMap['heapSample'],
+      label: 'end.heapSample',
+      rawProfilePath: rawProfilePath,
+    ),
   );
 
   final startClasses = _extractClassStats(startMap);
@@ -114,6 +131,9 @@ ProfileMemoryResult rebuildMemoryProfileFromArtifact(
 /// included in [ProfileMemoryResult.topClasses].
 ///
 /// Pass [topClassCount] as 0 for unlimited results.
+///
+/// This artifact-reader defaults to 50 classes for inspect-style deep dives;
+/// use [summarizeMemoryProfile] for the shorter 10-class summary default.
 Future<ProfileMemoryResult> readMemoryClassesFromArtifact(
   String rawProfilePath, {
   ProfileMemoryClassPredicate? includeClass,
@@ -127,6 +147,20 @@ Future<ProfileMemoryResult> readMemoryClassesFromArtifact(
     rawProfilePath: rawProfilePath,
     includeClass: includeClass,
     topClassCount: topClassCount,
+  );
+}
+
+Map<String, Object?> _requiredArtifactMap(
+  Object? value, {
+  required String label,
+  required String rawProfilePath,
+}) {
+  if (value is Map) {
+    return value.cast<String, Object?>();
+  }
+  throw FormatException(
+    'Invalid memory profile artifact at "$rawProfilePath": expected "$label" '
+    'to be an object.',
   );
 }
 

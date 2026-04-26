@@ -185,7 +185,7 @@ Inspect memory classes:
 ```bash
 devtools-profiler inspect-classes \
   --json \
-  --class Parser \
+  --class String \
   --min-live-bytes 1048576 \
   /path/to/session
 ```

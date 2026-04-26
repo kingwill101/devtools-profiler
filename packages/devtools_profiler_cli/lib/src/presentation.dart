@@ -1,3 +1,4 @@
+export 'presentation/cli_command.dart';
 export 'presentation/json.dart';
 export 'presentation/models.dart';
 export 'presentation/options.dart';
