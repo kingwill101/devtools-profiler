@@ -32,6 +32,7 @@ void writeSessionSummary(
     },
     if (session.vmServiceUri != null) 'VM service': session.vmServiceUri,
   });
+  _writeReproductionBlock(console, session, options: options);
 
   final overallProfile = session.overallProfile;
   if (overallProfile == null && session.regions.isEmpty) {
@@ -118,6 +119,7 @@ void writeRegionSummary(
   ProfileCallTree? bottomUpTree,
   ProfileMethodTable? methodTable,
   String? workingDirectory,
+  List<String> warnings = const [],
   required ProfilePresentationOptions options,
 }) {
   console.title('Region Summary');
@@ -130,6 +132,10 @@ void writeRegionSummary(
     workingDirectory: workingDirectory,
     options: options,
   );
+  if (warnings.isNotEmpty) {
+    console.section('Warnings');
+    console.components.bulletList(warnings);
+  }
 }
 
 void writeComparisonSummary(
@@ -281,9 +287,13 @@ void writeHotspotExplanation(
     ]);
   }
 
-  if (explanation.hotspots.warnings.isNotEmpty) {
+  final warnings = [
+    ...explanation.hotspots.warnings,
+    ...explanation.target.presentation.warnings,
+  ];
+  if (warnings.isNotEmpty) {
     console.section('Warnings');
-    console.components.bulletList(explanation.hotspots.warnings);
+    console.components.bulletList(warnings);
   }
 
   _writeRegionDetails(
@@ -554,6 +564,84 @@ void _writeRegressionInsights(
   ]);
 }
 
+void _writeReproductionBlock(
+  Console console,
+  ProfileRunResult session, {
+  required ProfilePresentationOptions options,
+}) {
+  console.section('Reproduce');
+  console.components.definitionList({
+    'Profiler command': _sessionCliCommand(session),
+    'Target command': _isAttachSession(session)
+        ? '-'
+        : shellJoin(session.command),
+    'Target cwd': session.workingDirectory,
+    'VM service': session.vmServiceUri ?? '-',
+    'Capture duration': _captureDurationForSession(session),
+    'Artifact dir': session.artifactDirectory,
+    'Active filters': options.activeFrameFilterLabel,
+  });
+}
+
+String _sessionCliCommand(ProfileRunResult session) {
+  final base = <String>['devtools-profiler'];
+  if (_isAttachSession(session)) {
+    final duration = _durationOptionForSession(session);
+    base.addAll([
+      'attach',
+      if (duration != null) ...['--duration', duration],
+      '--cwd',
+      session.workingDirectory,
+      '--artifact-dir',
+      session.artifactDirectory,
+      session.vmServiceUri ?? session.command.skip(1).join(' '),
+    ]);
+  } else {
+    base.addAll([
+      'run',
+      '--cwd',
+      session.workingDirectory,
+      '--artifact-dir',
+      session.artifactDirectory,
+      '--',
+      ...session.command,
+    ]);
+  }
+  return shellJoin(base);
+}
+
+bool _isAttachSession(ProfileRunResult session) {
+  return session.command.isNotEmpty && session.command.first == 'attach';
+}
+
+String _captureDurationForSession(ProfileRunResult session) {
+  final overallDuration = session.overallProfile?.durationMicros;
+  if (overallDuration != null && overallDuration > 0) {
+    return formatMicros(overallDuration);
+  }
+  final regionDurations = [
+    for (final region in session.regions)
+      if (region.durationMicros > 0) region.durationMicros,
+  ];
+  if (regionDurations.isEmpty) {
+    return '-';
+  }
+  regionDurations.sort();
+  return formatMicros(regionDurations.last);
+}
+
+String? _durationOptionForSession(ProfileRunResult session) {
+  final micros = session.overallProfile?.durationMicros;
+  if (micros == null || micros <= 0) {
+    return null;
+  }
+  if (micros % Duration.microsecondsPerSecond == 0) {
+    return '${micros ~/ Duration.microsecondsPerSecond}s';
+  }
+  final milliseconds = (micros / Duration.microsecondsPerMillisecond).ceil();
+  return '${milliseconds}ms';
+}
+
 void _writeRegionDetails(
   Console console,
   ProfileRegionResult region, {
@@ -712,24 +800,28 @@ void _writeMemorySummary(
     return;
   }
 
-  console.section('Top Allocation Classes');
+  console.section('Top Memory Classes By Delta');
   console.table(
     headers: const [
       'Class',
-      'Allocated',
-      'Live Delta',
       'Live',
-      'Instances',
+      'Live Δ',
+      'Live Inst',
+      'Inst Δ',
+      'New Inst',
+      'Alloc Δ',
       'Source',
     ],
     rows: [
       for (final item in memory.topClasses)
         [
           item.className,
-          formatSignedBytes(item.allocationBytesDelta),
-          formatSignedBytes(item.liveBytesDelta),
           formatBytes(item.liveBytes),
+          formatSignedBytes(item.liveBytesDelta),
+          item.liveInstances,
+          formatSignedCount(item.liveInstancesDelta),
           formatSignedCount(item.allocationInstancesDelta),
+          formatSignedBytes(item.allocationBytesDelta),
           displayLocation(
             item.libraryUri,
             fullLocations: fullLocationsEnabled(options),

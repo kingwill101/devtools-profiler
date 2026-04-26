@@ -72,6 +72,27 @@ class ProfilePresentationOptions {
   /// Optional package prefixes to exclude.
   final List<String> excludePackages;
 
+  /// Whether any frame-level filters are active.
+  bool get hasActiveFrameFilters =>
+      hideSdk ||
+      hideRuntimeHelpers ||
+      includePackages.isNotEmpty ||
+      excludePackages.isNotEmpty;
+
+  /// User-facing descriptions for active frame filters.
+  List<String> get activeFrameFilterDescriptions => [
+    if (hideSdk) '--hide-sdk',
+    if (hideRuntimeHelpers) '--hide-runtime-helpers',
+    for (final package in includePackages) '--include-package $package',
+    for (final package in excludePackages) '--exclude-package $package',
+  ];
+
+  /// A compact user-facing label for active frame filters.
+  String get activeFrameFilterLabel {
+    final descriptions = activeFrameFilterDescriptions;
+    return descriptions.isEmpty ? '(none)' : descriptions.join(', ');
+  }
+
   /// The predicate applied while building summaries and call trees.
   ProfileFramePredicate? get framePredicate {
     final excludePrefixes = [
@@ -79,9 +100,7 @@ class ProfilePresentationOptions {
       if (hideRuntimeHelpers) ...runtimeHelperPackagePrefixes,
     ];
     final includePrefixes = includePackages;
-    final shouldFilter =
-        hideSdk || excludePrefixes.isNotEmpty || includePrefixes.isNotEmpty;
-    if (!shouldFilter) {
+    if (!hasActiveFrameFilters) {
       return null;
     }
     return (frame) {

@@ -84,7 +84,12 @@ class McpToolHandlers {
       action: (progress) async {
         final arguments = request.arguments ?? const <String, Object?>{};
         final treeOptions = _treeOptionsFromArguments(arguments);
-        progress(0, 3, 'Attaching to VM service.');
+        progress(
+          0,
+          3,
+          'Attaching to VM service. Explicit region markers are unavailable '
+          'unless the target was launched by devtools-profiler run.',
+        );
         final result = await runner.attach(
           ProfileAttachRequest(
             artifactDirectory: _optionalStringArgument(
@@ -325,6 +330,7 @@ class McpToolHandlers {
             prepared.callTree,
             prepared.bottomUpTree,
             prepared.methodTable,
+            warnings: prepared.warnings,
           ),
         };
         progress(3, 3, 'Region prepared.');
@@ -719,6 +725,7 @@ class McpToolHandlers {
         prepared.callTree,
         prepared.bottomUpTree,
         prepared.methodTable,
+        warnings: prepared.warnings,
       );
     }
     return summary;

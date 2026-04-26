@@ -73,6 +73,7 @@ class SummarizeCommand extends ProfilerCommand {
             prepared.callTree,
             prepared.bottomUpTree,
             prepared.methodTable,
+            warnings: prepared.warnings,
           ),
         );
       } else {
@@ -83,6 +84,7 @@ class SummarizeCommand extends ProfilerCommand {
           bottomUpTree: prepared.bottomUpTree,
           methodTable: prepared.methodTable,
           workingDirectory: workingDirectoryFromRegionPath(prepared.region),
+          warnings: prepared.warnings,
           options: options,
         );
       }

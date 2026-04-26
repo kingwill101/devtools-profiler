@@ -27,6 +27,10 @@ void writeMethodInspection(
     console.section('Details');
     console.warn(result.message!);
   }
+  if (inspection.target.presentation.warnings.isNotEmpty) {
+    console.section('Warnings');
+    console.components.bulletList(inspection.target.presentation.warnings);
+  }
 
   final method = result.method;
   if (method != null) {
@@ -149,6 +153,10 @@ void writeMethodSearch(
     console.section('Details');
     console.warn(result.message!);
   }
+  if (search.target.presentation.warnings.isNotEmpty) {
+    console.section('Warnings');
+    console.components.bulletList(search.target.presentation.warnings);
+  }
 
   if (result.methods.isEmpty) {
     console.section('Matches');
@@ -248,9 +256,14 @@ void writeMethodComparison(
     options: options,
   );
 
-  if (comparison.comparison.warnings.isNotEmpty) {
+  final warnings = [
+    ...comparison.comparison.warnings,
+    ...comparison.baseline.presentation.warnings,
+    ...comparison.current.presentation.warnings,
+  ];
+  if (warnings.isNotEmpty) {
     console.section('Warnings');
-    console.components.bulletList(comparison.comparison.warnings);
+    console.components.bulletList(warnings);
   }
 }
 

@@ -482,6 +482,18 @@ Future<PreparedRegionPresentation> prepareRegionPresentation(
 
   final cpuSamples = await runner.readCpuSamples(rawProfilePath);
   final memory = _filterStoredMemory(region.memory, options);
+  int countCpuSamplesBeforeFilters() {
+    final sampleList = cpuSamples.samples;
+    if (sampleList != null) {
+      final nonEmptyStacks = sampleList
+          .where((sample) => (sample.stack ?? const []).isNotEmpty)
+          .length;
+      return nonEmptyStacks == 0 ? cpuSamples.sampleCount ?? 0 : nonEmptyStacks;
+    }
+    return cpuSamples.sampleCount ?? 0;
+  }
+
+  final preFilterSampleCount = countCpuSamplesBeforeFilters();
   final rebuiltRegion = summarizeCpuSamples(
     regionId: region.regionId,
     name: region.name,
@@ -509,6 +521,25 @@ Future<PreparedRegionPresentation> prepareRegionPresentation(
   // Call trees and the method table are still derived from the re-read data;
   // they will be empty in this case, which is transparent to the caller.
   final warnings = <String>[];
+  if (options.hasActiveFrameFilters &&
+      preFilterSampleCount > 0 &&
+      rebuiltRegion.sampleCount == 0) {
+    warnings.add(
+      'Profile "${region.name}": $preFilterSampleCount CPU sample(s) were '
+      'available before filtering, but no frames remained after applying '
+      '${options.activeFrameFilterLabel}. Retry without those filters or use '
+      'a broader --include-package value.',
+    );
+  } else if (_capturesCpu(region) &&
+      preFilterSampleCount == 0 &&
+      rebuiltRegion.sampleCount == 0 &&
+      region.sampleCount == 0) {
+    warnings.add(
+      'Profile "${region.name}": no CPU samples were captured. Use a longer '
+      'capture duration, and for Flutter startup runs make sure compilation '
+      'has finished or increase --vm-service-timeout.',
+    );
+  }
   final ProfileRegionResult regionForSummary;
   if (rebuiltRegion.sampleCount == 0 &&
       region.sampleCount > 0 &&
@@ -554,6 +585,10 @@ Future<PreparedRegionPresentation> prepareRegionPresentation(
     methodTable: methodTable,
     warnings: warnings,
   );
+}
+
+bool _capturesCpu(ProfileRegionResult region) {
+  return region.captureKinds.contains(ProfileCaptureKind.cpu);
 }
 
 ProfileRegionResult _filterStoredRegion(
