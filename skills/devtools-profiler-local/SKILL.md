@@ -25,6 +25,8 @@ Start by identifying the user's target:
 
 Prefer one working command over a broad explanation. Once the first capture
 works, help the user add filters, regions, method inspection, or comparisons.
+Use `inspect-classes` when the question is about retained memory classes or
+allocation deltas.
 
 ## Install The CLI
 
@@ -165,18 +167,38 @@ devtools-profiler inspect \
   path/to/session
 ```
 
+Inspect memory classes:
+
+```bash
+devtools-profiler inspect-classes \
+  --json \
+  --class Parser \
+  --min-live-bytes 1048576 \
+  path/to/session
+```
+
+Use `--limit 0` when the agent needs the complete class list. The command can
+read a session directory, a region `summary.json`, or a raw
+`memory_profile.json` artifact.
+
 Compare two sessions:
 
 ```bash
 devtools-profiler compare \
   --json \
   --method-table \
+  --min-live-bytes 1048576 \
   path/to/baseline-session \
   path/to/current-session
 ```
 
 Use `--profile-id overall` for the whole session. Use the printed region id to
 inspect a marked region.
+
+For memory comparisons, use `--memory-class-limit 0` when the agent needs an
+unlimited class list. Negative memory thresholds and limits are invalid.
+JSON responses include a `cliCommand` field that reproduces the same analysis
+selection.
 
 ## MCP Server
 
@@ -191,6 +213,21 @@ trees, method tables, and memory summaries when diagnosing performance. Those
 views give enough context to explain both where time is spent and how callers
 reach the hot method.
 
+Useful MCP tools:
+
+- Capture: `profile_run`, `profile_attach`.
+- Navigate stored runs: `profile_list_sessions`, `profile_latest_session`,
+  `profile_get_session`, `profile_list_regions`, `profile_get_region`.
+- Explain and drill down: `profile_explain_hotspots`,
+  `profile_search_methods`, `profile_inspect_method`,
+  `profile_inspect_classes`.
+- Compare: `profile_compare`, `profile_compare_method`,
+  `profile_find_regressions`, `profile_analyze_trends`.
+
+When using session directories, pass `profileId: overall` or a generated
+region id. For trend analysis, keep the selected region consistent across
+sessions when comparing region-scoped runs.
+
 ## Troubleshooting
 
 - If startup times out, increase `--vm-service-timeout`.
@@ -202,4 +239,5 @@ reach the hot method.
   `--hide-runtime-helpers`.
 - If locations are too compact, add `--full-locations`.
 - If an agent needs complete data, set limits to `0`, such as
-  `--tree-depth 0`, `--tree-children 0`, and `--method-limit 0`.
+  `--tree-depth 0`, `--tree-children 0`, `--method-limit 0`,
+  `--limit 0`, and `--memory-class-limit 0`.
