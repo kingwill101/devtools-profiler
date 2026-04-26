@@ -38,7 +38,27 @@ class ProfileArtifacts {
     final entityType = FileSystemEntity.typeSync(targetPath);
     switch (entityType) {
       case FileSystemEntityType.directory:
-        return (await readSession(targetPath)).toJson();
+        final sessionFile = _sessionFileFor(targetPath);
+        if (sessionFile.existsSync()) {
+          return (await readSession(targetPath)).toJson();
+        }
+        final summaryFile = _summaryFileFor(targetPath);
+        if (summaryFile.existsSync()) {
+          return readArtifact(summaryFile.path);
+        }
+        final rawCpuFile = _rawCpuFileFor(targetPath);
+        if (rawCpuFile.existsSync()) {
+          return readArtifact(rawCpuFile.path);
+        }
+        final rawMemoryFile = _rawMemoryFileFor(targetPath);
+        if (rawMemoryFile.existsSync()) {
+          return readArtifact(rawMemoryFile.path);
+        }
+        throw ArgumentError.value(
+          targetPath,
+          'targetPath',
+          'No profiler artifact found in directory',
+        );
       case FileSystemEntityType.file:
         final text = await File(targetPath).readAsString();
         Object? decoded;
@@ -67,15 +87,36 @@ class ProfileArtifacts {
 
   /// Summarizes an artifact directory or raw CPU profile JSON file.
   ///
-  /// Region summary files are returned as-is. Raw CPU profile files are lifted
-  /// into a synthesized [ProfileRegionResult]-style summary so downstream tools
-  /// can treat them like other profiler artifacts.
+  /// Session directories, per-profile artifact directories, `session.json`,
+  /// region `summary.json` files, and raw CPU profile files are accepted. Raw
+  /// CPU profile files are lifted into a synthesized [ProfileRegionResult]-
+  /// style summary so downstream tools can treat them like other profiler
+  /// artifacts.
   static Future<Map<String, Object?>> summarizeArtifact(
     String targetPath,
   ) async {
     final entityType = FileSystemEntity.typeSync(targetPath);
     if (entityType == FileSystemEntityType.directory) {
-      return (await readSession(targetPath)).toJson();
+      final sessionFile = _sessionFileFor(targetPath);
+      if (sessionFile.existsSync()) {
+        return (await readSession(targetPath)).toJson();
+      }
+      final summaryFile = _summaryFileFor(targetPath);
+      if (summaryFile.existsSync()) {
+        return summarizeArtifact(summaryFile.path);
+      }
+      final rawCpuFile = _rawCpuFileFor(targetPath);
+      if (rawCpuFile.existsSync()) {
+        return summarizeArtifact(rawCpuFile.path);
+      }
+      throw ArgumentError.value(
+        targetPath,
+        'targetPath',
+        'No profiler summary found in directory',
+      );
+    }
+    if (entityType != FileSystemEntityType.file) {
+      throw ArgumentError.value(targetPath, 'targetPath', 'Artifact not found');
     }
 
     final json = jsonDecode(await File(targetPath).readAsString()) as Map;
@@ -176,15 +217,27 @@ class ProfileArtifacts {
   static Future<String> _resolveRawMemoryPath(String targetPath) async {
     final entityType = FileSystemEntity.typeSync(targetPath);
     if (entityType == FileSystemEntityType.directory) {
-      final session = await readSession(targetPath);
-      final rawPath = session.overallProfile?.memory?.rawProfilePath;
-      if (rawPath == null || rawPath.isEmpty) {
-        throw StateError(
-          'No memory profile is available for the session at "$targetPath". '
-          'Re-run the target with memory capture enabled.',
-        );
+      final sessionFile = _sessionFileFor(targetPath);
+      if (sessionFile.existsSync()) {
+        final session = await readSession(targetPath);
+        final rawPath = session.overallProfile?.memory?.rawProfilePath;
+        if (rawPath == null || rawPath.isEmpty) {
+          throw StateError(
+            'No memory profile is available for the session at "$targetPath". '
+            'Re-run the target with memory capture enabled.',
+          );
+        }
+        return rawPath;
       }
-      return rawPath;
+      final summaryFile = _summaryFileFor(targetPath);
+      if (summaryFile.existsSync()) {
+        return _resolveRawMemoryPath(summaryFile.path);
+      }
+      final rawMemoryFile = _rawMemoryFileFor(targetPath);
+      if (rawMemoryFile.existsSync()) {
+        return rawMemoryFile.path;
+      }
+      throw ArgumentError.value(targetPath, 'targetPath', 'Artifact not found');
     }
     if (entityType != FileSystemEntityType.file) {
       throw ArgumentError.value(targetPath, 'targetPath', 'Artifact not found');
@@ -249,6 +302,30 @@ class ProfileArtifacts {
       targetPath,
       'targetPath',
       'Unsupported artifact type for CPU sample loading.',
+    );
+  }
+
+  static File _sessionFileFor(String directoryPath) {
+    return File(
+      path.join(directoryPath, ProfileArtifactStore._sessionFileName),
+    );
+  }
+
+  static File _summaryFileFor(String directoryPath) {
+    return File(
+      path.join(directoryPath, ProfileArtifactStore._summaryFileName),
+    );
+  }
+
+  static File _rawCpuFileFor(String directoryPath) {
+    return File(
+      path.join(directoryPath, ProfileArtifactStore._rawProfileFileName),
+    );
+  }
+
+  static File _rawMemoryFileFor(String directoryPath) {
+    return File(
+      path.join(directoryPath, ProfileArtifactStore._rawMemoryProfileFileName),
     );
   }
 }

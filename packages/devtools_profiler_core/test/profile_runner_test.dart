@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:devtools_profiler_core/devtools_profiler_core.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
+import 'package:vm_service/vm_service.dart';
 
 void main() {
   final fixtureDirectory = _fixtureDirectory();
@@ -228,7 +229,7 @@ Future<void> main() async {
     expect(result.overallProfile!.sampleCount, greaterThan(0));
     expect(
       result.warnings,
-      contains(contains('Attached to an existing VM service')),
+      contains(contains('Attach mode captured an existing VM-service process')),
     );
     expect(File(result.overallProfile!.summaryPath).existsSync(), isTrue);
     expect(File(result.overallProfile!.rawProfilePath!).existsSync(), isTrue);
@@ -433,6 +434,78 @@ Future<void> main() async {
     final region = ProfileRegionResult.fromJson(summary);
 
     expect(region.sampleCount, 1);
+    expect(region.topSelfFrames.single.name, 'Worker.hotLeaf');
+  });
+
+  test('summarizes a profile artifact directory', () async {
+    final artifactRoot = await Directory.systemTemp.createTemp(
+      'devtools_profiler_core_summary_dir.',
+    );
+    addTearDown(() => artifactRoot.delete(recursive: true));
+
+    final profileDirectory = Directory(path.join(artifactRoot.path, 'overall'));
+    await profileDirectory.create(recursive: true);
+    final rawArtifact = File(
+      path.join(profileDirectory.path, 'cpu_profile.json'),
+    );
+    await rawArtifact.writeAsString(
+      const JsonEncoder.withIndent('  ').convert({
+        'type': 'CpuSamples',
+        'samplePeriod': 1000,
+        'timeOriginMicros': 0,
+        'timeExtentMicros': 2000,
+        'functions': [
+          {
+            'kind': 'Dart',
+            'resolvedUrl': 'package:fixture/a.dart',
+            'function': {
+              'type': '@Function',
+              'id': 'functions/a',
+              'name': 'hotLeaf',
+              'owner': {
+                'type': '@Class',
+                'id': 'classes/worker',
+                'name': 'Worker',
+              },
+            },
+          },
+        ],
+        'samples': [
+          {
+            'timestamp': 1,
+            'stack': [0],
+          },
+        ],
+      }),
+    );
+
+    final summaryFile = File(path.join(profileDirectory.path, 'summary.json'));
+    final summary = summarizeCpuSamples(
+      regionId: 'overall',
+      name: 'whole-session',
+      attributes: const {'scope': 'session'},
+      isolateId: 'isolates/1',
+      isolateIds: const ['isolates/1'],
+      captureKinds: const [ProfileCaptureKind.cpu],
+      startTimestampMicros: 0,
+      endTimestampMicros: 2000,
+      cpuSamples: CpuSamples.parse(
+        jsonDecode(await rawArtifact.readAsString()) as Map<String, dynamic>,
+      )!,
+      summaryPath: summaryFile.path,
+      rawProfilePath: rawArtifact.path,
+    );
+    await summaryFile.writeAsString(
+      const JsonEncoder.withIndent('  ').convert(summary.toJson()),
+    );
+
+    final resolved = await ProfileArtifacts.summarizeArtifact(
+      profileDirectory.path,
+    );
+    final region = ProfileRegionResult.fromJson(resolved);
+
+    expect(region.regionId, 'overall');
+    expect(region.rawProfilePath, rawArtifact.path);
     expect(region.topSelfFrames.single.name, 'Worker.hotLeaf');
   });
 }

@@ -14,6 +14,7 @@ Map<String, Object?> sessionPresentationJson(
 ) {
   return {
     ...session.toJson(),
+    'cliCommand': _sessionCliCommand(session),
     if (session.overallProfile != null)
       'overallProfile': regionPresentationJson(
         session.overallProfile!,
@@ -38,13 +39,17 @@ Map<String, Object?> regionPresentationJson(
   ProfileRegionResult region,
   ProfileCallTree? callTree,
   ProfileCallTree? bottomUpTree,
-  ProfileMethodTable? methodTable,
-) {
+  ProfileMethodTable? methodTable, {
+  List<String> warnings = const [],
+}) {
   return {
     ...region.toJson(),
+    if (region.summaryPath.isNotEmpty)
+      'cliCommand': _summarizeCliCommand(region.summaryPath),
     if (callTree != null) 'callTree': callTree.toJson(),
     if (bottomUpTree != null) 'bottomUpTree': bottomUpTree.toJson(),
     if (methodTable != null) 'methodTable': methodTable.toJson(),
+    if (warnings.isNotEmpty) 'preparationWarnings': warnings,
   };
 }
 
@@ -58,6 +63,7 @@ Map<String, Object?> comparisonPresentationJson(
   ];
   return {
     'kind': 'profileComparison',
+    'cliCommand': _compareCliCommand(comparison),
     'baseline': _comparisonTargetJson(comparison.baseline),
     'current': _comparisonTargetJson(comparison.current),
     'comparison': comparison.comparison.toJson(),
@@ -74,6 +80,7 @@ Map<String, Object?> hotspotExplanationJson(
   final preparationWarnings = explanation.target.presentation.warnings;
   return {
     'kind': 'hotspotExplanation',
+    'cliCommand': _explainCliCommand(explanation),
     'target': _comparisonTargetJson(explanation.target),
     'hotspots': explanation.hotspots.toJson(),
     if (preparationWarnings.isNotEmpty)
@@ -88,6 +95,7 @@ Map<String, Object?> methodInspectionJson(
   final preparationWarnings = inspection.target.presentation.warnings;
   return {
     'kind': 'methodInspection',
+    'cliCommand': _inspectCliCommand(inspection),
     'target': _comparisonTargetJson(inspection.target),
     'inspection': inspection.inspection.toJson(),
     if (preparationWarnings.isNotEmpty)
@@ -105,6 +113,7 @@ Map<String, Object?> methodComparisonJson(
   ];
   return {
     'kind': 'methodComparison',
+    'cliCommand': _compareMethodCliCommand(comparison),
     'baseline': _comparisonTargetJson(comparison.baseline),
     'current': _comparisonTargetJson(comparison.current),
     'comparison': comparison.comparison.toJson(),
@@ -118,6 +127,7 @@ Map<String, Object?> methodSearchJson(PreparedProfileMethodSearch search) {
   final preparationWarnings = search.target.presentation.warnings;
   return {
     'kind': 'methodSearch',
+    'cliCommand': _searchMethodsCliCommand(search),
     'target': _comparisonTargetJson(search.target),
     'search': search.search.toJson(),
     if (preparationWarnings.isNotEmpty)
@@ -129,6 +139,7 @@ Map<String, Object?> methodSearchJson(PreparedProfileMethodSearch search) {
 Map<String, Object?> trendPresentationJson(PreparedProfileTrends trends) {
   return {
     'kind': 'profileTrends',
+    'cliCommand': _trendsCliCommand(trends),
     'targets': [for (final target in trends.targets) _trendTargetJson(target)],
     'trends': trends.trends.toJson(),
   };
@@ -146,6 +157,7 @@ Map<String, Object?> _comparisonTargetJson(PreparedComparisonTarget target) {
       target.presentation.callTree,
       target.presentation.bottomUpTree,
       target.presentation.methodTable,
+      warnings: target.presentation.warnings,
     ),
   };
 }
@@ -172,6 +184,7 @@ Map<String, Object?> memoryClassInspectionJson(
   final memory = inspection.memory;
   return {
     'kind': 'memoryClassInspection',
+    'cliCommand': _inspectClassesCliCommand(inspection),
     'targetPath': inspection.targetPath,
     'classQuery': inspection.classQuery,
     'minLiveBytes': inspection.minLiveBytes,
@@ -201,4 +214,175 @@ String _presentationScope(ProfileRegionResult region) {
     return 'session';
   }
   return 'region';
+}
+
+String _sessionCliCommand(ProfileRunResult session) {
+  if (session.command.isNotEmpty && session.command.first == 'attach') {
+    final duration = _durationOptionForSession(session);
+    return _shellJoin([
+      'devtools-profiler',
+      'attach',
+      if (duration != null) ...['--duration', duration],
+      '--cwd',
+      session.workingDirectory,
+      '--artifact-dir',
+      session.artifactDirectory,
+      session.vmServiceUri ?? session.command.skip(1).join(' '),
+    ]);
+  }
+  return _shellJoin([
+    'devtools-profiler',
+    'run',
+    '--cwd',
+    session.workingDirectory,
+    '--artifact-dir',
+    session.artifactDirectory,
+    '--',
+    ...session.command,
+  ]);
+}
+
+String _summarizeCliCommand(String targetPath) {
+  return _shellJoin(['devtools-profiler', 'summarize', targetPath]);
+}
+
+String _compareCliCommand(PreparedProfileComparison comparison) {
+  return _shellJoin([
+    'devtools-profiler',
+    'compare',
+    if (comparison.baseline.selectedProfileId != 'overall') ...[
+      '--baseline-profile-id',
+      comparison.baseline.selectedProfileId,
+    ],
+    if (comparison.current.selectedProfileId != 'overall') ...[
+      '--current-profile-id',
+      comparison.current.selectedProfileId,
+    ],
+    comparison.baseline.path,
+    comparison.current.path,
+  ]);
+}
+
+String _explainCliCommand(PreparedProfileExplanation explanation) {
+  return _shellJoin([
+    'devtools-profiler',
+    'explain',
+    if (explanation.target.selectedProfileId != 'overall') ...[
+      '--profile-id',
+      explanation.target.selectedProfileId,
+    ],
+    explanation.target.path,
+  ]);
+}
+
+String _inspectCliCommand(PreparedProfileMethodInspection inspection) {
+  final queryOption = inspection.inspection.queryKind == 'methodId'
+      ? '--method-id'
+      : '--method';
+  return _shellJoin([
+    'devtools-profiler',
+    'inspect',
+    if (inspection.target.selectedProfileId != 'overall') ...[
+      '--profile-id',
+      inspection.target.selectedProfileId,
+    ],
+    queryOption,
+    inspection.inspection.query,
+    inspection.target.path,
+  ]);
+}
+
+String _compareMethodCliCommand(PreparedProfileMethodComparison comparison) {
+  final queryOption = comparison.comparison.queryKind == 'methodId'
+      ? '--method-id'
+      : '--method';
+  return _shellJoin([
+    'devtools-profiler',
+    'compare-method',
+    if (comparison.baseline.selectedProfileId != 'overall') ...[
+      '--baseline-profile-id',
+      comparison.baseline.selectedProfileId,
+    ],
+    if (comparison.current.selectedProfileId != 'overall') ...[
+      '--current-profile-id',
+      comparison.current.selectedProfileId,
+    ],
+    queryOption,
+    comparison.comparison.query,
+    comparison.baseline.path,
+    comparison.current.path,
+  ]);
+}
+
+String _searchMethodsCliCommand(PreparedProfileMethodSearch search) {
+  return _shellJoin([
+    'devtools-profiler',
+    'search-methods',
+    if (search.target.selectedProfileId != 'overall') ...[
+      '--profile-id',
+      search.target.selectedProfileId,
+    ],
+    if (search.search.query?.isNotEmpty == true) ...[
+      '--query',
+      search.search.query!,
+    ],
+    '--sort',
+    search.search.sortBy.name,
+    search.target.path,
+  ]);
+}
+
+String _trendsCliCommand(PreparedProfileTrends trends) {
+  return _shellJoin([
+    'devtools-profiler',
+    'trends',
+    ...trends.targets.map((target) => target.path),
+  ]);
+}
+
+String _inspectClassesCliCommand(PreparedMemoryClassInspection inspection) {
+  return _shellJoin([
+    'devtools-profiler',
+    'inspect-classes',
+    if (inspection.classQuery?.isNotEmpty == true) ...[
+      '--class',
+      inspection.classQuery!,
+    ],
+    if (inspection.minLiveBytes != null) ...[
+      '--min-live-bytes',
+      '${inspection.minLiveBytes}',
+    ],
+    inspection.targetPath,
+  ]);
+}
+
+String _shellJoin(Iterable<String> arguments) {
+  return arguments.map(_shellQuote).join(' ');
+}
+
+String _shellQuote(String value) {
+  if (value.isEmpty) {
+    return "''";
+  }
+  const specialCharacters = "'\"\\\$`!|&;<>(){}[]*?";
+  final needsQuoting = value.runes.any((rune) {
+    final character = String.fromCharCode(rune);
+    return character.trim().isEmpty || specialCharacters.contains(character);
+  });
+  if (!needsQuoting) {
+    return value;
+  }
+  return "'${value.replaceAll("'", "'\\''")}'";
+}
+
+String? _durationOptionForSession(ProfileRunResult session) {
+  final micros = session.overallProfile?.durationMicros;
+  if (micros == null || micros <= 0) {
+    return null;
+  }
+  if (micros % Duration.microsecondsPerSecond == 0) {
+    return '${micros ~/ Duration.microsecondsPerSecond}s';
+  }
+  final milliseconds = (micros / Duration.microsecondsPerMillisecond).ceil();
+  return '${milliseconds}ms';
 }

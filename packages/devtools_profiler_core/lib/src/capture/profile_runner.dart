@@ -40,20 +40,14 @@ class ProfileRunner {
     validateProfileCommand(request.command);
 
     final sessionId = generateProfileSessionId();
-    final workingDirectory = path.normalize(
-      request.workingDirectory ?? Directory.current.path,
-    );
-    final artifactDirectory = Directory(switch (request.artifactDirectory) {
-      final String dir when path.isAbsolute(dir) => dir,
-      final String dir => path.normalize(path.join(workingDirectory, dir)),
-      null => path.join(
-        workingDirectory,
-        '.dart_tool',
-        'devtools_profiler',
-        'sessions',
-        sessionId,
+    final workingDirectory = _resolveWorkingDirectory(request.workingDirectory);
+    final artifactDirectory = Directory(
+      _resolveArtifactDirectory(
+        requestedDirectory: request.artifactDirectory,
+        sessionId: sessionId,
+        workingDirectory: workingDirectory,
       ),
-    });
+    );
     final artifactStore = ProfileArtifactStore(artifactDirectory);
     await artifactStore.create();
 
@@ -154,20 +148,14 @@ class ProfileRunner {
     }
 
     final sessionId = generateProfileSessionId();
-    final workingDirectory = path.normalize(
-      request.workingDirectory ?? Directory.current.path,
-    );
-    final artifactDirectory = Directory(switch (request.artifactDirectory) {
-      final String dir when path.isAbsolute(dir) => dir,
-      final String dir => path.normalize(path.join(workingDirectory, dir)),
-      null => path.join(
-        workingDirectory,
-        '.dart_tool',
-        'devtools_profiler',
-        'sessions',
-        sessionId,
+    final workingDirectory = _resolveWorkingDirectory(request.workingDirectory);
+    final artifactDirectory = Directory(
+      _resolveArtifactDirectory(
+        requestedDirectory: request.artifactDirectory,
+        sessionId: sessionId,
+        workingDirectory: workingDirectory,
       ),
-    });
+    );
     final artifactStore = ProfileArtifactStore(artifactDirectory);
     await artifactStore.create();
 
@@ -184,7 +172,7 @@ class ProfileRunner {
     try {
       await sessionController.registerServices();
       sessionController.addWarning(
-        'Attached to an existing VM service. Explicit region markers are only available if the target process was started with this profiler session configuration.',
+        'Attach mode captured an existing VM-service process. Explicit region markers are unavailable unless the target was launched by devtools-profiler run.',
       );
       if (!request.enableDtd) {
         sessionController.addWarning(
@@ -268,4 +256,28 @@ class ProfileRunner {
       topClassCount: topClassCount,
     );
   }
+}
+
+String _resolveWorkingDirectory(String? workingDirectory) {
+  return path.normalize(
+    path.absolute(workingDirectory ?? Directory.current.path),
+  );
+}
+
+String _resolveArtifactDirectory({
+  required String? requestedDirectory,
+  required String sessionId,
+  required String workingDirectory,
+}) {
+  return switch (requestedDirectory) {
+    final String dir when path.isAbsolute(dir) => path.normalize(dir),
+    final String dir => path.normalize(path.join(workingDirectory, dir)),
+    null => path.join(
+      workingDirectory,
+      '.dart_tool',
+      'devtools_profiler',
+      'sessions',
+      sessionId,
+    ),
+  };
 }

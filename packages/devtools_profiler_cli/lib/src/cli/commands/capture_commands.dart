@@ -8,6 +8,11 @@ import '../constants.dart';
 import '../options.dart';
 import 'profiler_command.dart';
 
+const _attachRegionWarning =
+    'Attach mode captures the existing VM-service process, but explicit '
+    'devtools_region_profiler markers are unavailable unless the target was '
+    'launched by devtools-profiler run.';
+
 /// Command that launches and profiles a Dart or Flutter process.
 class RunCommand extends ProfilerCommand {
   /// Creates a run command.
@@ -193,6 +198,7 @@ class AttachCommand extends ProfilerCommand {
       );
     }
 
+    io.writelnErr('Warning: $_attachRegionWarning');
     final session = await profileRunner.attach(
       ProfileAttachRequest(
         artifactDirectory: argResults!['artifact-dir'] as String?,

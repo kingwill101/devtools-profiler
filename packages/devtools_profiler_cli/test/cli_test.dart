@@ -195,7 +195,8 @@ void main() {
     final json = jsonDecode(stdoutCapture.text) as Map<String, Object?>;
     expect(json['sessionId'], 'session-attach');
     expect(json['command'], ['attach', 'http://127.0.0.1:8181/abcd/']);
-    expect(stderrCapture.text, isEmpty);
+    expect(stderrCapture.text, contains('Attach mode captures'));
+    expect(stderrCapture.text, contains('devtools-profiler run'));
   });
 
   test('run prints json output with a call tree when expanded', () async {
@@ -995,6 +996,35 @@ void main() {
       ),
       isFalse,
     );
+    expect(stderrCapture.text, isEmpty);
+  });
+
+  test('summarize warns when active filters remove every CPU frame', () async {
+    final runner = _FakeProfileRunner();
+    final stdoutCapture = _OutputCapture();
+    final stderrCapture = _OutputCapture();
+    addTearDown(() async {
+      await stdoutCapture.close();
+      await stderrCapture.close();
+    });
+
+    final exitCode = await runCli(
+      const [
+        'summarize',
+        '--include-package',
+        'missing_package',
+        '/tmp/profile.json',
+      ],
+      runner: runner,
+      output: stdoutCapture.sink,
+      errorOutput: stderrCapture.sink,
+    );
+    await stdoutCapture.flush();
+
+    expect(exitCode, 0);
+    expect(stdoutCapture.text, contains('available before filtering'));
+    expect(stdoutCapture.text, contains('--include-package missing_package'));
+    expect(stdoutCapture.text, contains('Retry without those filters'));
     expect(stderrCapture.text, isEmpty);
   });
 
