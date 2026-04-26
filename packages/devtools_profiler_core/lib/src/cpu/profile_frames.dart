@@ -104,7 +104,7 @@ String? _packageNameFromFilePath(String filePath) {
   if (packageDirectoryName.isEmpty || packageDirectoryName == path.separator) {
     return null;
   }
-  return packageDirectoryName;
+  return _packageNameFromPubCacheFolder(packageDirectoryName);
 }
 
 String _packageNameFromPubCacheFolder(String folder) {
