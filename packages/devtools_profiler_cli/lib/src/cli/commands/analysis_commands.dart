@@ -62,22 +62,8 @@ class CompareCommand extends ProfilerCommand {
 
     final options = presentationOptions;
 
-    final minLiveBytesStr = argResults!['min-live-bytes'] as String?;
-    int? minLiveBytes;
-    if (minLiveBytesStr != null && minLiveBytesStr.isNotEmpty) {
-      minLiveBytes = int.tryParse(minLiveBytesStr);
-      if (minLiveBytes == null) {
-        usageException('--min-live-bytes must be a non-negative integer.');
-      }
-    }
     final memoryClassLimitStr = argResults!['memory-class-limit'] as String?;
-    int? memoryClassLimit;
-    if (memoryClassLimitStr != null && memoryClassLimitStr.isNotEmpty) {
-      memoryClassLimit = int.tryParse(memoryClassLimitStr);
-      if (memoryClassLimit == null) {
-        usageException('--memory-class-limit must be a non-negative integer.');
-      }
-    }
+    final memoryClassLimitSpecified = memoryClassLimitStr != null;
 
     final comparison = await prepareProfileComparison(
       profileRunner,
@@ -85,8 +71,15 @@ class CompareCommand extends ProfilerCommand {
       currentPath: argResults!.rest.last,
       baselineProfileId: argResults!['baseline-profile-id'] as String?,
       currentProfileId: argResults!['current-profile-id'] as String?,
-      minLiveBytes: minLiveBytes,
-      memoryClassLimit: memoryClassLimit,
+      minLiveBytes: parseNonNegativeInt(
+        argResults!['min-live-bytes'] as String?,
+        optionName: 'min-live-bytes',
+      ),
+      memoryClassLimit: parseLimit(
+        memoryClassLimitStr,
+        optionName: 'memory-class-limit',
+      ),
+      memoryClassLimitSpecified: memoryClassLimitSpecified,
       options: options,
     );
 
@@ -381,20 +374,15 @@ class InspectClassesCommand extends ProfilerCommand {
 
     final limitStr = argResults!['limit'] as String;
     final limit = parseLimit(limitStr, optionName: 'limit');
-    final minLiveBytesStr = argResults!['min-live-bytes'] as String?;
-    int? minLiveBytes;
-    if (minLiveBytesStr != null && minLiveBytesStr.isNotEmpty) {
-      minLiveBytes = int.tryParse(minLiveBytesStr);
-      if (minLiveBytes == null) {
-        usageException('--min-live-bytes must be a non-negative integer.');
-      }
-    }
 
     final inspection = await prepareMemoryClassInspection(
       profileRunner,
       argResults!.rest.single,
       classQuery: argResults!['class'] as String?,
-      minLiveBytes: minLiveBytes,
+      minLiveBytes: parseNonNegativeInt(
+        argResults!['min-live-bytes'] as String?,
+        optionName: 'min-live-bytes',
+      ),
       topClassCount: limit ?? 0,
     );
 

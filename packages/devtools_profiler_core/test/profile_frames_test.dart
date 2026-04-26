@@ -48,6 +48,26 @@ void main() {
     expect(frame.packageName, 'lualike');
   });
 
+  test('packageName strips version suffixes from file package folders', () {
+    final frame = ProfileFrame(
+      name: 'Value.toString',
+      kind: 'Dart',
+      location: Uri.file(
+        path.join(
+          '/',
+          'workspace',
+          'cache',
+          'lualike-1.2.3',
+          'lib',
+          'src',
+          'value.dart',
+        ),
+      ).toString(),
+    );
+
+    expect(frame.packageName, 'lualike');
+  });
+
   test('packageName ignores file URIs outside package layouts', () {
     final frame = ProfileFrame(
       name: 'main',

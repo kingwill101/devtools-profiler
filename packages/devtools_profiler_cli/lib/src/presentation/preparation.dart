@@ -1,4 +1,5 @@
 import 'package:devtools_profiler_core/devtools_profiler_core.dart';
+import 'package:vm_service/vm_service.dart';
 
 import 'models.dart';
 import 'options.dart';
@@ -84,6 +85,7 @@ Future<PreparedProfileComparison> prepareProfileComparison(
   String? currentProfileId,
   int? minLiveBytes,
   int? memoryClassLimit,
+  bool memoryClassLimitSpecified = false,
   required ProfilePresentationOptions options,
 }) async {
   final baseline = await _resolveComparisonTarget(
@@ -102,7 +104,7 @@ Future<PreparedProfileComparison> prepareProfileComparison(
   ProfileMemoryResult? baselineMemoryOverride;
   ProfileMemoryResult? currentMemoryOverride;
 
-  if (minLiveBytes != null || memoryClassLimit != null) {
+  if (minLiveBytes != null || memoryClassLimitSpecified) {
     final baselineRawPath = baseline.presentation.region.memory?.rawProfilePath;
     final currentRawPath = current.presentation.region.memory?.rawProfilePath;
 
@@ -137,7 +139,9 @@ Future<PreparedProfileComparison> prepareProfileComparison(
     currentMethodTable: current.presentation.methodTable,
     frameLimit: options.frameLimit,
     methodLimit: options.methodLimit,
-    memoryClassLimit: memoryClassLimit ?? options.frameLimit,
+    memoryClassLimit: memoryClassLimitSpecified
+        ? memoryClassLimit
+        : options.frameLimit,
     baselineMemoryOverride: baselineMemoryOverride,
     currentMemoryOverride: currentMemoryOverride,
   );
@@ -482,18 +486,7 @@ Future<PreparedRegionPresentation> prepareRegionPresentation(
 
   final cpuSamples = await runner.readCpuSamples(rawProfilePath);
   final memory = _filterStoredMemory(region.memory, options);
-  int countCpuSamplesBeforeFilters() {
-    final sampleList = cpuSamples.samples;
-    if (sampleList != null) {
-      final nonEmptyStacks = sampleList
-          .where((sample) => (sample.stack ?? const []).isNotEmpty)
-          .length;
-      return nonEmptyStacks == 0 ? cpuSamples.sampleCount ?? 0 : nonEmptyStacks;
-    }
-    return cpuSamples.sampleCount ?? 0;
-  }
-
-  final preFilterSampleCount = countCpuSamplesBeforeFilters();
+  final preFilterSampleCount = _countCpuSamplesBeforeFilters(cpuSamples);
   final rebuiltRegion = summarizeCpuSamples(
     regionId: region.regionId,
     name: region.name,
@@ -589,6 +582,14 @@ Future<PreparedRegionPresentation> prepareRegionPresentation(
 
 bool _capturesCpu(ProfileRegionResult region) {
   return region.captureKinds.contains(ProfileCaptureKind.cpu);
+}
+
+int _countCpuSamplesBeforeFilters(CpuSamples cpuSamples) {
+  final sampleCount = cpuSamples.sampleCount;
+  if (sampleCount != null) {
+    return sampleCount;
+  }
+  return cpuSamples.samples?.length ?? 0;
 }
 
 ProfileRegionResult _filterStoredRegion(

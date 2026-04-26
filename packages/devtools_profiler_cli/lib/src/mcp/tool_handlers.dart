@@ -494,14 +494,10 @@ class McpToolHandlers {
           sessionIdKey: 'currentSessionId',
         );
         progress(1, 3, 'Preparing comparison views.');
-        final minLiveBytesArg = arguments['minLiveBytes'];
-        final int? minLiveBytes = minLiveBytesArg is int
-            ? minLiveBytesArg
-            : null;
-        final memoryClassLimitArg = arguments['memoryClassLimit'];
-        final int? memoryClassLimit = memoryClassLimitArg is int
-            ? memoryClassLimitArg
-            : null;
+        final memoryClassLimit = _optionalLimitArgument(
+          arguments,
+          key: 'memoryClassLimit',
+        );
         final comparison = await prepareProfileComparison(
           runner,
           baselinePath: baselinePath,
@@ -514,8 +510,12 @@ class McpToolHandlers {
             arguments,
             key: 'currentProfileId',
           ),
-          minLiveBytes: minLiveBytes,
-          memoryClassLimit: memoryClassLimit,
+          minLiveBytes: _optionalNonNegativeIntArgument(
+            arguments,
+            key: 'minLiveBytes',
+          ),
+          memoryClassLimit: memoryClassLimit.value,
+          memoryClassLimitSpecified: memoryClassLimit.specified,
           options: treeOptions,
         );
         progress(2, 3, 'Building comparison response.');
@@ -630,10 +630,6 @@ class McpToolHandlers {
           arguments,
           key: 'classQuery',
         );
-        final minLiveBytesArg = arguments['minLiveBytes'];
-        final int? minLiveBytes = minLiveBytesArg is int
-            ? minLiveBytesArg
-            : null;
         final limit = _treeLimitFromArgument(
           arguments,
           key: 'limit',
@@ -645,7 +641,10 @@ class McpToolHandlers {
           runner,
           path,
           classQuery: classQuery,
-          minLiveBytes: minLiveBytes,
+          minLiveBytes: _optionalNonNegativeIntArgument(
+            arguments,
+            key: 'minLiveBytes',
+          ),
           topClassCount: limit ?? 0,
         );
         progress(1, 2, 'Building class inspection response.');
@@ -1223,6 +1222,32 @@ int? _listLimitFromArguments(Map<String, Object?> arguments) {
     throw ArgumentError('The "limit" argument must be a non-negative integer.');
   }
   return value == 0 ? null : value;
+}
+
+int? _optionalNonNegativeIntArgument(
+  Map<String, Object?> arguments, {
+  required String key,
+}) {
+  final value = arguments[key];
+  if (value == null) {
+    return null;
+  }
+  if (value is! int || value < 0) {
+    throw ArgumentError('The "$key" argument must be a non-negative integer.');
+  }
+  return value;
+}
+
+({bool specified, int? value}) _optionalLimitArgument(
+  Map<String, Object?> arguments, {
+  required String key,
+}) {
+  if (!arguments.containsKey(key) || arguments[key] == null) {
+    return (specified: false, value: null);
+  }
+
+  final value = _optionalNonNegativeIntArgument(arguments, key: key);
+  return (specified: true, value: value == 0 ? null : value);
 }
 
 ProfilePresentationOptions _treeOptionsFromArguments(

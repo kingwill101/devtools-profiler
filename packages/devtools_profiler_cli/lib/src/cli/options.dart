@@ -162,3 +162,18 @@ int? parseLimit(String? value, {required String optionName}) {
   }
   return parsed == 0 ? null : parsed;
 }
+
+/// Parses a non-negative integer option.
+int? parseNonNegativeInt(String? value, {required String optionName}) {
+  if (value == null || value.isEmpty) {
+    return null;
+  }
+
+  final parsed = int.tryParse(value);
+  if (parsed == null || parsed < 0) {
+    throw FormatException(
+      'The "$optionName" option must be a non-negative integer.',
+    );
+  }
+  return parsed;
+}

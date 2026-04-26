@@ -38,6 +38,7 @@ void main() {
         'profile_compare',
         'profile_analyze_trends',
         'profile_find_regressions',
+        'profile_inspect_classes',
       ]),
     );
 
@@ -703,6 +704,104 @@ void main() {
     expect((insights.first as Map<String, Object?>)['kind'], 'duration');
     final methods = comparison['methods'] as List<Object?>;
     expect((methods.first as Map<String, Object?>)['name'], 'Worker.hotLeaf');
+  });
+
+  test('compares memory classes with an unlimited MCP limit', () async {
+    final runner = _FakeMemoryProfileRunner();
+    final environment = _McpTestEnvironment(runner);
+    addTearDown(environment.shutdown);
+    await _initializeServer(environment);
+
+    final result = await environment.serverConnection.callTool(
+      CallToolRequest(
+        name: 'profile_compare',
+        arguments: {
+          'baselinePath': '/tmp/memory/session-1',
+          'currentPath': '/tmp/memory/session-2',
+          'memoryClassLimit': 0,
+        },
+      ),
+    );
+
+    expect(result.isError, isNot(true));
+    expect(runner.readMemoryTopClassCounts, [0, 0]);
+    final payload = result.structuredContent!;
+    final comparison = payload['comparison'] as Map<String, Object?>;
+    final memory = comparison['memory'] as Map<String, Object?>;
+    final topClasses = memory['topClasses'] as List<Object?>;
+    expect(topClasses, hasLength(3));
+  });
+
+  test('rejects negative MCP memory comparison limits', () async {
+    final environment = _McpTestEnvironment(_FakeProfileRunner());
+    addTearDown(environment.shutdown);
+    await _initializeServer(environment);
+
+    final result = await environment.serverConnection.callTool(
+      CallToolRequest(
+        name: 'profile_compare',
+        arguments: {
+          'baselinePath': '/tmp/artifacts/session-1',
+          'currentPath': '/tmp/artifacts/session-2',
+          'memoryClassLimit': -1,
+        },
+      ),
+    );
+
+    expect(result.isError, isTrue);
+    expect(
+      (result.content.single as TextContent).text,
+      contains('"memoryClassLimit" argument must be a non-negative integer'),
+    );
+  });
+
+  test('inspects memory classes for agents', () async {
+    final runner = _FakeMemoryProfileRunner();
+    final environment = _McpTestEnvironment(runner);
+    addTearDown(environment.shutdown);
+    await _initializeServer(environment);
+
+    final result = await environment.serverConnection.callTool(
+      CallToolRequest(
+        name: 'profile_inspect_classes',
+        arguments: {
+          'path': '/tmp/memory/session-1',
+          'classQuery': 'Love',
+          'minLiveBytes': 512,
+          'limit': 1,
+        },
+      ),
+    );
+
+    expect(result.isError, isNot(true));
+    expect(runner.lastReadMemoryPath, '/tmp/memory/session-1');
+    expect(runner.lastMemoryClassQuery, 'Love');
+    expect(runner.lastMinLiveBytes, 512);
+    expect(runner.readMemoryTopClassCounts, [1]);
+    final payload = result.structuredContent!;
+    expect(payload['kind'], 'memoryClassInspection');
+    final classes = payload['classes'] as List<Object?>;
+    expect(classes, hasLength(1));
+    expect((classes.single as Map<String, Object?>)['className'], 'LoveImage');
+  });
+
+  test('rejects negative MCP inspect-classes minLiveBytes', () async {
+    final environment = _McpTestEnvironment(_FakeProfileRunner());
+    addTearDown(environment.shutdown);
+    await _initializeServer(environment);
+
+    final result = await environment.serverConnection.callTool(
+      CallToolRequest(
+        name: 'profile_inspect_classes',
+        arguments: {'path': '/tmp/memory/session-1', 'minLiveBytes': -1},
+      ),
+    );
+
+    expect(result.isError, isTrue);
+    expect(
+      (result.content.single as TextContent).text,
+      contains('"minLiveBytes" argument must be a non-negative integer'),
+    );
   });
 
   test('analyzes trends across explicit session paths for agents', () async {
@@ -1408,5 +1507,205 @@ class _FakeProfileRunner extends ProfileRunner {
       return _cpuSamplesCurrent;
     }
     return _cpuSamples;
+  }
+}
+
+class _FakeMemoryProfileRunner extends _FakeProfileRunner {
+  String? lastReadMemoryPath;
+  String? lastMemoryClassQuery;
+  int? lastMinLiveBytes;
+  final List<int> readMemoryTopClassCounts = [];
+
+  static const _baselineRawMemoryPath =
+      '/tmp/memory/session-1/overall/memory_profile.json';
+  static const _currentRawMemoryPath =
+      '/tmp/memory/session-2/overall/memory_profile.json';
+
+  static final _memoryClasses = [
+    const ProfileMemoryClassSummary(
+      className: 'LoveImage',
+      libraryUri: 'package:love2d/image.dart',
+      liveBytes: 2048,
+      liveBytesDelta: 512,
+      liveInstances: 2,
+      liveInstancesDelta: 1,
+      allocationBytesDelta: 4096,
+      allocationInstancesDelta: 4,
+    ),
+    const ProfileMemoryClassSummary(
+      className: 'LoveCanvas',
+      libraryUri: 'package:love2d/canvas.dart',
+      liveBytes: 1024,
+      liveBytesDelta: 256,
+      liveInstances: 1,
+      liveInstancesDelta: 1,
+      allocationBytesDelta: 2048,
+      allocationInstancesDelta: 2,
+    ),
+    const ProfileMemoryClassSummary(
+      className: 'WorkerBuffer',
+      libraryUri: 'package:fixture/buffer.dart',
+      liveBytes: 256,
+      liveBytesDelta: 128,
+      liveInstances: 1,
+      liveInstancesDelta: 0,
+      allocationBytesDelta: 512,
+      allocationInstancesDelta: 1,
+    ),
+  ];
+
+  @override
+  Future<Map<String, Object?>> summarizeArtifact(String targetPath) async {
+    return switch (targetPath) {
+      '/tmp/memory/session-1' => _sessionWithMemory(
+        sessionId: 'session-1',
+        artifactDirectory: '/tmp/memory/session-1',
+        vmServiceUri: 'http://127.0.0.1:8181/abcd/',
+        region: _FakeProfileRunner._overallProfile,
+        rawMemoryPath: _baselineRawMemoryPath,
+      ).toJson(),
+      '/tmp/memory/session-2' => _sessionWithMemory(
+        sessionId: 'session-2',
+        artifactDirectory: '/tmp/memory/session-2',
+        vmServiceUri: 'http://127.0.0.1:8181/efgh/',
+        region: _FakeProfileRunner._overallProfileCurrent,
+        rawMemoryPath: _currentRawMemoryPath,
+      ).toJson(),
+      _ => super.summarizeArtifact(targetPath),
+    };
+  }
+
+  @override
+  Future<ProfileMemoryResult> readMemoryClasses(
+    String targetPath, {
+    String? classQuery,
+    int? minLiveBytes,
+    int topClassCount = 50,
+  }) async {
+    lastReadMemoryPath = targetPath;
+    lastMemoryClassQuery = classQuery;
+    lastMinLiveBytes = minLiveBytes;
+    readMemoryTopClassCounts.add(topClassCount);
+
+    var classes = _memoryClasses
+        .where((item) {
+          if (classQuery != null &&
+              !item.className.toLowerCase().contains(
+                classQuery.toLowerCase(),
+              )) {
+            return false;
+          }
+          if (minLiveBytes != null && item.liveBytes < minLiveBytes) {
+            return false;
+          }
+          return true;
+        })
+        .toList(growable: false);
+    if (topClassCount > 0 && classes.length > topClassCount) {
+      classes = classes.take(topClassCount).toList(growable: false);
+    }
+    return _memoryResult(rawProfilePath: targetPath, classes: classes);
+  }
+
+  static ProfileRunResult _sessionWithMemory({
+    required String sessionId,
+    required String artifactDirectory,
+    required String vmServiceUri,
+    required ProfileRegionResult region,
+    required String rawMemoryPath,
+  }) {
+    return ProfileRunResult(
+      sessionId: sessionId,
+      command: const ['dart', 'run', 'bin/main.dart'],
+      workingDirectory: '/workspace',
+      exitCode: 0,
+      artifactDirectory: artifactDirectory,
+      vmServiceUri: vmServiceUri,
+      overallProfile: _regionWithMemory(region, rawMemoryPath),
+      regions: const [],
+      warnings: const [],
+    );
+  }
+
+  static ProfileRegionResult _regionWithMemory(
+    ProfileRegionResult region,
+    String rawMemoryPath,
+  ) {
+    return ProfileRegionResult(
+      regionId: region.regionId,
+      name: region.name,
+      attributes: region.attributes,
+      isolateId: region.isolateId,
+      isolateIds: region.isolateIds,
+      captureKinds: region.captureKinds,
+      isolateScope: region.isolateScope,
+      parentRegionId: region.parentRegionId,
+      memory: _memoryResult(rawProfilePath: rawMemoryPath),
+      startTimestampMicros: region.startTimestampMicros,
+      endTimestampMicros: region.endTimestampMicros,
+      durationMicros: region.durationMicros,
+      sampleCount: region.sampleCount,
+      samplePeriodMicros: region.samplePeriodMicros,
+      topSelfFrames: region.topSelfFrames,
+      topTotalFrames: region.topTotalFrames,
+      summaryPath: region.summaryPath,
+      rawProfilePath: region.rawProfilePath,
+      error: region.error,
+    );
+  }
+
+  static ProfileMemoryResult _memoryResult({
+    required String rawProfilePath,
+    List<ProfileMemoryClassSummary>? classes,
+  }) {
+    final topClasses = classes ?? _memoryClasses;
+    return ProfileMemoryResult.fromJson({
+      'start': _heapSampleJson(timestamp: 1, used: 1024),
+      'end': _heapSampleJson(timestamp: 2, used: 4096),
+      'deltaHeapBytes': 3072,
+      'deltaExternalBytes': 128,
+      'deltaCapacityBytes': 4096,
+      'classCount': _memoryClasses.length,
+      'topClasses': [for (final item in topClasses) item.toJson()],
+      'rawProfilePath': rawProfilePath,
+    });
+  }
+
+  static Map<String, Object?> _heapSampleJson({
+    required int timestamp,
+    required int used,
+  }) {
+    return {
+      'timestamp': timestamp,
+      'rss': 0,
+      'capacity': 8192,
+      'used': used,
+      'external': 0,
+      'gc': false,
+      'adb_memoryInfo': {
+        'Realtime': 0,
+        'Java Heap': 0,
+        'Native Heap': 0,
+        'Code': 0,
+        'Stack': 0,
+        'Graphics': 0,
+        'Private Other': 0,
+        'System': 0,
+        'Total': 0,
+      },
+      'memory_eventInfo': {
+        'timestamp': -1,
+        'gcEvent': false,
+        'snapshotEvent': false,
+        'snapshotAutoEvent': false,
+        'allocationAccumulatorEvent': {
+          'start': false,
+          'continues': false,
+          'reset': false,
+        },
+        'extensionEvents': null,
+      },
+      'rasterCache': {'layerBytes': 0, 'pictureBytes': 0},
+    };
   }
 }

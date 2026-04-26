@@ -18,10 +18,10 @@ final class ProfileSessionContext {
 
   final ProfileArtifactStore artifactStore;
 
-  /// Whether to start the Dart Tooling Daemon for this attach session.
+  /// Optional Dart Tooling Daemon connection for region-marker RPC/events.
   ///
-  /// When null, region markers are unavailable but whole-session VM-service
-  /// capture still works.
+  /// When null, region markers are unavailable for this session, but
+  /// whole-session VM-service capture still works.
   final DartToolingDaemon? dtd;
   final String sessionId;
 
