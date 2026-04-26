@@ -866,6 +866,69 @@ void main() {
     expect(stderrCapture.text, isEmpty);
   });
 
+  test(
+    'json cli commands omit profile selectors for artifact targets',
+    () async {
+      const baselinePath =
+          '/tmp/artifacts/session-1/regions/region-1/summary.json';
+      const currentPath =
+          '/tmp/artifacts/session-2/regions/region-2/summary.json';
+
+      final explain = await _runJsonCommand(['explain', '--json', currentPath]);
+      expect(explain['cliCommand'], 'devtools-profiler explain $currentPath');
+
+      final inspect = await _runJsonCommand([
+        'inspect',
+        '--json',
+        '--method',
+        'Worker.hotLeaf',
+        currentPath,
+      ]);
+      expect(
+        inspect['cliCommand'],
+        'devtools-profiler inspect --method Worker.hotLeaf $currentPath',
+      );
+
+      final search = await _runJsonCommand([
+        'search-methods',
+        '--json',
+        '--query',
+        'Worker',
+        currentPath,
+      ]);
+      expect(
+        search['cliCommand'],
+        'devtools-profiler search-methods --query Worker --sort total '
+        '$currentPath',
+      );
+
+      final compare = await _runJsonCommand([
+        'compare',
+        '--json',
+        baselinePath,
+        currentPath,
+      ]);
+      expect(
+        compare['cliCommand'],
+        'devtools-profiler compare $baselinePath $currentPath',
+      );
+
+      final compareMethod = await _runJsonCommand([
+        'compare-method',
+        '--json',
+        '--method',
+        'Worker.hotLeaf',
+        baselinePath,
+        currentPath,
+      ]);
+      expect(
+        compareMethod['cliCommand'],
+        'devtools-profiler compare-method --method Worker.hotLeaf '
+        '$baselinePath $currentPath',
+      );
+    },
+  );
+
   test('compare prints artisanal delta output', () async {
     final runner = _FakeProfileRunner();
     final stdoutCapture = _OutputCapture();
@@ -931,6 +994,32 @@ void main() {
       isTrue,
     );
     expect(stderrCapture.text, isEmpty);
+  });
+
+  test('trends json cli command preserves session profile selection', () async {
+    final json = await _runJsonCommand(const [
+      'trends',
+      '--json',
+      '--profile-id',
+      'startup',
+      '/tmp/artifacts/session-1',
+      '/tmp/artifacts/session-2',
+      '/tmp/artifacts/session-3',
+    ], runner: _FakeProfileRunnerWithSharedTrendRegion());
+
+    expect(
+      json['cliCommand'],
+      'devtools-profiler trends --profile-id startup '
+      '/tmp/artifacts/session-1 /tmp/artifacts/session-2 '
+      '/tmp/artifacts/session-3',
+    );
+    final targets = json['targets'] as List<Object?>;
+    expect(
+      targets.cast<Map<String, Object?>>().map(
+        (target) => target['selectedProfileId'],
+      ),
+      everyElement('startup'),
+    );
   });
 
   test('trends prints artisanal trend output', () async {
@@ -1092,6 +1181,31 @@ void main() {
       },
     );
   });
+}
+
+Future<Map<String, Object?>> _runJsonCommand(
+  List<String> arguments, {
+  ProfileRunner? runner,
+}) async {
+  final stdoutCapture = _OutputCapture();
+  final stderrCapture = _OutputCapture();
+  addTearDown(() async {
+    await stdoutCapture.close();
+    await stderrCapture.close();
+  });
+
+  final exitCode = await runCli(
+    arguments,
+    runner: runner ?? _FakeProfileRunner(),
+    output: stdoutCapture.sink,
+    errorOutput: stderrCapture.sink,
+  );
+  await stdoutCapture.flush();
+  await stderrCapture.flush();
+
+  expect(exitCode, 0);
+  expect(stderrCapture.text, isEmpty);
+  return jsonDecode(stdoutCapture.text) as Map<String, Object?>;
 }
 
 class _FakeProfileRunner extends ProfileRunner {
@@ -1428,6 +1542,88 @@ class _FakeProfileRunner extends ProfileRunner {
       return _cpuSamplesCurrent;
     }
     return _cpuSamples;
+  }
+}
+
+class _FakeProfileRunnerWithSharedTrendRegion extends _FakeProfileRunner {
+  static const _profileId = 'startup';
+
+  static final _session1Region = _sharedRegion(
+    sessionId: 'session-1',
+    durationMicros: 1_400,
+    sampleCount: 7,
+  );
+
+  static final _session2Region = _sharedRegion(
+    sessionId: 'session-2',
+    durationMicros: 2_100,
+    sampleCount: 11,
+  );
+
+  static final _session3Region = _sharedRegion(
+    sessionId: 'session-3',
+    durationMicros: 2_700,
+    sampleCount: 14,
+  );
+
+  @override
+  Future<Map<String, Object?>> summarizeArtifact(String path) async {
+    return switch (path) {
+      '/tmp/artifacts/session-1' => _withRegion(
+        _FakeProfileRunner._session,
+        _session1Region,
+      ).toJson(),
+      '/tmp/artifacts/session-2' => _withRegion(
+        _FakeProfileRunner._sessionCurrent,
+        _session2Region,
+      ).toJson(),
+      '/tmp/artifacts/session-3' => _withRegion(
+        _FakeProfileRunner._sessionTrend,
+        _session3Region,
+      ).toJson(),
+      _ => super.summarizeArtifact(path),
+    };
+  }
+
+  static ProfileRunResult _withRegion(
+    ProfileRunResult session,
+    ProfileRegionResult region,
+  ) {
+    return ProfileRunResult(
+      sessionId: session.sessionId,
+      command: session.command,
+      workingDirectory: session.workingDirectory,
+      exitCode: session.exitCode,
+      artifactDirectory: session.artifactDirectory,
+      vmServiceUri: session.vmServiceUri,
+      overallProfile: session.overallProfile,
+      regions: [...session.regions, region],
+      warnings: session.warnings,
+    );
+  }
+
+  static ProfileRegionResult _sharedRegion({
+    required String sessionId,
+    required int durationMicros,
+    required int sampleCount,
+  }) {
+    return ProfileRegionResult(
+      regionId: _profileId,
+      name: 'startup',
+      attributes: const {'phase': 'startup'},
+      isolateId: 'isolates/123',
+      captureKinds: const [ProfileCaptureKind.cpu],
+      startTimestampMicros: 100,
+      endTimestampMicros: 100 + durationMicros,
+      durationMicros: durationMicros,
+      sampleCount: sampleCount,
+      samplePeriodMicros: 50,
+      topSelfFrames: const [],
+      topTotalFrames: const [],
+      summaryPath: '/tmp/artifacts/$sessionId/regions/$_profileId/summary.json',
+      rawProfilePath:
+          '/tmp/artifacts/$sessionId/regions/$_profileId/cpu_profile.json',
+    );
   }
 }
 

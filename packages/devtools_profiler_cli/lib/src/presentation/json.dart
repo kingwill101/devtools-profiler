@@ -250,11 +250,11 @@ String _compareCliCommand(PreparedProfileComparison comparison) {
   return _shellJoin([
     'devtools-profiler',
     'compare',
-    if (comparison.baseline.selectedProfileId != 'overall') ...[
+    if (_usesProfileSelector(comparison.baseline)) ...[
       '--baseline-profile-id',
       comparison.baseline.selectedProfileId,
     ],
-    if (comparison.current.selectedProfileId != 'overall') ...[
+    if (_usesProfileSelector(comparison.current)) ...[
       '--current-profile-id',
       comparison.current.selectedProfileId,
     ],
@@ -267,7 +267,7 @@ String _explainCliCommand(PreparedProfileExplanation explanation) {
   return _shellJoin([
     'devtools-profiler',
     'explain',
-    if (explanation.target.selectedProfileId != 'overall') ...[
+    if (_usesProfileSelector(explanation.target)) ...[
       '--profile-id',
       explanation.target.selectedProfileId,
     ],
@@ -282,7 +282,7 @@ String _inspectCliCommand(PreparedProfileMethodInspection inspection) {
   return _shellJoin([
     'devtools-profiler',
     'inspect',
-    if (inspection.target.selectedProfileId != 'overall') ...[
+    if (_usesProfileSelector(inspection.target)) ...[
       '--profile-id',
       inspection.target.selectedProfileId,
     ],
@@ -299,11 +299,11 @@ String _compareMethodCliCommand(PreparedProfileMethodComparison comparison) {
   return _shellJoin([
     'devtools-profiler',
     'compare-method',
-    if (comparison.baseline.selectedProfileId != 'overall') ...[
+    if (_usesProfileSelector(comparison.baseline)) ...[
       '--baseline-profile-id',
       comparison.baseline.selectedProfileId,
     ],
-    if (comparison.current.selectedProfileId != 'overall') ...[
+    if (_usesProfileSelector(comparison.current)) ...[
       '--current-profile-id',
       comparison.current.selectedProfileId,
     ],
@@ -318,7 +318,7 @@ String _searchMethodsCliCommand(PreparedProfileMethodSearch search) {
   return _shellJoin([
     'devtools-profiler',
     'search-methods',
-    if (search.target.selectedProfileId != 'overall') ...[
+    if (_usesProfileSelector(search.target)) ...[
       '--profile-id',
       search.target.selectedProfileId,
     ],
@@ -333,11 +333,34 @@ String _searchMethodsCliCommand(PreparedProfileMethodSearch search) {
 }
 
 String _trendsCliCommand(PreparedProfileTrends trends) {
+  final profileId = _trendProfileSelector(trends.targets);
   return _shellJoin([
     'devtools-profiler',
     'trends',
+    if (profileId != null) ...['--profile-id', profileId],
     ...trends.targets.map((target) => target.path),
   ]);
+}
+
+bool _usesProfileSelector(PreparedComparisonTarget target) {
+  return target.inputKind == 'session' && target.selectedProfileId != 'overall';
+}
+
+String? _trendProfileSelector(List<PreparedComparisonTarget> targets) {
+  if (targets.isEmpty ||
+      targets.any((target) => target.inputKind != 'session')) {
+    return null;
+  }
+
+  final selectedProfileIds = {
+    for (final target in targets) target.selectedProfileId,
+  };
+  if (selectedProfileIds.length != 1) {
+    return null;
+  }
+
+  final selectedProfileId = selectedProfileIds.single;
+  return selectedProfileId == 'overall' ? null : selectedProfileId;
 }
 
 String _inspectClassesCliCommand(PreparedMemoryClassInspection inspection) {
