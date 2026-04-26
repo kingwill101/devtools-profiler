@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.0-wip
 
 - Added memory class artifact inspection helpers for stored session, region, and
   raw memory profile artifacts.
@@ -8,8 +8,10 @@
   limits.
 - Added optional DTD disabling for attach sessions when region markers are not
   needed or the tooling daemon cannot start.
-- Normalized relative artifact output directories against the profiled working
-  directory.
+- Normalized artifact output directories to fully resolved paths and kept
+  relative paths anchored against the profiled working directory.
+- Allowed artifact readers to summarize per-profile artifact directories such
+  as `overall/` and `regions/<id>/` in addition to `summary.json` files.
 - Improved package detection for local checkout `file://.../<package>/lib/...`
   CPU frames so package filters work outside `.pub-cache`.
 

@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.0-wip
 
 - Added `inspect-classes` and the `profile_inspect_classes` MCP tool for
   inspecting memory class allocations from stored artifacts.
@@ -10,6 +10,10 @@
   profiling when explicit region markers are unavailable.
 - Improved CLI and JSON output by surfacing region preparation warnings,
   baseline/current comparison warnings, and sample-count fallback warnings.
+- Added warnings when active frame filters remove every CPU frame, plus
+  reproduction blocks and matching CLI commands in agent-facing JSON responses.
+- Improved memory summary tables to show live bytes, live instances, new
+  instances, and allocation deltas without requiring external JSON tools.
 - Improved package-filtered output for local checkout frames when used with a
   backend that recognizes local package file paths.
 
