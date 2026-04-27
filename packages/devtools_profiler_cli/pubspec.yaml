@@ -20,8 +20,8 @@ dependencies:
   devtools_profiler_core: ^0.2.0
   path: ^1.9.0
   stream_channel: ^2.1.4
+  vm_service: ^15.0.2
 
 dev_dependencies:
   devtools_region_profiler: ^0.1.0
   test: ^1.25.8
-  vm_service: ^15.0.2
