@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.1-wip
+
+- Added bare Dart file launch support by expanding file paths to
+  `dart run <file>`.
+- Improved short-lived Dart process profiling by holding isolates at exit long
+  enough to capture final whole-session CPU and memory snapshots.
+
 ## 0.2.0
 
 - Added memory class artifact inspection helpers for stored session, region, and

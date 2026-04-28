@@ -74,11 +74,29 @@ final class ProfileSessionController {
   Future<void> attachToVmService(
     Uri serviceUri, {
     bool clearCpuSamples = false,
+    bool monitorExitPause = false,
   }) {
     return vmHookup.attachToVmService(
       serviceUri,
       clearCpuSamples: clearCpuSamples,
+      monitorExitPause: monitorExitPause,
     );
+  }
+
+  /// Future that completes when a Dart isolate pauses immediately before exit.
+  Future<void> get exitPauseReached => vmHookup.exitPauseReached;
+
+  /// Whether a Dart isolate has paused immediately before exit.
+  bool get hasExitPauseReached => vmHookup.hasExitPauseReached;
+
+  /// Checks currently visible isolates for an exit pause.
+  Future<void> recordCurrentlyPausedExitIsolates() {
+    return vmHookup.recordCurrentlyPausedExitIsolates();
+  }
+
+  /// Resumes isolates that were held at exit for final profiling capture.
+  Future<int> resumePausedExitIsolates() {
+    return vmHookup.resumePausedExitIsolates();
   }
 
   /// Handles the DTD session-info request.

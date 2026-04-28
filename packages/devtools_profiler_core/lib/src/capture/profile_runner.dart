@@ -33,11 +33,13 @@ class ProfileRunner {
   /// markers, and writes artifacts before returning the final
   /// [ProfileRunResult].
   ///
-  /// The command in [request] must start with `dart` or `flutter`. Unsupported
-  /// launch shapes such as Flutter release mode, browser targets, or AOT-style
-  /// runs are rejected before the process starts.
+  /// The command in [request] must start with `dart`, `flutter`, or a Dart
+  /// file path. Unsupported launch shapes such as Flutter release mode, browser
+  /// targets, or AOT-style runs are rejected before the process starts.
   Future<ProfileRunResult> run(ProfileRunRequest request) async {
-    validateProfileCommand(request.command);
+    final command = normalizeProfileCommand(request.command);
+    validateProfileCommand(command);
+    final commandKind = profileCommandKind(command);
 
     final sessionId = generateProfileSessionId();
     final workingDirectory = _resolveWorkingDirectory(request.workingDirectory);
@@ -71,6 +73,7 @@ class ProfileRunner {
 
       final launchedProcess = await launchProfiledProcess(
         request: request,
+        command: command,
         sessionId: sessionId,
         dtdUri: dtdSession.info.localUri.toString(),
         workingDirectory: workingDirectory,
@@ -82,7 +85,7 @@ class ProfileRunner {
 
       final vmServiceTimeout =
           request.vmServiceTimeout ??
-          defaultVmServiceTimeoutForCommand(request.command);
+          defaultVmServiceTimeoutForCommand(command);
       final serviceUri = await launchedProcess.serviceUri.future.timeout(
         vmServiceTimeout,
         onTimeout: () {
@@ -92,7 +95,10 @@ class ProfileRunner {
           );
         },
       );
-      await sessionController.attachToVmService(serviceUri);
+      await sessionController.attachToVmService(
+        serviceUri,
+        monitorExitPause: commandKind == ProfileCommandKind.dart,
+      );
 
       final runDuration = request.runDuration;
       if (runDuration != null) {
@@ -109,14 +115,35 @@ class ProfileRunner {
         });
       }
 
-      final exitCode = await process.exitCode;
-      processExited = true;
+      final exitCodeFuture = process.exitCode;
+      final completion = commandKind == ProfileCommandKind.dart
+          ? await _waitForDartProcessCompletion(
+              exitCodeFuture,
+              sessionController,
+            )
+          : (
+              kind: _ProfiledProcessCompletionKind.exited,
+              exitCode: await exitCodeFuture,
+            );
       runDurationTimer?.cancel();
-      await sessionController.handleProcessExit();
+      int exitCode;
+      if (completion.kind == _ProfiledProcessCompletionKind.pausedAtExit) {
+        await sessionController.handleProcessExit();
+        exitCode = await _resumeExitPausedProcess(
+          exitCodeFuture: exitCodeFuture,
+          process: process,
+          sessionController: sessionController,
+        );
+      } else {
+        exitCode = completion.exitCode!;
+        processExited = true;
+        await sessionController.handleProcessExit();
+      }
+      processExited = true;
 
       final result = sessionController.buildResult(
         artifactDirectory: artifactDirectory.path,
-        command: request.command,
+        command: command,
         exitCode: exitCode,
         terminatedByProfiler: terminatedByProfiler,
         workingDirectory: workingDirectory,
@@ -256,6 +283,72 @@ class ProfileRunner {
       topClassCount: topClassCount,
     );
   }
+}
+
+enum _ProfiledProcessCompletionKind { exited, pausedAtExit }
+
+Future<({int? exitCode, _ProfiledProcessCompletionKind kind})>
+_waitForDartProcessCompletion(
+  Future<int> exitCodeFuture,
+  ProfileSessionController sessionController,
+) async {
+  final exitCompletion = exitCodeFuture.then(
+    (exitCode) =>
+        (kind: _ProfiledProcessCompletionKind.exited, exitCode: exitCode),
+  );
+  final exitPause = sessionController.exitPauseReached.then(
+    (_) => (kind: _ProfiledProcessCompletionKind.pausedAtExit, exitCode: null),
+  );
+
+  while (true) {
+    final completion =
+        await Future.any<
+          ({int? exitCode, _ProfiledProcessCompletionKind? kind})
+        >([
+          exitCompletion,
+          exitPause,
+          Future.delayed(
+            const Duration(milliseconds: 50),
+            () => (kind: null, exitCode: null),
+          ),
+        ]);
+
+    final kind = completion.kind;
+    if (kind != null) {
+      return (kind: kind, exitCode: completion.exitCode);
+    }
+
+    await sessionController.recordCurrentlyPausedExitIsolates();
+    if (sessionController.hasExitPauseReached) {
+      return (
+        kind: _ProfiledProcessCompletionKind.pausedAtExit,
+        exitCode: null,
+      );
+    }
+  }
+}
+
+Future<int> _resumeExitPausedProcess({
+  required Future<int> exitCodeFuture,
+  required Process process,
+  required ProfileSessionController sessionController,
+}) async {
+  for (var attempt = 0; attempt < 5; attempt++) {
+    await sessionController.resumePausedExitIsolates();
+    try {
+      return await exitCodeFuture.timeout(const Duration(seconds: 2));
+    } on TimeoutException {
+      // Another isolate may have reached its exit pause after the previous
+      // resume call. Loop and resume any newly observed exit pauses.
+    }
+  }
+
+  sessionController.addWarning(
+    'The target process remained paused after final profile capture; '
+    'terminating it.',
+  );
+  process.kill();
+  return exitCodeFuture;
 }
 
 String _resolveWorkingDirectory(String? workingDirectory) {

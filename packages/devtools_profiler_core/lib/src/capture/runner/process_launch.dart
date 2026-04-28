@@ -33,12 +33,13 @@ final class CommandLaunchPlan {
 /// Launches the target command with profiler session wiring applied.
 Future<LaunchedProcess> launchProfiledProcess({
   required ProfileRunRequest request,
+  required List<String> command,
   required String sessionId,
   required String dtdUri,
   required String workingDirectory,
 }) async {
   final launchPlan = instrumentedCommandLaunchPlan(
-    request.command,
+    command,
     dtdUri: dtdUri,
     sessionId: sessionId,
   );
@@ -101,6 +102,29 @@ Future<LaunchedProcess> launchProfiledProcess({
     stdoutSubscription: stdoutSubscription,
     stderrSubscription: stderrSubscription,
   );
+}
+
+/// Returns the Dart or Flutter command shape used by the profiler.
+///
+/// A bare Dart file path is treated as shorthand for `dart run <file>`.
+List<String> normalizeProfileCommand(List<String> command) {
+  if (command.isEmpty) {
+    return command;
+  }
+
+  if (isBareDartFileCommand(command)) {
+    return ['dart', 'run', ...command];
+  }
+
+  return command;
+}
+
+/// Returns whether [command] starts with a Dart file path.
+bool isBareDartFileCommand(List<String> command) {
+  if (command.isEmpty) {
+    return false;
+  }
+  return path.extension(command.first).toLowerCase() == '.dart';
 }
 
 /// Validates that [command] is a supported Dart or Flutter launch shape.
@@ -170,7 +194,7 @@ ProfileCommandKind profileCommandKind(List<String> command) {
     'dart' => ProfileCommandKind.dart,
     'flutter' => ProfileCommandKind.flutter,
     _ => throw ArgumentError(
-      'Only Dart and Flutter VM commands are supported. Expected the first argument to be "dart" or "flutter".',
+      'Only Dart and Flutter VM commands are supported. Expected the first argument to be "dart", "flutter", or a Dart file path.',
     ),
   };
 }
@@ -202,7 +226,7 @@ CommandLaunchPlan instrumentedCommandLaunchPlan(
           : command.first,
       arguments: [
         '--observe=0',
-        '--pause-isolates-on-exit=false',
+        '--pause-isolates-on-exit',
         ...command.skip(1),
       ],
     ),

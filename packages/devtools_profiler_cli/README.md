@@ -42,6 +42,15 @@ Profile your own app:
 
 ```bash
 devtools-profiler run \
+  --cwd /path/to/app \
+  bin/main.dart
+```
+
+For full Dart or Flutter commands, put profiler options before the target
+command. Use `--` when the target command has its own options:
+
+```bash
+devtools-profiler run \
   --json \
   --duration 15s \
   --hide-sdk \
@@ -53,8 +62,9 @@ devtools-profiler run \
   -- dart run bin/main.dart
 ```
 
-Everything after `--` is the command being profiled. The command must start
-with `dart` or `flutter`.
+Bare Dart files are expanded to `dart run <file>`. Dart launches are held at
+isolate exit long enough for final CPU and memory snapshots, so short scripts
+can still produce a whole-session profile.
 
 Profile a Flutter test:
 
