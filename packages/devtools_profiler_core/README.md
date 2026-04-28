@@ -58,8 +58,21 @@ Future<void> main() async {
 }
 ```
 
-The launched command must start with `dart` or `flutter`. Compile targets,
-Flutter release mode, and AOT targets are not supported.
+The launched command must start with `dart` or `flutter`, or with a Dart file
+path. Bare Dart files are expanded to `dart run <file>`:
+
+```dart
+await runner.run(
+  const ProfileRunRequest(
+    command: ['bin/main.dart'],
+    workingDirectory: '/path/to/app',
+  ),
+);
+```
+
+Dart launches are held at isolate exit long enough for final CPU and memory
+snapshots, so short scripts can still produce a whole-session profile. Compile
+targets, Flutter release mode, and AOT targets are not supported.
 
 Flutter examples:
 

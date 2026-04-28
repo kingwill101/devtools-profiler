@@ -184,6 +184,35 @@ sleep 5
     expect(session.regions, hasLength(1));
   });
 
+  test('profiles a bare Dart file before a fast process exits', () async {
+    final runner = ProfileRunner();
+    final artifactRoot = await Directory.systemTemp.createTemp(
+      'devtools_profiler_core_quick_exit.',
+    );
+    addTearDown(() => artifactRoot.delete(recursive: true));
+
+    final result = await runner.run(
+      ProfileRunRequest(
+        command: const ['bin/quick_exit.dart'],
+        artifactDirectory: path.join(artifactRoot.path, 'session'),
+        workingDirectory: fixtureDirectory.path,
+      ),
+    );
+
+    expect(result.command, ['dart', 'run', 'bin/quick_exit.dart']);
+    expect(result.exitCode, 0);
+    expect(result.overallProfile, isNotNull);
+    expect(result.overallProfile!.succeeded, isTrue);
+    expect(result.overallProfile!.sampleCount, greaterThan(0));
+    expect(result.overallProfile!.rawProfilePath, isNotNull);
+    expect(
+      result.warnings.where(
+        (warning) => warning.contains('Service connection disposed'),
+      ),
+      isEmpty,
+    );
+  });
+
   test('attaches to an existing VM service without killing it', () async {
     final runner = ProfileRunner();
     final tempDirectory = await Directory.systemTemp.createTemp(

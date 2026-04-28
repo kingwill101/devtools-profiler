@@ -28,9 +28,12 @@ void main() {
     expect(exitCode, 0);
     expect(
       stdoutCapture.text,
-      contains('devtools-profiler run [options] -- <dart-or-flutter-command>'),
+      contains(
+        'devtools-profiler run [options] [--] <dart-file|dart-or-flutter-command>',
+      ),
     );
     expect(stdoutCapture.text, contains('Examples:'));
+    expect(stdoutCapture.text, contains('devtools-profiler run bin/main.dart'));
     expect(
       stdoutCapture.text,
       contains('devtools-profiler run -- dart run bin/main.dart'),

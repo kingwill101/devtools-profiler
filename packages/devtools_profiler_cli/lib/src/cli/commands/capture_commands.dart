@@ -51,12 +51,13 @@ class RunCommand extends ProfilerCommand {
 
   @override
   String get invocation =>
-      '${runner!.executableName} run [options] -- <dart-or-flutter-command>';
+      '${runner!.executableName} run [options] [--] <dart-file|dart-or-flutter-command>';
 
   @override
   String formatUsage({bool includeDescription = true}) => usageWithExamples(
     super.formatUsage(includeDescription: includeDescription),
     const [
+      'devtools-profiler run bin/main.dart',
       'devtools-profiler run -- dart run bin/main.dart',
       'devtools-profiler run --cwd path/to/app -- dart run bin/main.dart',
       'devtools-profiler run --duration 15s --cwd path/to/flutter_app -- flutter run -d linux -t lib/main.dart',
@@ -68,8 +69,9 @@ class RunCommand extends ProfilerCommand {
     final commandArguments = argResults!.rest;
     if (commandArguments.isEmpty) {
       usageException(
-        'A profiled Dart or Flutter command is required after "--". '
-        'Put profiler options before "--" and the target command after it.',
+        'A profiled Dart file, Dart command, or Flutter command is required. '
+        'Put profiler options before the target command, and use "--" when '
+        'the target command has options that could be parsed as profiler options.',
       );
     }
 

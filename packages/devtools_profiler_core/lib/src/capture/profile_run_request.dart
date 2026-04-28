@@ -1,7 +1,8 @@
 /// A request to launch and profile a Dart or Flutter command.
 ///
 /// Use this with [ProfileRunner.run] when the profiler should own the target
-/// process lifecycle. The command must start with `dart` or `flutter`.
+/// process lifecycle. The command must start with `dart` or `flutter`, or with
+/// a Dart file path that will be expanded to `dart run <file>`.
 /// Session artifacts are written under [artifactDirectory] when provided, or
 /// under a generated `.dart_tool/devtools_profiler/sessions/...` directory
 /// inside [workingDirectory] otherwise.
@@ -19,7 +20,7 @@ class ProfileRunRequest {
 
   /// The command to launch.
   ///
-  /// The first argument must be `dart` or `flutter`.
+  /// The first argument must be `dart`, `flutter`, or a Dart file path.
   final List<String> command;
 
   /// The working directory to use for the launched process.

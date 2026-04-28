@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.1-wip
+
+- Added `devtools-profiler run <file>.dart` shorthand for profiling Dart files
+  without spelling out `dart run`.
+- Improved Dart run behavior for short-lived scripts by using the backend's
+  exit-pause capture path instead of reporting a disposed VM service error.
+
 ## 0.2.0
 
 - Added `inspect-classes` and the `profile_inspect_classes` MCP tool for

@@ -42,7 +42,15 @@ devtools-profiler run \
   -- dart run bin/profiled_app.dart
 ```
 
-Profile your own Dart command:
+Profile your own Dart file:
+
+```bash
+devtools-profiler run \
+  --cwd /path/to/your/dart/app \
+  bin/main.dart
+```
+
+Profile a full Dart command:
 
 ```bash
 devtools-profiler run \
@@ -55,8 +63,11 @@ devtools-profiler run \
   -- dart run bin/main.dart
 ```
 
-Everything after `--` is the command being profiled. The first token must be
-`dart` or `flutter`.
+Bare Dart files are expanded to `dart run <file>`. For full Dart or Flutter
+commands, put profiler options before the target command and use `--` when the
+target command has its own options. Dart launches are held at isolate exit long
+enough for final CPU and memory snapshots, so short scripts can still produce a
+whole-session profile.
 
 Profile a Flutter test run:
 
@@ -542,7 +553,8 @@ devtools-profiler help
 
 Commands:
 
-- `run -- <command...>` launches and profiles a Dart or Flutter command.
+- `run [--] <dart-file|command...>` launches and profiles a Dart file, Dart
+  command, or Flutter command.
 - `attach <vm-service-uri>` profiles an already-running VM service for a fixed
   `--duration`.
 - `summarize <path>` summarizes a session directory or profile artifact.
