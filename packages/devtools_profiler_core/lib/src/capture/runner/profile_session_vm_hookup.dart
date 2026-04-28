@@ -18,7 +18,7 @@ final class ProfileSessionVmHookup {
   final ProfileSessionContext context;
   final ProfileSessionSnapshotCapture snapshotCapture;
   final _pausedExitIsolateIds = <String>{};
-  final _exitPauseReached = Completer<void>();
+  final _allAppIsolatesPausedAtExit = Completer<void>();
 
   StreamSubscription<Event>? _debugSubscription;
 
@@ -73,11 +73,13 @@ final class ProfileSessionVmHookup {
     }
   }
 
-  /// Future that completes once any app isolate pauses at exit.
-  Future<void> get exitPauseReached => _exitPauseReached.future;
+  /// Future that completes once every visible app isolate has paused at exit.
+  Future<void> get allAppIsolatesPausedAtExit =>
+      _allAppIsolatesPausedAtExit.future;
 
-  /// Whether any app isolate has paused at exit.
-  bool get hasExitPauseReached => _exitPauseReached.isCompleted;
+  /// Whether every visible app isolate has paused at exit.
+  bool get haveAllAppIsolatesPausedAtExit =>
+      _allAppIsolatesPausedAtExit.isCompleted;
 
   /// Records a debug stream event relevant to Dart launch finalization.
   void handleDebugEvent(Event event) {
@@ -89,12 +91,10 @@ final class ProfileSessionVmHookup {
       return;
     }
     _pausedExitIsolateIds.add(isolateId);
-    if (!_exitPauseReached.isCompleted) {
-      _exitPauseReached.complete();
-    }
+    unawaited(recordCurrentlyPausedExitIsolates());
   }
 
-  /// Checks whether any currently visible isolate is already paused at exit.
+  /// Checks whether every currently visible app isolate is paused at exit.
   Future<void> recordCurrentlyPausedExitIsolates() async {
     final vmService = context.vmService;
     if (vmService == null) {
@@ -103,22 +103,31 @@ final class ProfileSessionVmHookup {
 
     try {
       final vm = await vmService.getVM();
+      final liveAppIsolateIds = <String>{};
+      final pausedExitIsolateIds = <String>{};
       await Future.wait([
         for (final isolateRef in vm.isolates ?? const <IsolateRef>[])
           if (!(isolateRef.isSystemIsolate ?? false) && isolateRef.id != null)
             () async {
+              liveAppIsolateIds.add(isolateRef.id!);
               try {
                 final isolate = await vmService.getIsolate(isolateRef.id!);
                 if (isolate.pauseEvent?.kind == EventKind.kPauseExit) {
-                  _pausedExitIsolateIds.add(isolateRef.id!);
+                  pausedExitIsolateIds.add(isolateRef.id!);
                 }
               } catch (_) {
                 // The isolate can disappear while the VM is shutting down.
+                liveAppIsolateIds.remove(isolateRef.id!);
               }
             }(),
       ]);
-      if (_pausedExitIsolateIds.isNotEmpty && !_exitPauseReached.isCompleted) {
-        _exitPauseReached.complete();
+      _pausedExitIsolateIds
+        ..clear()
+        ..addAll(pausedExitIsolateIds);
+      if (liveAppIsolateIds.isNotEmpty &&
+          liveAppIsolateIds.length == pausedExitIsolateIds.length &&
+          !_allAppIsolatesPausedAtExit.isCompleted) {
+        _allAppIsolatesPausedAtExit.complete();
       }
     } catch (_) {
       // The normal process-exit path will handle disconnected services.

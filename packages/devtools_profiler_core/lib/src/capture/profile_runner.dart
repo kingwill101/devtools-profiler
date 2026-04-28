@@ -296,7 +296,7 @@ _waitForDartProcessCompletion(
     (exitCode) =>
         (kind: _ProfiledProcessCompletionKind.exited, exitCode: exitCode),
   );
-  final exitPause = sessionController.exitPauseReached.then(
+  final exitPause = sessionController.allAppIsolatesPausedAtExit.then(
     (_) => (kind: _ProfiledProcessCompletionKind.pausedAtExit, exitCode: null),
   );
 
@@ -319,7 +319,7 @@ _waitForDartProcessCompletion(
     }
 
     await sessionController.recordCurrentlyPausedExitIsolates();
-    if (sessionController.hasExitPauseReached) {
+    if (sessionController.haveAllAppIsolatesPausedAtExit) {
       return (
         kind: _ProfiledProcessCompletionKind.pausedAtExit,
         exitCode: null,
