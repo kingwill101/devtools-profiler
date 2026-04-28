@@ -83,11 +83,13 @@ final class ProfileSessionController {
     );
   }
 
-  /// Future that completes when a Dart isolate pauses immediately before exit.
-  Future<void> get exitPauseReached => vmHookup.exitPauseReached;
+  /// Future that completes when all app isolates pause immediately before exit.
+  Future<void> get allAppIsolatesPausedAtExit =>
+      vmHookup.allAppIsolatesPausedAtExit;
 
-  /// Whether a Dart isolate has paused immediately before exit.
-  bool get hasExitPauseReached => vmHookup.hasExitPauseReached;
+  /// Whether all app isolates have paused immediately before exit.
+  bool get haveAllAppIsolatesPausedAtExit =>
+      vmHookup.haveAllAppIsolatesPausedAtExit;
 
   /// Checks currently visible isolates for an exit pause.
   Future<void> recordCurrentlyPausedExitIsolates() {

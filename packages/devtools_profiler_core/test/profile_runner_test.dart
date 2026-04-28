@@ -213,6 +213,29 @@ sleep 5
     );
   });
 
+  test('waits for worker isolates before finalizing a Dart run', () async {
+    final runner = ProfileRunner();
+    final artifactRoot = await Directory.systemTemp.createTemp(
+      'devtools_profiler_core_quick_worker.',
+    );
+    addTearDown(() => artifactRoot.delete(recursive: true));
+
+    final result = await runner.run(
+      ProfileRunRequest(
+        command: const ['dart', 'run', 'bin/quick_worker_isolate.dart'],
+        artifactDirectory: path.join(artifactRoot.path, 'session'),
+        workingDirectory: fixtureDirectory.path,
+      ),
+    );
+
+    expect(result.exitCode, 0);
+    expect(result.overallProfile, isNotNull);
+    expect(result.overallProfile!.succeeded, isTrue);
+    expect(result.overallProfile!.durationMicros, greaterThan(300000));
+    expect(result.overallProfile!.sampleCount, greaterThan(0));
+    expect(result.overallProfile!.isolateIds.length, greaterThan(1));
+  });
+
   test('attaches to an existing VM service without killing it', () async {
     final runner = ProfileRunner();
     final tempDirectory = await Directory.systemTemp.createTemp(
