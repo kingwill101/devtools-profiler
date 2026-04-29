@@ -83,9 +83,8 @@ final class ProfileSessionController {
     );
   }
 
-  /// Future that completes when all app isolates pause immediately before exit.
-  Future<void> get allAppIsolatesPausedAtExit =>
-      vmHookup.allAppIsolatesPausedAtExit;
+  /// Future that completes when exit-pause monitoring reaches a terminal state.
+  Future<bool> get exitPauseSignal => vmHookup.exitPauseSignal;
 
   /// Whether all app isolates have paused immediately before exit.
   bool get haveAllAppIsolatesPausedAtExit =>

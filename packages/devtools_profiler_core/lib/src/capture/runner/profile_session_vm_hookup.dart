@@ -18,9 +18,10 @@ final class ProfileSessionVmHookup {
   final ProfileSessionContext context;
   final ProfileSessionSnapshotCapture snapshotCapture;
   final _pausedExitIsolateIds = <String>{};
-  final _allAppIsolatesPausedAtExit = Completer<void>();
+  final _exitPauseSignal = Completer<bool>();
 
   StreamSubscription<Event>? _debugSubscription;
+  bool _haveAllAppIsolatesPausedAtExit = false;
 
   /// Attaches this session to [serviceUri] and starts whole-session capture.
   Future<void> attachToVmService(
@@ -70,16 +71,19 @@ final class ProfileSessionVmHookup {
       context.warnings.add(
         'Failed to monitor Dart isolate exit pauses: $error',
       );
+      completeExitPauseSignal(allPaused: false);
     }
   }
 
-  /// Future that completes once every visible app isolate has paused at exit.
-  Future<void> get allAppIsolatesPausedAtExit =>
-      _allAppIsolatesPausedAtExit.future;
+  /// A signal that exit-pause monitoring reached a terminal state.
+  ///
+  /// The future completes with `true` when every visible app isolate is paused
+  /// at exit. It completes with `false` when monitoring cannot make progress,
+  /// such as when the debug stream or VM isolate list is unavailable.
+  Future<bool> get exitPauseSignal => _exitPauseSignal.future;
 
   /// Whether every visible app isolate has paused at exit.
-  bool get haveAllAppIsolatesPausedAtExit =>
-      _allAppIsolatesPausedAtExit.isCompleted;
+  bool get haveAllAppIsolatesPausedAtExit => _haveAllAppIsolatesPausedAtExit;
 
   /// Records a debug stream event relevant to Dart launch finalization.
   void handleDebugEvent(Event event) {
@@ -124,13 +128,23 @@ final class ProfileSessionVmHookup {
       _pausedExitIsolateIds
         ..clear()
         ..addAll(pausedExitIsolateIds);
-      if (liveAppIsolateIds.isNotEmpty &&
-          liveAppIsolateIds.length == pausedExitIsolateIds.length &&
-          !_allAppIsolatesPausedAtExit.isCompleted) {
-        _allAppIsolatesPausedAtExit.complete();
+      if (liveAppIsolateIds.isEmpty) {
+        completeExitPauseSignal(allPaused: false);
+        return;
+      }
+      if (liveAppIsolateIds.length == pausedExitIsolateIds.length) {
+        completeExitPauseSignal(allPaused: true);
       }
     } catch (_) {
-      // The normal process-exit path will handle disconnected services.
+      completeExitPauseSignal(allPaused: false);
+    }
+  }
+
+  /// Records an exit-pause coordination result without losing later polls.
+  void completeExitPauseSignal({required bool allPaused}) {
+    _haveAllAppIsolatesPausedAtExit |= allPaused;
+    if (!_exitPauseSignal.isCompleted) {
+      _exitPauseSignal.complete(allPaused);
     }
   }
 
