@@ -17,7 +17,8 @@ local capture with useful output.
 
 Start by identifying the user's target:
 
-- Dart script: use `run` with `dart run ...`.
+- Dart script: use `run path/to/file.dart` for a bare file, or `run -- dart
+  run ...` when the target has its own arguments.
 - Flutter app or test: use `run` with `flutter run` or `flutter test`.
 - Already-running VM service: use `attach`.
 - Application code can be edited: offer region markers.
@@ -55,7 +56,25 @@ command, ask the user to use their direct Dart SDK binary for `pub get`,
 
 ## Profile A Dart Program
 
-Use this shape for a first Dart capture:
+Use the bare-file shorthand for a first Dart capture when the target is a
+single script:
+
+```bash
+devtools-profiler run \
+  --hide-sdk \
+  --hide-runtime-helpers \
+  --call-tree \
+  --method-table \
+  --cwd path/to/app \
+  bin/main.dart
+```
+
+Bare Dart files are expanded to `dart run <file>`. The profiler holds Dart
+launches at isolate exit long enough to capture final CPU and memory snapshots,
+so short scripts can still produce a whole-session profile.
+
+Use the full command shape when the target command has its own arguments or
+needs a Dart subcommand:
 
 ```bash
 devtools-profiler run \
@@ -69,8 +88,8 @@ devtools-profiler run \
   -- dart run bin/main.dart
 ```
 
-Everything after `--` is the target command. Keep `--cwd` pointed at the
-target package or app directory.
+Everything after `--` is the target command. Keep profiler options before the
+target, and keep `--cwd` pointed at the target package or app directory.
 
 ## Profile A Flutter Target
 
@@ -237,6 +256,9 @@ sessions when comparing region-scoped runs.
 - If output is dominated by SDK frames, add `--hide-sdk`.
 - If output is dominated by profiler transport frames, add
   `--hide-runtime-helpers`.
+- If a Dart script has its own flags, use `--` before the target command, for
+  example `devtools-profiler run --cwd path/to/app -- dart run bin/main.dart
+  --input data.json`.
 - If locations are too compact, add `--full-locations`.
 - If an agent needs complete data, set limits to `0`, such as
   `--tree-depth 0`, `--tree-children 0`, `--method-limit 0`,
