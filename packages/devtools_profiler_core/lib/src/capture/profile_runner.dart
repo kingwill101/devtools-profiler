@@ -129,17 +129,18 @@ class ProfileRunner {
       int exitCode;
       if (completion.kind == _ProfiledProcessCompletionKind.pausedAtExit) {
         await sessionController.handleProcessExit();
-        exitCode = await _resumeExitPausedProcess(
+        final resumedProcess = await _resumeExitPausedProcess(
           exitCodeFuture: exitCodeFuture,
           process: process,
           sessionController: sessionController,
         );
+        exitCode = resumedProcess.exitCode;
+        processExited = resumedProcess.processExited;
       } else {
         exitCode = completion.exitCode!;
         processExited = true;
         await sessionController.handleProcessExit();
       }
-      processExited = true;
 
       final result = sessionController.buildResult(
         artifactDirectory: artifactDirectory.path,
@@ -156,7 +157,13 @@ class ProfileRunner {
       runDurationTimer?.cancel();
       if (process != null && !processExited) {
         process.kill();
-        await process.exitCode;
+        try {
+          await process.exitCode.timeout(const Duration(seconds: 2));
+        } on TimeoutException {
+          sessionController.addWarning(
+            'Timed out waiting for target process cleanup after profiling.',
+          );
+        }
       }
       await sessionController.dispose();
       await dtdSession.dispose();
@@ -361,8 +368,9 @@ _waitForDartProcessCompletion(
 /// complete. If the target still does not exit, this records a warning with
 /// [ProfileSessionController.addWarning], tries to kill the process, waits with
 /// a bounded timeout, and finally returns a forced non-zero exit code instead
-/// of awaiting an unbounded process future.
-Future<int> _resumeExitPausedProcess({
+/// of awaiting an unbounded process future. The result marks whether the exit
+/// code came from an observed process exit or from that synthetic fallback.
+Future<({int exitCode, bool processExited})> _resumeExitPausedProcess({
   required Future<int> exitCodeFuture,
   required Process process,
   required ProfileSessionController sessionController,
@@ -370,7 +378,8 @@ Future<int> _resumeExitPausedProcess({
   for (var attempt = 0; attempt < 5; attempt++) {
     await sessionController.resumePausedExitIsolates();
     try {
-      return await exitCodeFuture.timeout(const Duration(seconds: 2));
+      final exitCode = await exitCodeFuture.timeout(const Duration(seconds: 2));
+      return (exitCode: exitCode, processExited: true);
     } on TimeoutException {
       // Another isolate may have reached its exit pause after the previous
       // resume call. Loop and resume any newly observed exit pauses.
@@ -387,13 +396,14 @@ Future<int> _resumeExitPausedProcess({
     );
   }
   try {
-    return await exitCodeFuture.timeout(const Duration(seconds: 2));
+    final exitCode = await exitCodeFuture.timeout(const Duration(seconds: 2));
+    return (exitCode: exitCode, processExited: true);
   } on TimeoutException {
     sessionController.addWarning(
       'Timed out waiting for the target process to exit after termination; '
       'returning a forced non-zero exit code.',
     );
-    return 1;
+    return (exitCode: 1, processExited: false);
   }
 }
 
