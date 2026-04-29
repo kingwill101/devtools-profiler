@@ -721,7 +721,9 @@ models. It does not depend on `packages/devtools_app`,
 
 - Attach mode captures a fixed whole-session VM-service window from an existing
   process, but explicit region markers normally require launch mode.
-- The launched command must start with `dart` or `flutter`.
+- Launch mode supports bare Dart files, Dart VM commands, and supported Flutter
+  commands. Put profiler options before the target, and use `--` when the
+  target command has its own options.
 - `dart compile ...` targets and Flutter release/AOT targets are not supported.
 - Flutter support is limited to VM-service targets from `flutter run` and
   `flutter test`; browser/web profiling is not supported.

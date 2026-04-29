@@ -285,8 +285,23 @@ class ProfileRunner {
   }
 }
 
-enum _ProfiledProcessCompletionKind { exited, pausedAtExit }
+enum _ProfiledProcessCompletionKind {
+  exited,
+  exitPauseUnavailable,
+  pausedAtExit,
+}
 
+/// Waits for a Dart process to exit or pause every app isolate at exit.
+///
+/// Dart launches use `--pause-isolates-on-exit` so a short script can be
+/// captured before the VM service disappears. This helper races the process
+/// [exitCodeFuture] with [ProfileSessionController.exitPauseSignal]. It also
+/// polls [ProfileSessionController.recordCurrentlyPausedExitIsolates] because
+/// debug stream events can be missed during shutdown. A returned
+/// [_ProfiledProcessCompletionKind.exited] means the process produced an exit
+/// code normally; [_ProfiledProcessCompletionKind.pausedAtExit] means
+/// [ProfileSessionController.haveAllAppIsolatesPausedAtExit] is true and the
+/// caller should capture final artifacts before resuming isolates.
 Future<({int? exitCode, _ProfiledProcessCompletionKind kind})>
 _waitForDartProcessCompletion(
   Future<int> exitCodeFuture,
@@ -296,9 +311,15 @@ _waitForDartProcessCompletion(
     (exitCode) =>
         (kind: _ProfiledProcessCompletionKind.exited, exitCode: exitCode),
   );
-  final exitPause = sessionController.allAppIsolatesPausedAtExit.then(
-    (_) => (kind: _ProfiledProcessCompletionKind.pausedAtExit, exitCode: null),
+  final exitPause = sessionController.exitPauseSignal.then(
+    (allPaused) => (
+      kind: allPaused
+          ? _ProfiledProcessCompletionKind.pausedAtExit
+          : _ProfiledProcessCompletionKind.exitPauseUnavailable,
+      exitCode: null,
+    ),
   );
+  var listenForExitPauseSignal = true;
 
   while (true) {
     final completion =
@@ -306,7 +327,7 @@ _waitForDartProcessCompletion(
           ({int? exitCode, _ProfiledProcessCompletionKind? kind})
         >([
           exitCompletion,
-          exitPause,
+          if (listenForExitPauseSignal) exitPause,
           Future.delayed(
             const Duration(milliseconds: 50),
             () => (kind: null, exitCode: null),
@@ -315,6 +336,10 @@ _waitForDartProcessCompletion(
 
     final kind = completion.kind;
     if (kind != null) {
+      if (kind == _ProfiledProcessCompletionKind.exitPauseUnavailable) {
+        listenForExitPauseSignal = false;
+        continue;
+      }
       return (kind: kind, exitCode: completion.exitCode);
     }
 
@@ -328,6 +353,15 @@ _waitForDartProcessCompletion(
   }
 }
 
+/// Resumes exit-paused Dart isolates and waits for process termination.
+///
+/// The VM can report additional isolates paused at exit after an earlier resume
+/// call, so this retries [ProfileSessionController.resumePausedExitIsolates]
+/// up to five times. Each attempt gives [exitCodeFuture] two seconds to
+/// complete. If the target still does not exit, this records a warning with
+/// [ProfileSessionController.addWarning], tries to kill the process, waits with
+/// a bounded timeout, and finally returns a forced non-zero exit code instead
+/// of awaiting an unbounded process future.
 Future<int> _resumeExitPausedProcess({
   required Future<int> exitCodeFuture,
   required Process process,
@@ -347,8 +381,20 @@ Future<int> _resumeExitPausedProcess({
     'The target process remained paused after final profile capture; '
     'terminating it.',
   );
-  process.kill();
-  return exitCodeFuture;
+  if (!process.kill()) {
+    sessionController.addWarning(
+      'Failed to terminate the target process after exit-paused capture.',
+    );
+  }
+  try {
+    return await exitCodeFuture.timeout(const Duration(seconds: 2));
+  } on TimeoutException {
+    sessionController.addWarning(
+      'Timed out waiting for the target process to exit after termination; '
+      'returning a forced non-zero exit code.',
+    );
+    return 1;
+  }
 }
 
 String _resolveWorkingDirectory(String? workingDirectory) {

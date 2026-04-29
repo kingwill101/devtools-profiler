@@ -231,7 +231,7 @@ sleep 5
     expect(result.exitCode, 0);
     expect(result.overallProfile, isNotNull);
     expect(result.overallProfile!.succeeded, isTrue);
-    expect(result.overallProfile!.durationMicros, greaterThan(300000));
+    expect(result.overallProfile!.durationMicros, greaterThan(300_000));
     expect(result.overallProfile!.sampleCount, greaterThan(0));
     expect(result.overallProfile!.isolateIds.length, greaterThan(1));
   });
