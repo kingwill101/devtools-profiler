@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.1-wip
+## 0.2.1
 
 - Added `devtools-profiler run <file>.dart` shorthand for profiling Dart files
   without spelling out `dart run`.
