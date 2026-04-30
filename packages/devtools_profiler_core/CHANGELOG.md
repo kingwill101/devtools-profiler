@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.1-wip
+## 0.2.1
 
 - Added bare Dart file launch support by expanding file paths to
   `dart run <file>`.
