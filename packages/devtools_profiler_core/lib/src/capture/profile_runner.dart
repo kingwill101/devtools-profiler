@@ -298,15 +298,18 @@ enum _ProfiledProcessCompletionKind {
   pausedAtExit,
 }
 
+const _initialExitPausePollDelay = Duration(milliseconds: 50);
+const _maxExitPausePollDelay = Duration(seconds: 3);
+
 /// Waits for a Dart process to exit or pause every app isolate at exit.
 ///
 /// Dart launches use `--pause-isolates-on-exit` so a short script can be
 /// captured before the VM service disappears. This helper races the process
 /// [exitCodeFuture] with [ProfileSessionController.exitPauseSignal]. It also
-/// polls [ProfileSessionController.recordCurrentlyPausedExitIsolates] because
-/// debug stream events can be missed during shutdown. A returned
-/// [_ProfiledProcessCompletionKind.exited] means the process produced an exit
-/// code normally; [_ProfiledProcessCompletionKind.pausedAtExit] means
+/// polls [ProfileSessionController.recordCurrentlyPausedExitIsolates] with
+/// backoff because debug stream events can be missed during shutdown. A
+/// returned [_ProfiledProcessCompletionKind.exited] means the process produced
+/// an exit code normally; [_ProfiledProcessCompletionKind.pausedAtExit] means
 /// [ProfileSessionController.haveAllAppIsolatesPausedAtExit] is true and the
 /// caller should capture final artifacts before resuming isolates.
 Future<({int? exitCode, _ProfiledProcessCompletionKind kind})>
@@ -327,6 +330,7 @@ _waitForDartProcessCompletion(
     ),
   );
   var listenForExitPauseSignal = true;
+  var pollDelay = _initialExitPausePollDelay;
 
   while (true) {
     final completion =
@@ -335,16 +339,14 @@ _waitForDartProcessCompletion(
         >([
           exitCompletion,
           if (listenForExitPauseSignal) exitPause,
-          Future.delayed(
-            const Duration(milliseconds: 50),
-            () => (kind: null, exitCode: null),
-          ),
+          Future.delayed(pollDelay, () => (kind: null, exitCode: null)),
         ]);
 
     final kind = completion.kind;
     if (kind != null) {
       if (kind == _ProfiledProcessCompletionKind.exitPauseUnavailable) {
         listenForExitPauseSignal = false;
+        pollDelay = _maxExitPausePollDelay;
         continue;
       }
       return (kind: kind, exitCode: completion.exitCode);
@@ -357,7 +359,15 @@ _waitForDartProcessCompletion(
         exitCode: null,
       );
     }
+    pollDelay = _nextExitPausePollDelay(pollDelay);
   }
+}
+
+Duration _nextExitPausePollDelay(Duration currentDelay) {
+  final nextDelay = currentDelay * 2;
+  return nextDelay > _maxExitPausePollDelay
+      ? _maxExitPausePollDelay
+      : nextDelay;
 }
 
 /// Resumes exit-paused Dart isolates and waits for process termination.
