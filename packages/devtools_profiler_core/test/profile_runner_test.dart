@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:devtools_profiler_core/devtools_profiler_core.dart';
+import 'package:devtools_profiler_core/src/capture/runner/process_launch.dart'
+    as launch;
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
 import 'package:vm_service/vm_service.dart';
@@ -103,6 +105,43 @@ void main() {
     expect(runArguments, contains('--host-vmservice-port=0'));
   });
 
+  test(
+    'builds inherited-stdio Dart launch with a deterministic service URI',
+    () {
+      final plan = launch.instrumentedCommandLaunchPlan(
+        const ['dart', 'run', 'bin/main.dart'],
+        dtdUri: 'http://127.0.0.1:1/',
+        sessionId: 'session-test',
+        processIoMode: ProfileProcessIoMode.inheritStdio,
+        vmServicePort: 12345,
+      );
+
+      expect(plan.arguments.take(3), [
+        '--observe=12345',
+        '--disable-service-auth-codes',
+        '--pause-isolates-on-exit=false',
+      ]);
+      expect(plan.expectedVmServiceUri, Uri.parse('http://127.0.0.1:12345/'));
+    },
+  );
+
+  test(
+    'builds inherited-stdio Flutter run with a deterministic service URI',
+    () {
+      final plan = launch.flutterLaunchPlan(
+        const ['flutter', 'run', '-d', 'linux'],
+        dtdUri: 'http://127.0.0.1:1/',
+        sessionId: 'session-test',
+        processIoMode: ProfileProcessIoMode.inheritStdio,
+        vmServicePort: 12345,
+      );
+
+      expect(plan.arguments, contains('--host-vmservice-port=12345'));
+      expect(plan.arguments, contains('--disable-service-auth-codes'));
+      expect(plan.expectedVmServiceUri, Uri.parse('http://127.0.0.1:12345/'));
+    },
+  );
+
   test('uses configurable VM service timeout', () async {
     if (Platform.isWindows) {
       markTestSkipped('The fake flutter launcher uses a POSIX shell script.');
@@ -125,6 +164,43 @@ sleep 5
         ProfileRunRequest(
           command: [flutter.path, 'run', '-d', 'linux'],
           artifactDirectory: path.join(tempDirectory.path, 'session'),
+          vmServiceTimeout: const Duration(milliseconds: 50),
+          workingDirectory: tempDirectory.path,
+        ),
+      ),
+      throwsA(
+        isA<StateError>().having(
+          (error) => error.toString(),
+          'message',
+          contains('Timed out after 50ms waiting for the Dart VM service URI'),
+        ),
+      ),
+    );
+  });
+
+  test('times out inherited-stdio VM service probing', () async {
+    if (Platform.isWindows) {
+      markTestSkipped('The fake flutter launcher uses a POSIX shell script.');
+      return;
+    }
+
+    final tempDirectory = await Directory.systemTemp.createTemp(
+      'devtools_profiler_core_terminal_vm_service_timeout.',
+    );
+    addTearDown(() => tempDirectory.delete(recursive: true));
+    final flutter = File(path.join(tempDirectory.path, 'flutter'));
+    await flutter.writeAsString('''
+#!/bin/sh
+sleep 5
+''');
+    await Process.run('chmod', ['+x', flutter.path]);
+
+    await expectLater(
+      ProfileRunner().run(
+        ProfileRunRequest(
+          command: [flutter.path, 'run', '-d', 'linux'],
+          artifactDirectory: path.join(tempDirectory.path, 'session'),
+          processIoMode: ProfileProcessIoMode.inheritStdio,
           vmServiceTimeout: const Duration(milliseconds: 50),
           workingDirectory: tempDirectory.path,
         ),
@@ -211,6 +287,69 @@ sleep 5
       ),
       isEmpty,
     );
+  });
+
+  test('profiles an artisanal widget TUI with inherited stdio', () async {
+    final runner = ProfileRunner();
+    final artifactRoot = await Directory.systemTemp.createTemp(
+      'devtools_profiler_core_terminal.',
+    );
+    addTearDown(() => artifactRoot.delete(recursive: true));
+
+    final result = await runner.run(
+      ProfileRunRequest(
+        command: const ['dart', 'run', 'bin/artisanal_widget_app.dart'],
+        artifactDirectory: path.join(artifactRoot.path, 'session'),
+        processIoMode: ProfileProcessIoMode.inheritStdio,
+        workingDirectory: fixtureDirectory.path,
+      ),
+    );
+
+    expect(result.command, ['dart', 'run', 'bin/artisanal_widget_app.dart']);
+    expect(result.exitCode, 0);
+    expect(result.vmServiceUri, startsWith('http://127.0.0.1:'));
+    expect(result.overallProfile, isNotNull);
+    expect(result.overallProfile!.succeeded, isTrue);
+    expect(result.overallProfile!.sampleCount, greaterThan(0));
+  });
+
+  test('returns available diagnostics when interrupted', () async {
+    if (Platform.isWindows) {
+      markTestSkipped('Process signal delivery differs on Windows.');
+      return;
+    }
+
+    final processResult =
+        await Process.run(Platform.resolvedExecutable, const [
+          'run',
+          'bin/interrupting_profiler.dart',
+        ], workingDirectory: fixtureDirectory.path).timeout(
+          const Duration(seconds: 30),
+          onTimeout: () => throw StateError(
+            'Timed out waiting for interrupting_profiler.dart.',
+          ),
+        );
+
+    expect(
+      processResult.exitCode,
+      0,
+      reason:
+          'stdout:\n${processResult.stdout}\nstderr:\n${processResult.stderr}',
+    );
+    final payload =
+        jsonDecode(processResult.stdout as String) as Map<String, Object?>;
+    addTearDown(
+      () =>
+          Directory(payload['artifactRoot']! as String).delete(recursive: true),
+    );
+
+    expect(payload['terminatedByProfiler'], isTrue);
+    expect(payload['warnings'], contains(contains('Received SIGINT')));
+    expect(
+      payload['sampleCount'],
+      isA<int>().having((count) => count, 'count', greaterThan(0)),
+    );
+    expect(File(payload['sessionJson']! as String).existsSync(), isTrue);
   });
 
   test('waits for worker isolates before finalizing a Dart run', () async {

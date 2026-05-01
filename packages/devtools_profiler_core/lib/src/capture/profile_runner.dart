@@ -61,40 +61,65 @@ class ProfileRunner {
       sessionId: sessionId,
     );
 
-    StreamSubscription<String>? stdoutSubscription;
-    StreamSubscription<String>? stderrSubscription;
+    LaunchedProcess? launchedProcess;
+    _ProfileRunSignalWatcher? interruptWatcher;
     Process? process;
     Timer? runDurationTimer;
     var processExited = false;
     var terminatedByProfiler = false;
 
     try {
+      final vmServiceTimeout =
+          request.vmServiceTimeout ??
+          defaultVmServiceTimeoutForCommand(command);
+      interruptWatcher = request.handleInterruptSignals
+          ? _ProfileRunSignalWatcher.start()
+          : null;
       await sessionController.registerServices();
 
-      final launchedProcess = await launchProfiledProcess(
+      launchedProcess = await launchProfiledProcess(
         request: request,
         command: command,
         sessionId: sessionId,
         dtdUri: dtdSession.info.localUri.toString(),
+        vmServiceTimeout: vmServiceTimeout,
         workingDirectory: workingDirectory,
       );
       process = launchedProcess.process;
       sessionController.childProcessId = process.pid;
-      stdoutSubscription = launchedProcess.stdoutSubscription;
-      stderrSubscription = launchedProcess.stderrSubscription;
 
-      final vmServiceTimeout =
-          request.vmServiceTimeout ??
-          defaultVmServiceTimeoutForCommand(command);
-      final serviceUri = await launchedProcess.serviceUri.future.timeout(
-        vmServiceTimeout,
-        onTimeout: () {
-          throw StateError(
-            'Timed out after ${formatProfileDuration(vmServiceTimeout)} waiting for the Dart VM service URI from the profiled process. '
-            'If the target is still building or starting, increase --vm-service-timeout.',
-          );
-        },
+      final serviceWait = await _waitForVmServiceUri(
+        launchedProcess.serviceUri.future,
+        vmServiceTimeout: vmServiceTimeout,
+        interruptSignal: interruptWatcher?.signal,
       );
+      final serviceInterruptSignal = serviceWait.signal;
+      if (serviceInterruptSignal != null) {
+        terminatedByProfiler = true;
+        sessionController.addWarning(
+          'Received ${_profileSignalName(serviceInterruptSignal)} before the '
+          'VM service was available; no profile data could be captured.',
+        );
+        final stoppedProcess = await _stopInterruptedProcess(
+          exitCodeFuture: process.exitCode,
+          process: process,
+          signal: serviceInterruptSignal,
+          sessionController: sessionController,
+        );
+        processExited = stoppedProcess.processExited;
+        final result = sessionController.buildResult(
+          artifactDirectory: artifactDirectory.path,
+          command: command,
+          exitCode: stoppedProcess.exitCode,
+          processIoMode: request.processIoMode,
+          terminatedByProfiler: terminatedByProfiler,
+          workingDirectory: workingDirectory,
+        );
+        await artifactStore.writeSession(result);
+        return result;
+      }
+
+      final serviceUri = serviceWait.serviceUri!;
       await sessionController.attachToVmService(
         serviceUri,
         monitorExitPause: commandKind == ProfileCommandKind.dart,
@@ -120,14 +145,45 @@ class ProfileRunner {
           ? await _waitForDartProcessCompletion(
               exitCodeFuture,
               sessionController,
+              interruptSignal: interruptWatcher?.signal,
             )
-          : (
-              kind: _ProfiledProcessCompletionKind.exited,
-              exitCode: await exitCodeFuture,
+          : await _waitForProcessCompletion(
+              exitCodeFuture,
+              interruptSignal: interruptWatcher?.signal,
             );
       runDurationTimer?.cancel();
       int exitCode;
-      if (completion.kind == _ProfiledProcessCompletionKind.pausedAtExit) {
+      if (completion.kind == _ProfiledProcessCompletionKind.interrupted) {
+        terminatedByProfiler = true;
+        final signal = completion.signal!;
+        sessionController.addWarning(
+          'Received ${_profileSignalName(signal)}; finalizing available '
+          'profile data before stopping the target process.',
+        );
+        try {
+          await sessionController.handleProcessExit().timeout(
+            _interruptFinalizationWait,
+          );
+        } on TimeoutException {
+          sessionController.addWarning(
+            'Timed out finalizing all profile data after interruption; '
+            'returning the diagnostics captured so far.',
+          );
+        } catch (error) {
+          sessionController.addWarning(
+            'Failed to finalize all profile data after interruption: $error',
+          );
+        }
+        final stoppedProcess = await _stopInterruptedProcess(
+          exitCodeFuture: exitCodeFuture,
+          process: process,
+          signal: signal,
+          sessionController: sessionController,
+        );
+        exitCode = stoppedProcess.exitCode;
+        processExited = stoppedProcess.processExited;
+      } else if (completion.kind ==
+          _ProfiledProcessCompletionKind.pausedAtExit) {
         await sessionController.handleProcessExit();
         final resumedProcess = await _resumeExitPausedProcess(
           exitCodeFuture: exitCodeFuture,
@@ -146,14 +202,16 @@ class ProfileRunner {
         artifactDirectory: artifactDirectory.path,
         command: command,
         exitCode: exitCode,
+        processIoMode: request.processIoMode,
         terminatedByProfiler: terminatedByProfiler,
         workingDirectory: workingDirectory,
       );
       await artifactStore.writeSession(result);
       return result;
     } finally {
-      await stdoutSubscription?.cancel();
-      await stderrSubscription?.cancel();
+      await launchedProcess?.stdoutSubscription?.cancel();
+      await launchedProcess?.stderrSubscription?.cancel();
+      await interruptWatcher?.dispose();
       runDurationTimer?.cancel();
       if (process != null && !processExited) {
         process.kill();
@@ -224,6 +282,7 @@ class ProfileRunner {
         artifactDirectory: artifactDirectory.path,
         command: ['attach', request.vmServiceUri.toString()],
         exitCode: 0,
+        processIoMode: ProfileProcessIoMode.pipe,
         terminatedByProfiler: false,
         workingDirectory: workingDirectory,
       );
@@ -295,11 +354,77 @@ class ProfileRunner {
 enum _ProfiledProcessCompletionKind {
   exited,
   exitPauseUnavailable,
+  interrupted,
   pausedAtExit,
 }
 
 const _initialExitPausePollDelay = Duration(milliseconds: 50);
+const _exitPauseProbeTimeout = Duration(milliseconds: 500);
 const _maxExitPausePollDelay = Duration(seconds: 3);
+const _interruptExitWait = Duration(milliseconds: 750);
+const _interruptFinalizationWait = Duration(seconds: 5);
+const _interruptTerminationWait = Duration(seconds: 2);
+
+typedef _ProcessCompletion = ({
+  int? exitCode,
+  _ProfiledProcessCompletionKind kind,
+  ProcessSignal? signal,
+});
+
+typedef _MaybeProcessCompletion = ({
+  int? exitCode,
+  _ProfiledProcessCompletionKind? kind,
+  ProcessSignal? signal,
+});
+
+/// Waits for the VM-service URI or a user interrupt during startup.
+Future<({Uri? serviceUri, ProcessSignal? signal})> _waitForVmServiceUri(
+  Future<Uri> serviceUriFuture, {
+  required Duration vmServiceTimeout,
+  required Future<ProcessSignal>? interruptSignal,
+}) {
+  final serviceUri = serviceUriFuture
+      .timeout(
+        vmServiceTimeout,
+        onTimeout: () {
+          throw StateError(
+            'Timed out after ${formatProfileDuration(vmServiceTimeout)} '
+            'waiting for the Dart VM service URI from the profiled process. '
+            'If the target is still building or starting, increase '
+            '--vm-service-timeout.',
+          );
+        },
+      )
+      .then<({Uri? serviceUri, ProcessSignal? signal})>(
+        (uri) => (serviceUri: uri, signal: null),
+      );
+  final interrupt = interruptSignal?.then(
+    (signal) => (serviceUri: null, signal: signal),
+  );
+  return Future.any([serviceUri, ?interrupt]);
+}
+
+/// Waits for a non-Dart process to exit or for the user to interrupt it.
+Future<_ProcessCompletion> _waitForProcessCompletion(
+  Future<int> exitCodeFuture, {
+  required Future<ProcessSignal>? interruptSignal,
+}) {
+  final exitCompletion = exitCodeFuture.then(
+    (exitCode) => (
+      kind: _ProfiledProcessCompletionKind.exited,
+      exitCode: exitCode,
+      signal: null,
+    ),
+  );
+  final interruptCompletion = interruptSignal?.then(
+    (signal) => (
+      kind: _ProfiledProcessCompletionKind.interrupted,
+      exitCode: null,
+      signal: signal,
+    ),
+  );
+  return Future.any([exitCompletion, ?interruptCompletion]);
+}
 
 /// Waits for a Dart process to exit or pause every app isolate at exit.
 ///
@@ -312,14 +437,17 @@ const _maxExitPausePollDelay = Duration(seconds: 3);
 /// an exit code normally; [_ProfiledProcessCompletionKind.pausedAtExit] means
 /// [ProfileSessionController.haveAllAppIsolatesPausedAtExit] is true and the
 /// caller should capture final artifacts before resuming isolates.
-Future<({int? exitCode, _ProfiledProcessCompletionKind kind})>
-_waitForDartProcessCompletion(
+Future<_ProcessCompletion> _waitForDartProcessCompletion(
   Future<int> exitCodeFuture,
-  ProfileSessionController sessionController,
-) async {
+  ProfileSessionController sessionController, {
+  required Future<ProcessSignal>? interruptSignal,
+}) async {
   final exitCompletion = exitCodeFuture.then(
-    (exitCode) =>
-        (kind: _ProfiledProcessCompletionKind.exited, exitCode: exitCode),
+    (exitCode) => (
+      kind: _ProfiledProcessCompletionKind.exited,
+      exitCode: exitCode,
+      signal: null,
+    ),
   );
   final exitPause = sessionController.exitPauseSignal.then(
     (allPaused) => (
@@ -327,20 +455,29 @@ _waitForDartProcessCompletion(
           ? _ProfiledProcessCompletionKind.pausedAtExit
           : _ProfiledProcessCompletionKind.exitPauseUnavailable,
       exitCode: null,
+      signal: null,
+    ),
+  );
+  final interruptCompletion = interruptSignal?.then(
+    (signal) => (
+      kind: _ProfiledProcessCompletionKind.interrupted,
+      exitCode: null,
+      signal: signal,
     ),
   );
   var listenForExitPauseSignal = true;
   var pollDelay = _initialExitPausePollDelay;
 
   while (true) {
-    final completion =
-        await Future.any<
-          ({int? exitCode, _ProfiledProcessCompletionKind? kind})
-        >([
-          exitCompletion,
-          if (listenForExitPauseSignal) exitPause,
-          Future.delayed(pollDelay, () => (kind: null, exitCode: null)),
-        ]);
+    final completion = await Future.any<_MaybeProcessCompletion>([
+      exitCompletion,
+      if (listenForExitPauseSignal) exitPause,
+      ?interruptCompletion,
+      Future.delayed(
+        pollDelay,
+        () => (kind: null, exitCode: null, signal: null),
+      ),
+    ]);
 
     final kind = completion.kind;
     if (kind != null) {
@@ -349,14 +486,22 @@ _waitForDartProcessCompletion(
         pollDelay = _maxExitPausePollDelay;
         continue;
       }
-      return (kind: kind, exitCode: completion.exitCode);
+      return (
+        kind: kind,
+        exitCode: completion.exitCode,
+        signal: completion.signal,
+      );
     }
 
-    await sessionController.recordCurrentlyPausedExitIsolates();
+    await sessionController.recordCurrentlyPausedExitIsolates().timeout(
+      _exitPauseProbeTimeout,
+      onTimeout: () {},
+    );
     if (sessionController.haveAllAppIsolatesPausedAtExit) {
       return (
         kind: _ProfiledProcessCompletionKind.pausedAtExit,
         exitCode: null,
+        signal: null,
       );
     }
     pollDelay = _nextExitPausePollDelay(pollDelay);
@@ -368,6 +513,143 @@ Duration _nextExitPausePollDelay(Duration currentDelay) {
   return nextDelay > _maxExitPausePollDelay
       ? _maxExitPausePollDelay
       : nextDelay;
+}
+
+/// Stops an interrupted target after giving it a short graceful-exit window.
+Future<({int exitCode, bool processExited})> _stopInterruptedProcess({
+  required Future<int> exitCodeFuture,
+  required Process process,
+  required ProcessSignal signal,
+  required ProfileSessionController sessionController,
+}) async {
+  try {
+    final exitCode = await exitCodeFuture.timeout(_interruptExitWait);
+    return (exitCode: exitCode, processExited: true);
+  } on TimeoutException {
+    // The target did not handle the terminal interrupt itself.
+  }
+
+  if (!_killProcess(process, signal)) {
+    sessionController.addWarning(
+      'Failed to forward ${_profileSignalName(signal)} to the target process.',
+    );
+  }
+  await _resumeAnyInterruptedExitPauses(sessionController);
+  try {
+    final exitCode = await exitCodeFuture.timeout(_interruptTerminationWait);
+    return (exitCode: exitCode, processExited: true);
+  } on TimeoutException {
+    // Fall through to a stronger termination signal below.
+  }
+
+  if (signal != ProcessSignal.sigterm &&
+      !_killProcess(process, ProcessSignal.sigterm)) {
+    sessionController.addWarning(
+      'Failed to terminate the target process after interruption.',
+    );
+  }
+  try {
+    final exitCode = await exitCodeFuture.timeout(_interruptTerminationWait);
+    return (exitCode: exitCode, processExited: true);
+  } on TimeoutException {
+    sessionController.addWarning(
+      'Timed out waiting for the target process to exit after interruption; '
+      'returning a synthetic interrupt exit code.',
+    );
+    return (exitCode: _profileSignalExitCode(signal), processExited: false);
+  }
+}
+
+Future<void> _resumeAnyInterruptedExitPauses(
+  ProfileSessionController sessionController,
+) async {
+  try {
+    await sessionController.recordCurrentlyPausedExitIsolates().timeout(
+      _exitPauseProbeTimeout,
+      onTimeout: () {},
+    );
+    await sessionController.resumePausedExitIsolates();
+  } catch (_) {
+    // This is best-effort during shutdown; the final result keeps the
+    // interruption warning that explains why shutdown was forced.
+  }
+}
+
+bool _killProcess(Process process, ProcessSignal signal) {
+  try {
+    return process.kill(signal);
+  } catch (_) {
+    return false;
+  }
+}
+
+String _profileSignalName(ProcessSignal signal) {
+  if (signal == ProcessSignal.sigint) {
+    return 'SIGINT';
+  }
+  if (signal == ProcessSignal.sigterm) {
+    return 'SIGTERM';
+  }
+  return signal.toString();
+}
+
+int _profileSignalExitCode(ProcessSignal signal) {
+  if (signal == ProcessSignal.sigint) {
+    return 130;
+  }
+  if (signal == ProcessSignal.sigterm) {
+    return 143;
+  }
+  return 1;
+}
+
+/// Watches process-level interrupt signals while one run is active.
+final class _ProfileRunSignalWatcher {
+  _ProfileRunSignalWatcher({
+    required this.signal,
+    required List<StreamSubscription<ProcessSignal>> subscriptions,
+  }) : _subscriptions = subscriptions;
+
+  final Future<ProcessSignal> signal;
+  final List<StreamSubscription<ProcessSignal>> _subscriptions;
+
+  static _ProfileRunSignalWatcher? start() {
+    final signal = Completer<ProcessSignal>();
+    final subscriptions = <StreamSubscription<ProcessSignal>>[];
+
+    void watch(ProcessSignal processSignal) {
+      try {
+        subscriptions.add(
+          processSignal.watch().listen((receivedSignal) {
+            if (!signal.isCompleted) {
+              signal.complete(receivedSignal);
+            }
+          }),
+        );
+      } on UnsupportedError {
+        // Some platforms do not expose all process signals to Dart.
+      }
+    }
+
+    watch(ProcessSignal.sigint);
+    if (!Platform.isWindows) {
+      watch(ProcessSignal.sigterm);
+    }
+
+    if (subscriptions.isEmpty) {
+      return null;
+    }
+    return _ProfileRunSignalWatcher(
+      signal: signal.future,
+      subscriptions: subscriptions,
+    );
+  }
+
+  Future<void> dispose() async {
+    await Future.wait([
+      for (final subscription in _subscriptions) subscription.cancel(),
+    ]);
+  }
 }
 
 /// Resumes exit-paused Dart isolates and waits for process termination.

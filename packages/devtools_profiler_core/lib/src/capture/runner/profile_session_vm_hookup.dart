@@ -8,6 +8,8 @@ import 'package:vm_service/vm_service_io.dart';
 import 'profile_session_context.dart';
 import 'profile_session_snapshot_capture.dart';
 
+const _vmServiceExitPauseRequestTimeout = Duration(seconds: 2);
+
 /// Handles VM-service attachment and lifecycle concerns for a session.
 final class ProfileSessionVmHookup {
   ProfileSessionVmHookup({
@@ -106,7 +108,9 @@ final class ProfileSessionVmHookup {
     }
 
     try {
-      final vm = await vmService.getVM();
+      final vm = await vmService.getVM().timeout(
+        _vmServiceExitPauseRequestTimeout,
+      );
       final liveAppIsolateIds = <String>{};
       final pausedExitIsolateIds = <String>{};
       await Future.wait([
@@ -115,10 +119,14 @@ final class ProfileSessionVmHookup {
             () async {
               liveAppIsolateIds.add(isolateRef.id!);
               try {
-                final isolate = await vmService.getIsolate(isolateRef.id!);
+                final isolate = await vmService
+                    .getIsolate(isolateRef.id!)
+                    .timeout(_vmServiceExitPauseRequestTimeout);
                 if (isolate.pauseEvent?.kind == EventKind.kPauseExit) {
                   pausedExitIsolateIds.add(isolateRef.id!);
                 }
+              } on TimeoutException {
+                completeExitPauseSignal(allPaused: false);
               } catch (_) {
                 // The isolate can disappear while the VM is shutting down.
                 liveAppIsolateIds.remove(isolateRef.id!);

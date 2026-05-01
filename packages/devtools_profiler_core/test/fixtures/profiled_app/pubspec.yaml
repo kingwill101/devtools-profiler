@@ -3,9 +3,13 @@ name: devtools_profiler_fixture_app
 publish_to: none
 
 environment:
-  sdk: ^3.6.0
+  sdk: '>=3.10.0 <4.0.0'
 
 dependencies:
+  artisanal: ^0.3.0
+  artisanal_widgets: ^0.2.0
+  devtools_profiler_core:
+    path: ../../../../devtools_profiler_core
   devtools_region_profiler:
     path: ../../../../devtools_region_profiler
 

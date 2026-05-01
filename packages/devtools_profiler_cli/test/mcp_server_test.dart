@@ -1394,6 +1394,7 @@ class _FakeProfileRunner extends ProfileRunner {
       artifactDirectory: '/tmp/artifacts/session-1',
       vmServiceUri: 'http://127.0.0.1:8181/abcd/',
       overallProfile: _overallProfile,
+      processIoMode: request.processIoMode,
       regions: const [],
       warnings: const [],
     );

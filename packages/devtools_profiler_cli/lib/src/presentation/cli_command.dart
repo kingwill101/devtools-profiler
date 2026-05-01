@@ -18,6 +18,8 @@ String sessionCliCommand(ProfileRunResult session) {
   return shellJoin([
     'devtools-profiler',
     'run',
+    if (session.processIoMode == ProfileProcessIoMode.inheritStdio)
+      '--terminal',
     '--cwd',
     session.workingDirectory,
     '--artifact-dir',

@@ -40,6 +40,11 @@ void main() {
     );
     expect(
       stdoutCapture.text,
+      contains('devtools-profiler run --terminal -- dart run bin/tui.dart'),
+    );
+    expect(stdoutCapture.text, contains('--terminal'));
+    expect(
+      stdoutCapture.text,
       contains(
         'devtools-profiler run --duration 15s --cwd path/to/flutter_app -- flutter run -d linux -t lib/main.dart',
       ),
@@ -157,10 +162,69 @@ void main() {
       output: stdoutCapture.sink,
       errorOutput: stderrCapture.sink,
     );
+    await stdoutCapture.flush();
 
     expect(exitCode, 0);
     expect(runner.lastRunRequest?.runDuration, const Duration(seconds: 3));
     expect(runner.lastRunRequest?.vmServiceTimeout, const Duration(minutes: 2));
+  });
+
+  test('run forwards terminal mode to the profiler backend', () async {
+    final runner = _FakeProfileRunner();
+    final stdoutCapture = _OutputCapture();
+    final stderrCapture = _OutputCapture();
+    addTearDown(() async {
+      await stdoutCapture.close();
+      await stderrCapture.close();
+    });
+
+    final exitCode = await runCli(
+      const ['run', '--terminal', '--', 'dart', 'run', 'bin/tui.dart'],
+      runner: runner,
+      output: stdoutCapture.sink,
+      errorOutput: stderrCapture.sink,
+    );
+    await stdoutCapture.flush();
+
+    expect(exitCode, 0);
+    expect(
+      runner.lastRunRequest?.processIoMode,
+      ProfileProcessIoMode.inheritStdio,
+    );
+    expect(runner.lastRunRequest?.handleInterruptSignals, isTrue);
+    expect(runner.lastRunRequest?.command, ['dart', 'run', 'bin/tui.dart']);
+    expect(
+      stdoutCapture.text,
+      contains('devtools-profiler run --terminal --cwd'),
+    );
+  });
+
+  test('run rejects terminal mode with json output', () async {
+    final stdoutCapture = _OutputCapture();
+    final stderrCapture = _OutputCapture();
+    addTearDown(() async {
+      await stdoutCapture.close();
+      await stderrCapture.close();
+    });
+
+    final exitCode = await runCli(
+      const [
+        'run',
+        '--json',
+        '--terminal',
+        '--',
+        'dart',
+        'run',
+        'bin/tui.dart',
+      ],
+      runner: _FakeProfileRunner(),
+      output: stdoutCapture.sink,
+      errorOutput: stderrCapture.sink,
+    );
+    await stderrCapture.flush();
+
+    expect(exitCode, isNot(0));
+    expect(stderrCapture.text, contains('--terminal cannot be combined'));
   });
 
   test('attach profiles an existing VM service URI', () async {
@@ -1656,6 +1720,7 @@ class _FakeProfileRunner extends ProfileRunner {
       artifactDirectory: _session.artifactDirectory,
       vmServiceUri: _session.vmServiceUri,
       overallProfile: _session.overallProfile,
+      processIoMode: request.processIoMode,
       regions: _session.regions,
       warnings: _session.warnings,
     );

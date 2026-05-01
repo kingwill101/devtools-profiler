@@ -69,6 +69,21 @@ target command has its own options. Dart launches are held at isolate exit long
 enough for final CPU and memory snapshots, so short scripts can still produce a
 whole-session profile.
 
+Profile the bundled terminal UI fixture with direct stdio inheritance:
+
+```bash
+devtools-profiler run \
+  --terminal \
+  --cwd packages/devtools_profiler_core/test/fixtures/profiled_app \
+  -- dart run bin/artisanal_widget_app.dart
+```
+
+Use `--terminal` for TUI programs that need stdin, raw mode, mouse tracking, or
+alternate-screen rendering. Terminal mode cannot be combined with `--json`
+because the target owns stdout and stderr while it runs. When the CLI receives
+Ctrl+C or SIGTERM, it finalizes the diagnostics captured so far and then prints
+the normal session summary.
+
 Profile a Flutter test run:
 
 ```bash
@@ -600,6 +615,8 @@ Common presentation flags:
   process to expose a VM service URI before profiling starts. Examples: `3m`,
   `300s`.
 - `--forward-output` forwards child stdout/stderr. Defaults to `true`.
+- `--terminal` gives the launched process direct terminal access for TUI and
+  alternate-screen apps. It cannot be combined with `--json`.
 
 `attach` options:
 

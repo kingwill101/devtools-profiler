@@ -40,6 +40,12 @@ class RunCommand extends ProfilerCommand {
         'forward-output',
         defaultsTo: true,
         help: 'Echo stdout and stderr from the launched process.',
+      )
+      ..addFlag(
+        'terminal',
+        negatable: false,
+        help:
+            'Give the launched process direct terminal access for TUI and alternate-screen apps.',
       );
   }
 
@@ -59,6 +65,7 @@ class RunCommand extends ProfilerCommand {
     const [
       'devtools-profiler run bin/main.dart',
       'devtools-profiler run -- dart run bin/main.dart',
+      'devtools-profiler run --terminal -- dart run bin/tui.dart',
       'devtools-profiler run --cwd path/to/app -- dart run bin/main.dart',
       'devtools-profiler run --duration 15s --cwd path/to/flutter_app -- flutter run -d linux -t lib/main.dart',
     ],
@@ -74,12 +81,23 @@ class RunCommand extends ProfilerCommand {
         'the target command has options that could be parsed as profiler options.',
       );
     }
+    final terminalMode = argResults!['terminal'] as bool;
+    if (terminalMode && printJson) {
+      usageException(
+        '--terminal cannot be combined with --json because the target process '
+        'writes directly to stdout and stderr.',
+      );
+    }
 
     final session = await profileRunner.run(
       ProfileRunRequest(
         artifactDirectory: argResults!['artifact-dir'] as String?,
         command: commandArguments,
         forwardOutput: argResults!['forward-output'] as bool,
+        handleInterruptSignals: true,
+        processIoMode: terminalMode
+            ? ProfileProcessIoMode.inheritStdio
+            : ProfileProcessIoMode.pipe,
         runDuration: parseDuration(
           argResults!['duration'] as String?,
           optionName: 'duration',

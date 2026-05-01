@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.0-wip
+
+- Added `run --terminal` for profiling terminal UI and alternate-screen apps
+  with direct stdin, stdout, and stderr access.
+- Added Ctrl+C/SIGTERM handling for launched runs so the CLI prints available
+  diagnostics before stopping an interrupted target.
+- Preserved terminal mode in reproduction commands for captured sessions.
+- Documented terminal-mode profiling in the root README, package READMEs, and
+  local profiler skill.
+
 ## 0.2.1
 
 - Added `devtools-profiler run <file>.dart` shorthand for profiling Dart files

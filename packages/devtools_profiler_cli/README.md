@@ -66,6 +66,21 @@ Bare Dart files are expanded to `dart run <file>`. Dart launches are held at
 isolate exit long enough for final CPU and memory snapshots, so short scripts
 can still produce a whole-session profile.
 
+Profile the bundled terminal UI fixture:
+
+```bash
+devtools-profiler run \
+  --terminal \
+  --cwd packages/devtools_profiler_core/test/fixtures/profiled_app \
+  -- dart run bin/artisanal_widget_app.dart
+```
+
+Use `--terminal` when the target needs direct stdin, raw-mode input, mouse
+tracking, or alternate-screen rendering. It cannot be combined with `--json`
+because the target writes directly to the terminal. If you press Ctrl+C while
+the CLI is running, the profiler writes the diagnostics captured so far before
+printing the session summary.
+
 Profile a Flutter test:
 
 ```bash
@@ -240,6 +255,8 @@ devtools-profiler trends \
   duration. Examples: `15s`, `2m`, `500ms`.
 - `--vm-service-timeout <duration>` controls startup wait time before the VM
   service is available. Examples: `3m`, `300s`.
+- `--terminal` gives the launched process direct terminal access for TUI and
+  alternate-screen apps. It cannot be combined with `--json`.
 - `--min-live-bytes <n>` filters memory class rows for `compare` and
   `inspect-classes`.
 - `--memory-class-limit <n>` controls compared memory class rows for `compare`.
