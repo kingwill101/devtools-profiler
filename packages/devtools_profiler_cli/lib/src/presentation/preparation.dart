@@ -60,6 +60,8 @@ Future<PreparedSessionPresentation> prepareSessionPresentation(
       workingDirectory: session.workingDirectory,
       exitCode: session.exitCode,
       artifactDirectory: session.artifactDirectory,
+      terminatedByProfiler: session.terminatedByProfiler,
+      processIoMode: session.processIoMode,
       supportedCaptureKinds: session.supportedCaptureKinds,
       supportedIsolateScopes: session.supportedIsolateScopes,
       overallProfile: overallProfile,

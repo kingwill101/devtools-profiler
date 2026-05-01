@@ -99,6 +99,25 @@ For Flutter commands, the backend injects profiler session values through
 `runDuration` starts after the VM service is attached. `vmServiceTimeout`
 controls the startup/build wait before profiling can begin.
 
+For terminal UI targets, use inherited stdio so the child process receives the
+real terminal:
+
+```dart
+await runner.run(
+  const ProfileRunRequest(
+    command: ['dart', 'run', 'bin/tui.dart'],
+    processIoMode: ProfileProcessIoMode.inheritStdio,
+    handleInterruptSignals: true,
+    workingDirectory: '/path/to/dart/app',
+  ),
+);
+```
+
+`handleInterruptSignals` is intended for CLI-like hosts that should trap Ctrl+C
+or SIGTERM, finalize available diagnostics, stop the target, and return a
+session result. Long-lived automation servers normally leave it disabled and
+manage process signals at the host level.
+
 ## Attach To An Existing VM Service
 
 Attach mode is for tools that already have a Dart VM service URI. This is useful

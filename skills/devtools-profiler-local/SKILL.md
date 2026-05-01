@@ -73,6 +73,22 @@ Bare Dart files are expanded to `dart run <file>`. The profiler holds Dart
 launches at isolate exit long enough to capture final CPU and memory snapshots,
 so short scripts can still produce a whole-session profile.
 
+Use terminal mode for TUI applications that need direct stdin/stdout/stderr,
+raw input, mouse tracking, or alternate-screen rendering:
+
+```bash
+devtools-profiler run \
+  --terminal \
+  --cwd path/to/app \
+  -- dart run bin/tui.dart
+```
+
+Do not combine `--terminal` with `--json`. The target owns stdout and stderr
+while it runs, and the CLI prints the normal profiler summary after the TUI
+exits. If the user stops the profiler with Ctrl+C or SIGTERM, the CLI should
+finalize and print whatever diagnostics were captured before stopping the
+target.
+
 Use the full command shape when the target command has its own arguments or
 needs a Dart subcommand:
 
@@ -259,6 +275,8 @@ sessions when comparing region-scoped runs.
 - If a Dart script has its own flags, use `--` before the target command, for
   example `devtools-profiler run --cwd path/to/app -- dart run bin/main.dart
   --input data.json`.
+- If a TUI app does not render, add `--terminal` so the target receives direct
+  terminal IO instead of profiler-managed pipes.
 - If locations are too compact, add `--full-locations`.
 - If an agent needs complete data, set limits to `0`, such as
   `--tree-depth 0`, `--tree-children 0`, `--method-limit 0`,

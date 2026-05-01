@@ -12,22 +12,29 @@ final class LaunchedProcess {
   const LaunchedProcess({
     required this.process,
     required this.serviceUri,
-    required this.stdoutSubscription,
-    required this.stderrSubscription,
+    this.stdoutSubscription,
+    this.stderrSubscription,
   });
 
   final Process process;
   final Completer<Uri> serviceUri;
-  final StreamSubscription<String> stdoutSubscription;
-  final StreamSubscription<String> stderrSubscription;
+  final StreamSubscription<String>? stdoutSubscription;
+  final StreamSubscription<String>? stderrSubscription;
 }
 
 /// A resolved executable and argument vector for a profiled launch.
 final class CommandLaunchPlan {
-  const CommandLaunchPlan({required this.executable, required this.arguments});
+  const CommandLaunchPlan({
+    required this.executable,
+    required this.arguments,
+    this.expectedVmServiceUri,
+  });
 
   final String executable;
   final List<String> arguments;
+
+  /// VM-service URI that can be used without scraping process output.
+  final Uri? expectedVmServiceUri;
 }
 
 /// Launches the target command with profiler session wiring applied.
@@ -38,10 +45,16 @@ Future<LaunchedProcess> launchProfiledProcess({
   required String dtdUri,
   required String workingDirectory,
 }) async {
+  final vmServicePort =
+      request.processIoMode == ProfileProcessIoMode.inheritStdio
+      ? await _reserveLoopbackPort()
+      : null;
   final launchPlan = instrumentedCommandLaunchPlan(
     command,
     dtdUri: dtdUri,
     sessionId: sessionId,
+    processIoMode: request.processIoMode,
+    vmServicePort: vmServicePort,
   );
   final process = await Process.start(
     launchPlan.executable,
@@ -54,11 +67,15 @@ Future<LaunchedProcess> launchProfiledProcess({
       profilerSessionIdEnvVar: sessionId,
       profilerProtocolVersionEnvVar: '1',
     },
+    mode: switch (request.processIoMode) {
+      ProfileProcessIoMode.pipe => ProcessStartMode.normal,
+      ProfileProcessIoMode.inheritStdio => ProcessStartMode.inheritStdio,
+    },
   );
 
   final serviceUri = Completer<Uri>();
-  late final StreamSubscription<String> stdoutSubscription;
-  late final StreamSubscription<String> stderrSubscription;
+  StreamSubscription<String>? stdoutSubscription;
+  StreamSubscription<String>? stderrSubscription;
 
   void handleLine(String line, IOSink sink) {
     final parsedUri = parseVmServiceUri(line);
@@ -74,27 +91,38 @@ Future<LaunchedProcess> launchProfiledProcess({
     }
   }
 
-  stdoutSubscription = process.stdout
-      .transform(utf8.decoder)
-      .transform(const LineSplitter())
-      .listen((line) => handleLine(line, stdout));
+  final expectedVmServiceUri = launchPlan.expectedVmServiceUri;
+  if (expectedVmServiceUri != null) {
+    unawaited(
+      _completeKnownVmServiceUri(
+        serviceUri: serviceUri,
+        expectedVmServiceUri: expectedVmServiceUri,
+        exitCodeFuture: process.exitCode,
+      ),
+    );
+  } else {
+    stdoutSubscription = process.stdout
+        .transform(utf8.decoder)
+        .transform(const LineSplitter())
+        .listen((line) => handleLine(line, stdout));
 
-  stderrSubscription = process.stderr
-      .transform(utf8.decoder)
-      .transform(const LineSplitter())
-      .listen((line) => handleLine(line, stderr));
+    stderrSubscription = process.stderr
+        .transform(utf8.decoder)
+        .transform(const LineSplitter())
+        .listen((line) => handleLine(line, stderr));
 
-  unawaited(
-    process.exitCode.then((_) {
-      if (!serviceUri.isCompleted) {
-        serviceUri.completeError(
-          StateError(
-            'The profiled process exited before exposing a VM service URI.',
-          ),
-        );
-      }
-    }),
-  );
+    unawaited(
+      process.exitCode.then((_) {
+        if (!serviceUri.isCompleted) {
+          serviceUri.completeError(
+            StateError(
+              'The profiled process exited before exposing a VM service URI.',
+            ),
+          );
+        }
+      }),
+    );
+  }
 
   return LaunchedProcess(
     process: process,
@@ -216,26 +244,53 @@ CommandLaunchPlan instrumentedCommandLaunchPlan(
   List<String> command, {
   required String dtdUri,
   required String sessionId,
+  ProfileProcessIoMode processIoMode = ProfileProcessIoMode.pipe,
+  int? vmServicePort,
 }) {
   return switch (profileCommandKind(command)) {
-    ProfileCommandKind.dart => CommandLaunchPlan(
-      executable:
-          normalizedExecutableName(command.first) == 'dart' &&
-              command.first == 'dart'
-          ? Platform.resolvedExecutable
-          : command.first,
-      arguments: [
-        '--observe=0',
-        '--pause-isolates-on-exit',
-        ...command.skip(1),
-      ],
+    ProfileCommandKind.dart => _dartLaunchPlan(
+      command,
+      processIoMode: processIoMode,
+      vmServicePort: vmServicePort,
     ),
     ProfileCommandKind.flutter => flutterLaunchPlan(
       command,
       dtdUri: dtdUri,
       sessionId: sessionId,
+      processIoMode: processIoMode,
+      vmServicePort: vmServicePort,
     ),
   };
+}
+
+/// Builds a Dart launch plan with profiler VM arguments inserted first.
+CommandLaunchPlan _dartLaunchPlan(
+  List<String> command, {
+  required ProfileProcessIoMode processIoMode,
+  required int? vmServicePort,
+}) {
+  final usesInheritedStdio = processIoMode == ProfileProcessIoMode.inheritStdio;
+  final expectedVmServiceUri = usesInheritedStdio
+      ? _expectedLoopbackVmServiceUri(vmServicePort)
+      : null;
+
+  return CommandLaunchPlan(
+    executable:
+        normalizedExecutableName(command.first) == 'dart' &&
+            command.first == 'dart'
+        ? Platform.resolvedExecutable
+        : command.first,
+    arguments: [
+      usesInheritedStdio ? '--observe=$vmServicePort' : '--observe=0',
+      if (usesInheritedStdio) '--disable-service-auth-codes',
+      if (usesInheritedStdio)
+        '--pause-isolates-on-exit=false'
+      else
+        '--pause-isolates-on-exit',
+      ...command.skip(1),
+    ],
+    expectedVmServiceUri: expectedVmServiceUri,
+  );
 }
 
 /// Builds a Flutter launch plan with profiler arguments inserted safely.
@@ -243,6 +298,8 @@ CommandLaunchPlan flutterLaunchPlan(
   List<String> command, {
   required String dtdUri,
   required String sessionId,
+  ProfileProcessIoMode processIoMode = ProfileProcessIoMode.pipe,
+  int? vmServicePort,
 }) {
   final subcommandIndex = flutterSubcommandIndex(command)!;
   final subcommand = command[subcommandIndex];
@@ -260,6 +317,14 @@ CommandLaunchPlan flutterLaunchPlan(
     flutterArguments,
     dtdUri: dtdUri,
     sessionId: sessionId,
+    processIoMode: processIoMode,
+    vmServicePort: vmServicePort,
+  );
+  final expectedVmServiceUri = _flutterExpectedVmServiceUri(
+    subcommand,
+    flutterArguments,
+    processIoMode: processIoMode,
+    vmServicePort: vmServicePort,
   );
 
   return CommandLaunchPlan(
@@ -271,6 +336,7 @@ CommandLaunchPlan flutterLaunchPlan(
       ...profilerArguments,
       ...passthroughArguments,
     ],
+    expectedVmServiceUri: expectedVmServiceUri,
   );
 }
 
@@ -280,21 +346,82 @@ List<String> flutterProfilerArguments(
   List<String> arguments, {
   required String dtdUri,
   required String sessionId,
+  ProfileProcessIoMode processIoMode = ProfileProcessIoMode.pipe,
+  int? vmServicePort,
 }) {
+  final usesInheritedStdio = processIoMode == ProfileProcessIoMode.inheritStdio;
+  final profilerPort = usesInheritedStdio
+      ? _flutterTerminalVmServicePort(
+          subcommand,
+          arguments,
+          vmServicePort: vmServicePort,
+        )
+      : null;
+
   return [
     if (subcommand == 'run' &&
         !hasAnyOption(arguments, const [
           'host-vmservice-port',
           'vm-service-port',
         ]))
-      '--host-vmservice-port=0',
+      '--host-vmservice-port=${profilerPort ?? 0}',
     if (subcommand == 'test' &&
         !hasAnyOption(arguments, const ['enable-vmservice', 'start-paused']))
       '--enable-vmservice',
+    if (usesInheritedStdio &&
+        subcommand == 'run' &&
+        !hasOption(arguments, 'disable-service-auth-codes'))
+      '--disable-service-auth-codes',
     '--dart-define=$profilerDtdUriEnvVar=$dtdUri',
     '--dart-define=$profilerSessionIdEnvVar=$sessionId',
     '--dart-define=$profilerProtocolVersionEnvVar=1',
   ];
+}
+
+/// Returns the VM-service URI implied by Flutter terminal-mode arguments.
+Uri? _flutterExpectedVmServiceUri(
+  String subcommand,
+  List<String> arguments, {
+  required ProfileProcessIoMode processIoMode,
+  required int? vmServicePort,
+}) {
+  if (processIoMode != ProfileProcessIoMode.inheritStdio) {
+    return null;
+  }
+  return _expectedLoopbackVmServiceUri(
+    _flutterTerminalVmServicePort(
+      subcommand,
+      arguments,
+      vmServicePort: vmServicePort,
+    ),
+  );
+}
+
+/// Returns the fixed VM-service port used for Flutter terminal mode.
+int _flutterTerminalVmServicePort(
+  String subcommand,
+  List<String> arguments, {
+  required int? vmServicePort,
+}) {
+  if (subcommand != 'run') {
+    throw ArgumentError(
+      '--terminal is only supported for "flutter run". Flutter test does not '
+      'provide a predictable VM-service URI when process output is inherited.',
+    );
+  }
+
+  final explicitPort =
+      _longOptionIntValue(arguments, 'host-vmservice-port') ??
+      _longOptionIntValue(arguments, 'vm-service-port');
+  final resolvedPort = explicitPort ?? vmServicePort;
+  if (resolvedPort == null || resolvedPort <= 0) {
+    throw ArgumentError(
+      '--terminal requires a fixed Flutter VM-service port. Omit '
+      '--host-vmservice-port so the profiler can choose one, or pass a '
+      'non-zero port.',
+    );
+  }
+  return resolvedPort;
 }
 
 const knownFlutterSubcommands = {
@@ -347,6 +474,101 @@ bool hasOption(List<String> arguments, String name) {
   return arguments.any(
     (argument) => argument == option || argument.startsWith('$option='),
   );
+}
+
+/// Returns an integer value for a long option when it is present.
+int? _longOptionIntValue(List<String> arguments, String name) {
+  final option = '--$name';
+  for (var i = 0; i < arguments.length; i++) {
+    final argument = arguments[i];
+    String? value;
+    if (argument == option) {
+      if (i + 1 < arguments.length && !arguments[i + 1].startsWith('-')) {
+        value = arguments[i + 1];
+      }
+    } else if (argument.startsWith('$option=')) {
+      value = argument.substring(option.length + 1);
+    }
+    if (value != null) {
+      return int.tryParse(value);
+    }
+  }
+  return null;
+}
+
+/// Reserves a currently available loopback port for deterministic attachment.
+Future<int> _reserveLoopbackPort() async {
+  final server = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
+  final port = server.port;
+  await server.close();
+  return port;
+}
+
+/// Returns the profiler's auth-free loopback VM-service URI for [port].
+Uri _expectedLoopbackVmServiceUri(int? port) {
+  if (port == null || port <= 0) {
+    throw ArgumentError(
+      'A non-zero VM-service port is required for inherited stdio mode.',
+    );
+  }
+  return Uri.parse('http://127.0.0.1:$port/');
+}
+
+/// Completes [serviceUri] once the known VM-service port starts accepting IO.
+Future<void> _completeKnownVmServiceUri({
+  required Completer<Uri> serviceUri,
+  required Uri expectedVmServiceUri,
+  required Future<int> exitCodeFuture,
+}) async {
+  var processExited = false;
+  unawaited(
+    exitCodeFuture.then((_) {
+      processExited = true;
+      if (!serviceUri.isCompleted) {
+        serviceUri.completeError(
+          StateError(
+            'The profiled process exited before exposing a VM service URI.',
+          ),
+        );
+      }
+    }),
+  );
+
+  var probeDelay = const Duration(milliseconds: 25);
+  while (!serviceUri.isCompleted && !processExited) {
+    if (await _canConnectToVmService(expectedVmServiceUri)) {
+      if (!serviceUri.isCompleted) {
+        serviceUri.complete(expectedVmServiceUri);
+      }
+      return;
+    }
+    await Future<void>.delayed(probeDelay);
+    probeDelay = _nextVmServiceProbeDelay(probeDelay);
+  }
+}
+
+/// Returns whether the VM-service socket is accepting connections.
+Future<bool> _canConnectToVmService(Uri serviceUri) async {
+  Socket? socket;
+  try {
+    socket = await Socket.connect(
+      serviceUri.host,
+      serviceUri.port,
+      timeout: const Duration(milliseconds: 100),
+    );
+    return true;
+  } catch (_) {
+    return false;
+  } finally {
+    socket?.destroy();
+  }
+}
+
+Duration _nextVmServiceProbeDelay(Duration currentDelay) {
+  final nextDelay = currentDelay * 2;
+  return nextDelay > const Duration(milliseconds: 250)
+      ? const Duration(milliseconds: 250)
+      : nextDelay;
 }
 
 /// Returns the default VM-service wait timeout for [command].

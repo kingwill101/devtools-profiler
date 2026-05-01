@@ -140,6 +140,7 @@ final class ProfileSessionController {
     required String artifactDirectory,
     required List<String> command,
     required int exitCode,
+    required ProfileProcessIoMode processIoMode,
     required bool terminatedByProfiler,
     required String workingDirectory,
   }) {
@@ -170,6 +171,7 @@ final class ProfileSessionController {
       supportedCaptureKinds: supportedCaptureKinds,
       supportedIsolateScopes: supportedIsolateScopes,
       overallProfile: context.overallProfile,
+      processIoMode: processIoMode,
       regions: List.unmodifiable(sortedRegions),
       warnings: List.unmodifiable(context.warnings),
     );

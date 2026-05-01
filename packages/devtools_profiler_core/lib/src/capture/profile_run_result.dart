@@ -4,6 +4,7 @@ import 'package:devtools_profiler_protocol/devtools_profiler_protocol.dart';
 
 import 'model_json_utils.dart';
 import 'profile_region_result.dart';
+import 'profile_run_request.dart';
 
 /// A full profiling session result.
 ///
@@ -28,6 +29,7 @@ class ProfileRunResult {
     ],
     this.terminatedByProfiler = false,
     this.overallProfile,
+    this.processIoMode = ProfileProcessIoMode.pipe,
     this.vmServiceUri,
   }) : supportedCaptureKinds = List.unmodifiable(
          normalizeProfileCaptureKinds(supportedCaptureKinds),
@@ -48,6 +50,10 @@ class ProfileRunResult {
       artifactDirectory: json['artifactDirectory'] as String? ?? '',
       vmServiceUri: json['vmServiceUri'] as String?,
       terminatedByProfiler: json['terminatedByProfiler'] as bool? ?? false,
+      processIoMode: switch (json['processIoMode']) {
+        'inheritStdio' => ProfileProcessIoMode.inheritStdio,
+        _ => ProfileProcessIoMode.pipe,
+      },
       supportedCaptureKinds: switch (json['supportedCaptureKinds']) {
         final List<Object?> values => [
           for (final value in values)
@@ -96,6 +102,9 @@ class ProfileRunResult {
   /// Whether the profiler stopped the process after a requested run duration.
   final bool terminatedByProfiler;
 
+  /// How the launched process received standard IO.
+  final ProfileProcessIoMode processIoMode;
+
   /// The directory containing the session artifacts.
   final String artifactDirectory;
 
@@ -126,6 +135,7 @@ class ProfileRunResult {
     'workingDirectory': workingDirectory,
     'exitCode': exitCode,
     'terminatedByProfiler': terminatedByProfiler,
+    'processIoMode': processIoMode.name,
     'artifactDirectory': artifactDirectory,
     'vmServiceUri': vmServiceUri,
     'supportedCaptureKinds': [

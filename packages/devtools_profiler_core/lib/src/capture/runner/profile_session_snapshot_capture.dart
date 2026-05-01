@@ -11,6 +11,8 @@ import 'capture_state.dart';
 import 'profile_runner_shared.dart';
 import 'profile_session_context.dart';
 
+const _vmServiceRequestTimeout = Duration(seconds: 2);
+
 /// Captures CPU and memory snapshots for one profiling session.
 final class ProfileSessionSnapshotCapture {
   ProfileSessionSnapshotCapture(this.context);
@@ -353,7 +355,9 @@ final class ProfileSessionSnapshotCapture {
   /// Resolves the non-system isolates currently visible to the VM service.
   Future<List<String>> resolveAppIsolateIds() async {
     try {
-      final vm = await context.vmService!.getVM();
+      final vm = await context.vmService!.getVM().timeout(
+        _vmServiceRequestTimeout,
+      );
       return [
         for (final isolate in vm.isolates ?? const <IsolateRef>[])
           if (!(isolate.isSystemIsolate ?? false) && isolate.id != null)
@@ -415,7 +419,8 @@ final class ProfileSessionSnapshotCapture {
         () async {
           try {
             final allocationProfile = await context.vmService!
-                .getAllocationProfile(isolateId);
+                .getAllocationProfile(isolateId)
+                .timeout(_vmServiceRequestTimeout);
             capturedSnapshots.add(
               AllocationProfileSnapshot(
                 isolateId: isolateId,
@@ -480,7 +485,9 @@ final class ProfileSessionSnapshotCapture {
         for (final isolateId in isolateIds)
           () async {
             try {
-              await context.vmService!.clearCpuSamples(isolateId);
+              await context.vmService!
+                  .clearCpuSamples(isolateId)
+                  .timeout(_vmServiceRequestTimeout);
             } catch (error) {
               failures.add('$isolateId: $error');
             }
@@ -519,11 +526,13 @@ final class ProfileSessionSnapshotCapture {
       for (final isolateId in isolateIds)
         () async {
           try {
-            final cpuSamples = await context.vmService!.getCpuSamples(
-              isolateId,
-              startTimestampMicros,
-              timeExtentMicros,
-            );
+            final cpuSamples = await context.vmService!
+                .getCpuSamples(
+                  isolateId,
+                  startTimestampMicros,
+                  timeExtentMicros,
+                )
+                .timeout(_vmServiceRequestTimeout);
             capturedIsolateIds.add(isolateId);
             capturedSamples.add(cpuSamples);
           } catch (error) {

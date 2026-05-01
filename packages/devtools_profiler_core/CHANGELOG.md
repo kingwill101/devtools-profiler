@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.0-wip
+
+- Added inherited-stdio process IO mode for terminal UI and alternate-screen
+  profiling targets.
+- Added deterministic VM-service discovery for inherited-stdio Dart launches
+  and Flutter `run` launches.
+- Added optional interrupt signal handling so hosts can finalize available
+  diagnostics before stopping an interrupted target.
+- Reduced shutdown polling overhead by backing off exit-pause probes and adding
+  bounded VM-service request timeouts during final capture.
+
 ## 0.2.1
 
 - Added bare Dart file launch support by expanding file paths to
