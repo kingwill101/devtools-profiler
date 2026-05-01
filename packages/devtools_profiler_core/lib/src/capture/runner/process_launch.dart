@@ -43,6 +43,7 @@ Future<LaunchedProcess> launchProfiledProcess({
   required List<String> command,
   required String sessionId,
   required String dtdUri,
+  required Duration vmServiceTimeout,
   required String workingDirectory,
 }) async {
   final vmServicePort =
@@ -98,6 +99,7 @@ Future<LaunchedProcess> launchProfiledProcess({
         serviceUri: serviceUri,
         expectedVmServiceUri: expectedVmServiceUri,
         exitCodeFuture: process.exitCode,
+        vmServiceTimeout: vmServiceTimeout,
       ),
     );
   } else {
@@ -263,7 +265,16 @@ CommandLaunchPlan instrumentedCommandLaunchPlan(
   };
 }
 
-/// Builds a Dart launch plan with profiler VM arguments inserted first.
+/// Builds a Dart [CommandLaunchPlan] with profiler VM arguments first.
+///
+/// Pipe mode enables exit pausing so short Dart scripts keep their VM service
+/// alive long enough for final snapshots. Inherited-stdio mode explicitly
+/// disables exit pausing because terminal apps own their shutdown behavior and
+/// because the profiler uses [CommandLaunchPlan.expectedVmServiceUri] instead
+/// of scraping output for service auth codes. The bare `dart` command is
+/// replaced with [Platform.resolvedExecutable] only when
+/// [normalizedExecutableName] confirms it is exactly the SDK token; explicit
+/// paths and suffixed executables are preserved.
 CommandLaunchPlan _dartLaunchPlan(
   List<String> command, {
   required ProfileProcessIoMode processIoMode,
@@ -497,6 +508,12 @@ int? _longOptionIntValue(List<String> arguments, String name) {
 }
 
 /// Reserves a currently available loopback port for deterministic attachment.
+///
+/// This uses a bind-then-close pattern, which leaves a brief race window before
+/// the target binds the port. That tradeoff is acceptable for this local
+/// profiling path; stronger guarantees would require letting the target pick an
+/// ephemeral port and scraping output, or using platform-specific reservation
+/// APIs.
 Future<int> _reserveLoopbackPort() async {
   final server = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
   final port = server.port;
@@ -519,8 +536,10 @@ Future<void> _completeKnownVmServiceUri({
   required Completer<Uri> serviceUri,
   required Uri expectedVmServiceUri,
   required Future<int> exitCodeFuture,
+  required Duration vmServiceTimeout,
 }) async {
   var processExited = false;
+  final stopwatch = Stopwatch()..start();
   unawaited(
     exitCodeFuture.then((_) {
       processExited = true;
@@ -536,13 +555,28 @@ Future<void> _completeKnownVmServiceUri({
 
   var probeDelay = const Duration(milliseconds: 25);
   while (!serviceUri.isCompleted && !processExited) {
+    if (stopwatch.elapsed >= vmServiceTimeout) {
+      if (!serviceUri.isCompleted) {
+        serviceUri.completeError(
+          StateError(
+            'Timed out after ${formatProfileDuration(vmServiceTimeout)} '
+            'waiting for the Dart VM service URI from the profiled process.',
+          ),
+        );
+      }
+      return;
+    }
     if (await _canConnectToVmService(expectedVmServiceUri)) {
       if (!serviceUri.isCompleted) {
         serviceUri.complete(expectedVmServiceUri);
       }
       return;
     }
-    await Future<void>.delayed(probeDelay);
+    final remaining = vmServiceTimeout - stopwatch.elapsed;
+    if (remaining <= Duration.zero) {
+      continue;
+    }
+    await Future<void>.delayed(remaining < probeDelay ? remaining : probeDelay);
     probeDelay = _nextVmServiceProbeDelay(probeDelay);
   }
 }

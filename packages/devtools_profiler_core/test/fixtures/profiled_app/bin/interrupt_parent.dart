@@ -1,13 +1,17 @@
-import 'dart:async';
 import 'dart:io';
+
+import 'package:devtools_region_profiler/devtools_region_profiler.dart';
 
 Future<void> main() async {
   final parentPid = int.parse(
     Platform.environment['DEVTOOLS_PROFILER_TEST_PARENT_PID']!,
   );
-  Timer(const Duration(milliseconds: 1200), () {
-    Process.killPid(parentPid, ProcessSignal.sigint);
-  });
+  await profileRegion(
+    'interrupt-ready',
+    () async {},
+    options: const ProfileRegionOptions(captureKinds: [ProfileCaptureKind.cpu]),
+  );
+  Process.killPid(parentPid, ProcessSignal.sigint);
 
   final stopwatch = Stopwatch()..start();
   var state = 1;

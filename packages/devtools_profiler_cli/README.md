@@ -66,13 +66,13 @@ Bare Dart files are expanded to `dart run <file>`. Dart launches are held at
 isolate exit long enough for final CPU and memory snapshots, so short scripts
 can still produce a whole-session profile.
 
-Profile a terminal UI app:
+Profile the bundled terminal UI fixture:
 
 ```bash
 devtools-profiler run \
   --terminal \
-  --cwd /path/to/app \
-  -- dart run bin/tui.dart
+  --cwd packages/devtools_profiler_core/test/fixtures/profiled_app \
+  -- dart run bin/artisanal_widget_app.dart
 ```
 
 Use `--terminal` when the target needs direct stdin, raw-mode input, mouse

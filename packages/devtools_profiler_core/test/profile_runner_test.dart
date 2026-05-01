@@ -178,6 +178,43 @@ sleep 5
     );
   });
 
+  test('times out inherited-stdio VM service probing', () async {
+    if (Platform.isWindows) {
+      markTestSkipped('The fake flutter launcher uses a POSIX shell script.');
+      return;
+    }
+
+    final tempDirectory = await Directory.systemTemp.createTemp(
+      'devtools_profiler_core_terminal_vm_service_timeout.',
+    );
+    addTearDown(() => tempDirectory.delete(recursive: true));
+    final flutter = File(path.join(tempDirectory.path, 'flutter'));
+    await flutter.writeAsString('''
+#!/bin/sh
+sleep 5
+''');
+    await Process.run('chmod', ['+x', flutter.path]);
+
+    await expectLater(
+      ProfileRunner().run(
+        ProfileRunRequest(
+          command: [flutter.path, 'run', '-d', 'linux'],
+          artifactDirectory: path.join(tempDirectory.path, 'session'),
+          processIoMode: ProfileProcessIoMode.inheritStdio,
+          vmServiceTimeout: const Duration(milliseconds: 50),
+          workingDirectory: tempDirectory.path,
+        ),
+      ),
+      throwsA(
+        isA<StateError>().having(
+          (error) => error.toString(),
+          'message',
+          contains('Timed out after 50ms waiting for the Dart VM service URI'),
+        ),
+      ),
+    );
+  });
+
   test('profiles a marked region and writes session artifacts', () async {
     final runner = ProfileRunner();
     final artifactRoot = await Directory.systemTemp.createTemp(

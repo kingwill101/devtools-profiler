@@ -526,13 +526,11 @@ final class ProfileSessionSnapshotCapture {
       for (final isolateId in isolateIds)
         () async {
           try {
-            final cpuSamples = await context.vmService!
-                .getCpuSamples(
-                  isolateId,
-                  startTimestampMicros,
-                  timeExtentMicros,
-                )
-                .timeout(_vmServiceRequestTimeout);
+            final cpuSamples = await context.vmService!.getCpuSamples(
+              isolateId,
+              startTimestampMicros,
+              timeExtentMicros,
+            );
             capturedIsolateIds.add(isolateId);
             capturedSamples.add(cpuSamples);
           } catch (error) {

@@ -69,6 +69,9 @@ class ProfileRunner {
     var terminatedByProfiler = false;
 
     try {
+      final vmServiceTimeout =
+          request.vmServiceTimeout ??
+          defaultVmServiceTimeoutForCommand(command);
       await sessionController.registerServices();
 
       launchedProcess = await launchProfiledProcess(
@@ -76,6 +79,7 @@ class ProfileRunner {
         command: command,
         sessionId: sessionId,
         dtdUri: dtdSession.info.localUri.toString(),
+        vmServiceTimeout: vmServiceTimeout,
         workingDirectory: workingDirectory,
       );
       process = launchedProcess.process;
@@ -84,9 +88,6 @@ class ProfileRunner {
           ? _ProfileRunSignalWatcher.start()
           : null;
 
-      final vmServiceTimeout =
-          request.vmServiceTimeout ??
-          defaultVmServiceTimeoutForCommand(command);
       final serviceWait = await _waitForVmServiceUri(
         launchedProcess.serviceUri.future,
         vmServiceTimeout: vmServiceTimeout,

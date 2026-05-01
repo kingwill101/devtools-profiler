@@ -69,13 +69,13 @@ target command has its own options. Dart launches are held at isolate exit long
 enough for final CPU and memory snapshots, so short scripts can still produce a
 whole-session profile.
 
-Profile terminal UI apps with direct stdio inheritance:
+Profile the bundled terminal UI fixture with direct stdio inheritance:
 
 ```bash
 devtools-profiler run \
   --terminal \
-  --cwd /path/to/your/dart/app \
-  -- dart run bin/tui.dart
+  --cwd packages/devtools_profiler_core/test/fixtures/profiled_app \
+  -- dart run bin/artisanal_widget_app.dart
 ```
 
 Use `--terminal` for TUI programs that need stdin, raw mode, mouse tracking, or
