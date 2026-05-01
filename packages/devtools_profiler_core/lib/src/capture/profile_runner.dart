@@ -72,6 +72,9 @@ class ProfileRunner {
       final vmServiceTimeout =
           request.vmServiceTimeout ??
           defaultVmServiceTimeoutForCommand(command);
+      interruptWatcher = request.handleInterruptSignals
+          ? _ProfileRunSignalWatcher.start()
+          : null;
       await sessionController.registerServices();
 
       launchedProcess = await launchProfiledProcess(
@@ -84,9 +87,6 @@ class ProfileRunner {
       );
       process = launchedProcess.process;
       sessionController.childProcessId = process.pid;
-      interruptWatcher = request.handleInterruptSignals
-          ? _ProfileRunSignalWatcher.start()
-          : null;
 
       final serviceWait = await _waitForVmServiceUri(
         launchedProcess.serviceUri.future,

@@ -125,6 +125,8 @@ final class ProfileSessionVmHookup {
                 if (isolate.pauseEvent?.kind == EventKind.kPauseExit) {
                   pausedExitIsolateIds.add(isolateRef.id!);
                 }
+              } on TimeoutException {
+                completeExitPauseSignal(allPaused: false);
               } catch (_) {
                 // The isolate can disappear while the VM is shutting down.
                 liveAppIsolateIds.remove(isolateRef.id!);
