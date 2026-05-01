@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.0-wip
+## 0.3.0
 
 - Added `run --terminal` for profiling terminal UI and alternate-screen apps
   with direct stdin, stdout, and stderr access.

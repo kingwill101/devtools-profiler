@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.0-wip
+## 0.3.0
 
 - Added inherited-stdio process IO mode for terminal UI and alternate-screen
   profiling targets.
