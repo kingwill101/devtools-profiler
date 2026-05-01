@@ -2,7 +2,7 @@
 name: devtools_profiler_core
 description: Pure-Dart profiling backend for DevTools-inspired Dart and Flutter CLI and MCP workflows.
 
-version: 0.3.0-wip
+version: 0.3.0
 
 environment:
   sdk: '>=3.10.0 <4.0.0'
@@ -20,5 +20,7 @@ dependencies:
   vm_service: ^15.0.2
 
 dev_dependencies:
+  artisanal: ^0.3.0
+  artisanal_widgets: ^0.2.0
   devtools_region_profiler: ^0.1.0
   test: ^1.25.8
