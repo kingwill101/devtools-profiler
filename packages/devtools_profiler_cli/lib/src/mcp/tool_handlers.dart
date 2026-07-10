@@ -5,6 +5,8 @@ import 'dart:io';
 import 'package:dart_mcp/server.dart';
 import 'package:devtools_profiler_core/devtools_profiler_core.dart';
 import 'package:path/path.dart' as path;
+import 'package:vm_service/vm_service.dart';
+import 'package:vm_service/vm_service_io.dart';
 
 import '../presentation.dart';
 
@@ -45,6 +47,10 @@ class McpToolHandlers {
             command: command,
             forwardOutput: arguments['forwardOutput'] as bool? ?? false,
             runDuration: _optionalDurationSecondsArgument(arguments),
+            warmUpDuration: _optionalDurationSecondsArgument(
+              arguments,
+              key: 'warmUpSeconds',
+            ),
             vmServiceTimeout: _optionalDurationSecondsArgument(
               arguments,
               key: 'vmServiceTimeoutSeconds',
@@ -653,6 +659,156 @@ class McpToolHandlers {
         return response;
       },
     );
+  }
+
+  Future<CallToolResult> profileDiscoverApps(CallToolRequest request) {
+    return _runTool(
+      request: request,
+      successMessage: 'Apps discovered.',
+      action: (progress) async {
+        progress(0, 1, 'Scanning for running applications.');
+        final apps = await discoverActiveApps();
+        final response = {
+          'kind': 'appList',
+          'totalApps': apps.length,
+          'apps': [for (final app in apps) app.toJson()],
+        };
+        progress(1, 1, 'App discovery completed.');
+        return response;
+      },
+    );
+  }
+
+  Future<CallToolResult> profileFrameProfile(CallToolRequest request) {
+    return _runTool(
+      request: request,
+      successMessage: 'Frame profile completed.',
+      action: (progress) async {
+        final arguments = request.arguments ?? const <String, Object?>{};
+        final uri = _requiredStringArgument(arguments, key: 'vmServiceUri');
+        final duration = (arguments['durationSeconds'] as int?) ?? 5;
+        progress(0, 3, 'Connecting to VM service.');
+        final vmService = await _connectVmService(uri);
+        try {
+          progress(1, 3, 'Profiling frames for ${duration}s.');
+          final analyzer = FrameAnalyzer(vmService: vmService);
+          final result = await analyzer.profileFrames(
+            duration: Duration(seconds: duration),
+          );
+          progress(2, 3, 'Frame profile completed.');
+          return {
+            'kind': 'frameProfile',
+            'vmServiceUri': uri,
+            ...result.toJson(),
+          };
+        } finally {
+          await vmService.dispose();
+        }
+      },
+    );
+  }
+
+  Future<CallToolResult> profileMemorySnapshot(CallToolRequest request) {
+    return _runTool(
+      request: request,
+      successMessage: 'Memory snapshot captured.',
+      action: (progress) async {
+        final arguments = request.arguments ?? const <String, Object?>{};
+        final uri = _requiredStringArgument(arguments, key: 'vmServiceUri');
+        final name = _optionalStringArgument(arguments, key: 'name');
+        final forceGc = arguments['forceGc'] as bool? ?? true;
+        final topN = arguments['topN'] as int? ?? 50;
+        progress(0, 3, 'Connecting to VM service.');
+        final vmService = await _connectVmService(uri);
+        try {
+          progress(1, 3, 'Capturing allocation profile.');
+          final vm = await vmService.getVM();
+          final activeIsolate = _findActiveIsolate(vm);
+          final profile = await vmService.getAllocationProfile(
+            activeIsolate,
+            gc: forceGc,
+            reset: false,
+          );
+          final members = profile.members ?? [];
+          final classEntries =
+              members
+                  .map((stats) => MemoryClassEntry.fromClassHeapStats(stats))
+                  .toList()
+                ..sort((a, b) => b.sizeCurrent.compareTo(a.sizeCurrent));
+          progress(2, 3, 'Building snapshot response.');
+          return {
+            'kind': 'memorySnapshot',
+            'vmServiceUri': uri,
+            'name': name ?? 'snapshot-${DateTime.now().millisecondsSinceEpoch}',
+            'totalHeapUsage': profile.memoryUsage?.heapUsage ?? 0,
+            'heapCapacity': profile.memoryUsage?.heapCapacity ?? 0,
+            'externalUsage': profile.memoryUsage?.externalUsage ?? 0,
+            'classCount': classEntries.length,
+            'classEntries': [
+              for (final entry in classEntries.take(topN)) entry.toJson(),
+            ],
+          };
+        } finally {
+          await vmService.dispose();
+        }
+      },
+    );
+  }
+
+  Future<CallToolResult> profileWidgetTree(CallToolRequest request) {
+    return _runTool(
+      request: request,
+      successMessage: 'Widget tree captured.',
+      action: (progress) async {
+        final arguments = request.arguments ?? const <String, Object?>{};
+        final uri = _requiredStringArgument(arguments, key: 'vmServiceUri');
+        final maxDepth = arguments['maxDepth'] as int? ?? 15;
+        final summary = arguments['summary'] as bool? ?? false;
+        final projectOnly = arguments['projectOnly'] as bool? ?? false;
+        progress(0, 3, 'Connecting to VM service.');
+        final vmService = await _connectVmService(uri);
+        try {
+          progress(1, 3, 'Capturing widget tree.');
+          final vm = await vmService.getVM();
+          final activeIsolate = _findActiveIsolate(vm);
+          final captureService = WidgetTreeCaptureService(vmService: vmService);
+          final tree = summary
+              ? await captureService.captureSummaryWidgetTree(
+                  isolateId: activeIsolate,
+                  maxDepth: maxDepth,
+                )
+              : await captureService.captureWidgetTree(
+                  isolateId: activeIsolate,
+                  maxDepth: maxDepth,
+                  projectOnly: projectOnly,
+                );
+          progress(2, 3, 'Building widget tree response.');
+          return {'kind': 'widgetTree', 'vmServiceUri': uri, ...tree.toJson()};
+        } finally {
+          await vmService.dispose();
+        }
+      },
+    );
+  }
+
+  /// Connects to a VM service WebSocket URI.
+  Future<VmService> _connectVmService(String uri) async {
+    final wsUri = uri
+        .replaceFirst('http://', 'ws://')
+        .replaceFirst('https://', 'wss://');
+    final cleanWs = wsUri.endsWith('/ws') ? wsUri : '$wsUri/ws';
+    return vmServiceConnectUri(cleanWs);
+  }
+
+  /// Finds the first non-system isolate ID from a VM description.
+  String _findActiveIsolate(VM vm) {
+    final isolates = vm.isolates ?? [];
+    final active = isolates.where((i) => i.isSystemIsolate != true).toList();
+    if (active.isEmpty && isolates.isEmpty) {
+      throw StateError('No isolates found in the target VM.');
+    }
+    final target = active.isNotEmpty ? active.first : isolates.first;
+    return target.id!;
   }
 
   Future<CallToolResult> _runTool({

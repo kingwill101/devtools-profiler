@@ -27,6 +27,12 @@ final Tool profileRunTool = Tool(
         description:
             'Optional timeout in seconds for waiting for the launched process to expose a Dart VM service URI.',
       ),
+      'warmUpSeconds': Schema.int(
+        description:
+            'Optional warm-up duration in seconds before the profiling timer '
+            'starts. Useful for Flutter apps where you want to skip startup '
+            'and first-frame rendering.',
+      ),
       'forwardOutput': Schema.bool(
         description: 'Whether child stdout and stderr should be echoed.',
       ),

@@ -66,6 +66,10 @@ base class ProfilerMcpServer extends MCPServer with ToolsSupport {
     registerTool(profileAnalyzeTrendsTool, handlers.profileAnalyzeTrends);
     registerTool(profileFindRegressionsTool, handlers.profileFindRegressions);
     registerTool(profileInspectClassesTool, handlers.profileInspectClasses);
+    registerTool(profileDiscoverAppsTool, handlers.profileDiscoverApps);
+    registerTool(profileFrameProfileTool, handlers.profileFrameProfile);
+    registerTool(profileMemorySnapshotTool, handlers.profileMemorySnapshot);
+    registerTool(profileWidgetTreeTool, handlers.profileWidgetTree);
   }
 
   /// The profiler backend used by all tool calls.
