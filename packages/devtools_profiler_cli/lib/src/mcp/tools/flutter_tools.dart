@@ -140,3 +140,34 @@ final Tool profileWidgetTreeTool = Tool(
     title: 'Profile Widget Tree',
   ),
 );
+
+final Tool profileNavigationStackTool = Tool(
+  name: 'profile_navigation_stack',
+  title: 'Profile Navigation Stack',
+  description:
+      'Inspect the Flutter navigation route stack from a running application. '
+      'Returns the ordered list of routes with their types, settings names, '
+      'and which route is currently displayed.',
+  inputSchema: Schema.object(
+    properties: {
+      'vmServiceUri': Schema.string(
+        description:
+            'The VM service WebSocket URI (e.g. '
+            'ws://127.0.0.1:8181/abc123/ws).',
+      ),
+    },
+    required: ['vmServiceUri'],
+    additionalProperties: false,
+  ),
+  outputSchema: Schema.object(
+    description: 'Captured Flutter navigation route stack.',
+    additionalProperties: true,
+  ),
+  annotations: ToolAnnotations(
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: false,
+    readOnlyHint: true,
+    title: 'Profile Navigation Stack',
+  ),
+);

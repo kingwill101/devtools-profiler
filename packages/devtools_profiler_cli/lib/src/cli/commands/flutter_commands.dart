@@ -1,4 +1,5 @@
 import 'package:devtools_profiler_core/devtools_profiler_core.dart';
+import 'package:vm_service/vm_service.dart';
 import 'package:vm_service/vm_service_io.dart';
 
 import '../constants.dart';
@@ -338,5 +339,86 @@ class WidgetTreeCommand extends ProfilerCommand {
         _renderWidgetNode(child, depth: depth + 1);
       }
     }
+  }
+}
+
+/// Command that inspects the Flutter navigation route stack.
+class RouteStackCommand extends ProfilerCommand {
+  /// Creates a route-stack command.
+  RouteStackCommand(super.profileRunner);
+
+  @override
+  String get name => 'route-stack';
+
+  @override
+  String get description =>
+      'Inspect the navigation stack from a running Flutter app '
+      'via its VM service URI.';
+
+  @override
+  String get invocation =>
+      '${runner!.executableName} route-stack [options] <vm-service-uri>';
+
+  @override
+  String formatUsage({bool includeDescription = true}) => usageWithExamples(
+    super.formatUsage(includeDescription: includeDescription),
+    const [
+      'devtools-profiler route-stack ws://127.0.0.1:8181/abc123/ws',
+    ],
+  );
+
+  @override
+  Future<int> run() async {
+    if (argResults!.rest.isEmpty) {
+      usageException('A VM service URI is required.');
+    }
+
+    final vmServiceUri = argResults!.rest.single;
+    final wsUri = vmServiceUri
+        .replaceFirst('http://', 'ws://')
+        .replaceFirst('https://', 'wss://');
+    final cleanWs = wsUri.endsWith('/ws') ? wsUri : '$wsUri/ws';
+
+    final vmService = await vmServiceConnectUri(cleanWs);
+    try {
+      final vm = await vmService.getVM();
+      final isolateId = _findMainIsolate(vm);
+      final service = NavigationStackService(vmService: vmService);
+      final stack = await service.getNavigationStack(isolateId: isolateId);
+
+      if (printJson) {
+        line(jsonEncoder.convert(stack.toJson()));
+      } else {
+        io.title('Navigation Stack');
+        io.table(
+          headers: const ['Route', 'Type', 'Settings Name', 'Current'],
+          rows: [
+            for (final route in stack.routes)
+              [
+                route.path,
+                route.name,
+                route.settingsName ?? '-',
+                route.isCurrent ? '*' : '',
+              ],
+          ],
+        );
+        if (stack.currentRoute != null) {
+          comment('Current route: ${stack.currentRoute!.path}');
+        }
+      }
+    } finally {
+      await vmService.dispose();
+    }
+
+    return successExitCode;
+  }
+
+  String _findMainIsolate(VM vm) {
+    final isolates = vm.isolates ?? [];
+    final active = isolates.where((i) => i.isSystemIsolate != true).toList();
+    if (active.isEmpty && isolates.isEmpty) {
+      throw StateError('No isolates found in the target VM.');
+    }
+    return (active.isNotEmpty ? active.first : isolates.first).id!;
   }
 }
