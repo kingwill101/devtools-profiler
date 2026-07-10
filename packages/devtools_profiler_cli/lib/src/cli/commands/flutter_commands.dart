@@ -54,9 +54,16 @@ class FrameProfileCommand extends ProfilerCommand {
 
     final vmService = await vmServiceConnectUri(cleanWs);
     try {
+      // Resolve the main isolate for FPS detection
+      final vm = await vmService.getVM();
+      final isolates = vm.isolates ?? [];
+      final active = isolates.where((i) => i.isSystemIsolate != true).toList();
+      final isolateId = (active.isNotEmpty ? active.first : isolates.first).id;
+
       final analyzer = FrameAnalyzer(vmService: vmService);
       final result = await analyzer.profileFrames(
         duration: Duration(seconds: duration),
+        isolateId: isolateId,
       );
 
       if (printJson) {
@@ -73,9 +80,10 @@ class FrameProfileCommand extends ProfilerCommand {
         io.components.definitionList({
           'Duration': '${result.durationMicros ~/ 1000000}s',
           'Total Frames': '${result.totalFrames}',
-          'Janky Frames': '${result.jankyFrames} (${jankPct}%)',
+          'Janky Frames': '${result.jankyFrames} ($jankPct%)',
           'Average Frame': '$avgMs ms',
           'Max Frame': '$maxMs ms',
+          'Detected FPS': '${result.detectedFps.toStringAsFixed(0)}',
           'P90 Frame': '${(result.p90FrameTimeUs / 1000).toStringAsFixed(2)} ms',
           'P99 Frame': '${(result.p99FrameTimeUs / 1000).toStringAsFixed(2)} ms',
           'Build Phase': '$buildMs ms',

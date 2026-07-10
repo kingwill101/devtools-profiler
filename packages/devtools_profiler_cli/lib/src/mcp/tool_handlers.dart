@@ -691,9 +691,12 @@ class McpToolHandlers {
         final vmService = await _connectVmService(uri);
         try {
           progress(1, 3, 'Profiling frames for ${duration}s.');
+          final vm = await vmService.getVM();
+          final activeIsolate = _findActiveIsolate(vm);
           final analyzer = FrameAnalyzer(vmService: vmService);
           final result = await analyzer.profileFrames(
             duration: Duration(seconds: duration),
+            isolateId: activeIsolate,
           );
           progress(2, 3, 'Frame profile completed.');
           return {

@@ -84,6 +84,7 @@ final class FrameAnalysisResult {
     required this.rawTimelineEventCount,
     this.shaderCompilationEvents = const [],
     this.timelineHotspots = const [],
+    this.detectedFps = 60.0,
   });
 
   /// Total duration of the profiling window in microseconds.
@@ -92,7 +93,7 @@ final class FrameAnalysisResult {
   /// Total number of frame events captured.
   final int totalFrames;
 
-  /// Number of frames that exceeded the 16.6ms budget.
+  /// Number of frames that exceeded the budget.
   final int jankyFrames;
 
   /// Average frame time in microseconds.
@@ -128,6 +129,9 @@ final class FrameAnalysisResult {
   /// Timeline hotspot events sorted by total duration.
   final List<TimelineHotspot> timelineHotspots;
 
+  /// Detected display refresh rate in fps.
+  final double detectedFps;
+
   /// Whether shader compilation jank was detected.
   bool get hasShaderJank => shaderCompilationEvents.isNotEmpty;
 
@@ -160,6 +164,7 @@ final class FrameAnalysisResult {
     'paintPhaseTimeUs': paintPhaseTimeUs,
     'jankyFrameEvents': jankyFrameEvents,
     'rawTimelineEventCount': rawTimelineEventCount,
+    'detectedFps': detectedFps,
     'hasShaderJank': hasShaderJank,
     'totalShaderCompilationTimeUs': totalShaderCompilationTimeUs,
     if (shaderCompilationEvents.isNotEmpty)
@@ -177,17 +182,47 @@ final class FrameAnalysisResult {
 ///
 /// Enables the VM timeline, samples for a duration, then parses frame events
 /// to compute rendering performance metrics including jank detection.
+///
+/// When [detectRefreshRate] is true (default), the analyzer calls the
+/// `ext.flutter.getDisplayRefreshRate` extension to determine the target
+/// frame budget dynamically. Falls back to 60fps (16.6ms) when unavailable.
 class FrameAnalyzer {
   /// Creates a frame analyzer backed by [vmService].
-  FrameAnalyzer({required VmService vmService}) : _vmService = vmService;
+  FrameAnalyzer({required VmService vmService})
+    : _vmService = vmService;
 
   final VmService _vmService;
 
   /// Profiles frame timing for [duration] and returns the analysis result.
   ///
   /// Defaults to 5 seconds when [duration] is omitted.
-  Future<FrameAnalysisResult> profileFrames({Duration? duration}) async {
+  ///
+  /// When [detectRefreshRate] is true (default), attempts to detect the
+  /// display refresh rate via Flutter's service extension and adjusts the
+  /// frame budget accordingly.
+  Future<FrameAnalysisResult> profileFrames({
+    Duration? duration,
+    bool detectRefreshRate = true,
+    String? isolateId,
+  }) async {
     final profileDuration = duration ?? _kDefaultFrameProfileDuration;
+
+    // Detect display refresh rate for dynamic frame budget
+    double detectedFps = 60.0;
+    if (detectRefreshRate && isolateId != null) {
+      try {
+        final response = await _vmService.callServiceExtension(
+          'ext.flutter.getDisplayRefreshRate',
+          isolateId: isolateId,
+        );
+        final fps = response.json?['fps'] as num?;
+        if (fps != null && fps > 0) {
+          detectedFps = fps.toDouble();
+        }
+      } catch (_) {
+        // Extension not available — use default 60fps
+      }
+    }
 
     await _vmService.setVMTimelineFlags(['Embedder', 'Dart', 'GC', 'API']);
     await _vmService.clearVMTimeline();
@@ -200,13 +235,17 @@ class FrameAnalyzer {
     } catch (_) {}
 
     final events = timeline.traceEvents ?? [];
-    return _analyzeFrameEvents(events, profileDuration);
+    return _analyzeFrameEvents(events, profileDuration,
+        frameBudgetUs: (1000000 / detectedFps).round(),
+        detectedFps: detectedFps);
   }
 
   FrameAnalysisResult _analyzeFrameEvents(
     List<TimelineEvent> events,
-    Duration profileDuration,
-  ) {
+    Duration profileDuration, {
+    int frameBudgetUs = _kFrameBudgetUs,
+    double detectedFps = 60.0,
+  }) {
     var totalFrames = 0;
     var jankyFrames = 0;
     var maxFrameTimeUs = 0.0;
@@ -246,9 +285,9 @@ class FrameAnalyzer {
         frameDurations.add(durationUs);
         if (durationUs > maxFrameTimeUs) maxFrameTimeUs = durationUs;
 
-        if (durationUs > _kFrameBudgetUs) {
+        if (durationUs > frameBudgetUs) {
           jankyFrames++;
-          final severity = durationUs > _kFrameBudgetUs * 2
+          final severity = durationUs > frameBudgetUs * 2
               ? 'critical'
               : 'warning';
           jankyFrameEvents.add({
@@ -319,6 +358,7 @@ class FrameAnalyzer {
       rawTimelineEventCount: events.length,
       shaderCompilationEvents: shaderEvents,
       timelineHotspots: hotspots,
+      detectedFps: detectedFps,
     );
   }
 
