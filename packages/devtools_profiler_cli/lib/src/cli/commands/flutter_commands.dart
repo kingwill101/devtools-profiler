@@ -3,12 +3,13 @@ import 'dart:io';
 import 'package:devtools_profiler_core/devtools_profiler_core.dart';
 import 'package:vm_service/vm_service.dart';
 import 'package:vm_service/vm_service_io.dart';
+import 'vm_service_discovery.dart';
 
 import '../constants.dart';
 import 'profiler_command.dart';
 
 /// Command that profiles frame timing from a running Flutter app.
-class FrameProfileCommand extends ProfilerCommand {
+class FrameProfileCommand extends ProfilerCommand with VmServiceDiscovery {
   /// Creates a frame profile command.
   FrameProfileCommand(super.profileRunner) {
     argParser.addOption(
@@ -41,11 +42,7 @@ class FrameProfileCommand extends ProfilerCommand {
 
   @override
   Future<int> run() async {
-    if (argResults!.rest.isEmpty) {
-      usageException('A VM service URI is required.');
-    }
-
-    final vmServiceUri = argResults!.rest.single;
+    final vmServiceUri = await resolveVmServiceUri();
     final duration =
         int.tryParse(argResults!['duration'] as String? ?? '5') ?? 5;
 
@@ -131,7 +128,7 @@ class FrameProfileCommand extends ProfilerCommand {
 }
 
 /// Command that captures a memory snapshot from a running Flutter/Dart app.
-class MemorySnapshotCommand extends ProfilerCommand {
+class MemorySnapshotCommand extends ProfilerCommand with VmServiceDiscovery {
   /// Creates a memory-snapshot command.
   MemorySnapshotCommand(super.profileRunner) {
     argParser
@@ -173,11 +170,7 @@ class MemorySnapshotCommand extends ProfilerCommand {
 
   @override
   Future<int> run() async {
-    if (argResults!.rest.isEmpty) {
-      usageException('A VM service URI is required.');
-    }
-
-    final vmServiceUri = argResults!.rest.single;
+    final vmServiceUri = await resolveVmServiceUri();
     final name = argResults!['name'] as String?;
     final forceGc = !(argResults!['no-gc'] as bool? ?? false);
 
@@ -264,7 +257,7 @@ class MemorySnapshotCommand extends ProfilerCommand {
 }
 
 /// Command that captures the widget tree from a running Flutter app.
-class WidgetTreeCommand extends ProfilerCommand {
+class WidgetTreeCommand extends ProfilerCommand with VmServiceDiscovery {
   /// Creates a widget-tree command.
   WidgetTreeCommand(super.profileRunner) {
     argParser
@@ -307,11 +300,7 @@ class WidgetTreeCommand extends ProfilerCommand {
 
   @override
   Future<int> run() async {
-    if (argResults!.rest.isEmpty) {
-      usageException('A VM service URI is required.');
-    }
-
-    final vmServiceUri = argResults!.rest.single;
+    final vmServiceUri = await resolveVmServiceUri();
     final maxDepth =
         int.tryParse(argResults!['depth'] as String? ?? '15') ?? 15;
     final useSummary = argResults!['summary'] as bool? ?? false;
@@ -382,7 +371,7 @@ class WidgetTreeCommand extends ProfilerCommand {
 }
 
 /// Command that inspects the Flutter navigation route stack.
-class RouteStackCommand extends ProfilerCommand {
+class RouteStackCommand extends ProfilerCommand with VmServiceDiscovery {
   /// Creates a route-stack command.
   RouteStackCommand(super.profileRunner);
 
@@ -408,11 +397,7 @@ class RouteStackCommand extends ProfilerCommand {
 
   @override
   Future<int> run() async {
-    if (argResults!.rest.isEmpty) {
-      usageException('A VM service URI is required.');
-    }
-
-    final vmServiceUri = argResults!.rest.single;
+    final vmServiceUri = await resolveVmServiceUri();
     final wsUri = vmServiceUri
         .replaceFirst('http://', 'ws://')
         .replaceFirst('https://', 'wss://');
@@ -463,7 +448,7 @@ class RouteStackCommand extends ProfilerCommand {
 }
 
 /// Command that captures a screenshot from a running Flutter app.
-class ScreenshotCommand extends ProfilerCommand {
+class ScreenshotCommand extends ProfilerCommand with VmServiceDiscovery {
   /// Creates a screenshot command.
   ScreenshotCommand(super.profileRunner) {
     argParser
@@ -498,11 +483,7 @@ class ScreenshotCommand extends ProfilerCommand {
 
   @override
   Future<int> run() async {
-    if (argResults!.rest.isEmpty) {
-      usageException('A VM service URI is required.');
-    }
-
-    final vmServiceUri = argResults!.rest.single;
+    final vmServiceUri = await resolveVmServiceUri();
     final outputPath = argResults!['output'] as String? ?? 'screenshot.png';
     final width = int.tryParse(argResults!['width'] as String? ?? '800') ?? 800;
     final height =
@@ -543,7 +524,7 @@ class ScreenshotCommand extends ProfilerCommand {
 }
 
 /// Command that dumps Flutter debug diagnostics.
-class DebugDumpCommand extends ProfilerCommand {
+class DebugDumpCommand extends ProfilerCommand with VmServiceDiscovery {
   /// Creates a debug-dump command.
   DebugDumpCommand(super.profileRunner) {
     argParser.addOption(
@@ -577,11 +558,7 @@ class DebugDumpCommand extends ProfilerCommand {
 
   @override
   Future<int> run() async {
-    if (argResults!.rest.isEmpty) {
-      usageException('A VM service URI is required.');
-    }
-
-    final vmServiceUri = argResults!.rest.single;
+    final vmServiceUri = await resolveVmServiceUri();
     final kind = argResults!['kind'] as String? ?? 'app';
 
     final wsUri = vmServiceUri
@@ -621,7 +598,7 @@ class DebugDumpCommand extends ProfilerCommand {
 }
 
 /// Command that captures logs from a running Flutter/Dart app.
-class LogsCommand extends ProfilerCommand {
+class LogsCommand extends ProfilerCommand with VmServiceDiscovery {
   /// Creates a logs command.
   LogsCommand(super.profileRunner) {
     argParser
@@ -664,11 +641,7 @@ class LogsCommand extends ProfilerCommand {
 
   @override
   Future<int> run() async {
-    if (argResults!.rest.isEmpty) {
-      usageException('A VM service URI is required.');
-    }
-
-    final vmServiceUri = argResults!.rest.single;
+    final vmServiceUri = await resolveVmServiceUri();
     final duration =
         int.tryParse(argResults!['duration'] as String? ?? '10') ?? 10;
     final outputPath = argResults!['output'] as String?;

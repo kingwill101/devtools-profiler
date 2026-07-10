@@ -1,0 +1,48 @@
+import 'package:devtools_profiler_core/devtools_profiler_core.dart';
+
+import 'profiler_command.dart';
+
+/// Mixin for flutter commands that can auto-discover a VM service URI
+/// when none is explicitly provided.
+mixin VmServiceDiscovery on ProfilerCommand {
+  /// Returns the VM service URI from [argResults] if provided, otherwise
+  /// attempts to auto-discover a running Flutter/Dart application.
+  ///
+  /// When exactly one app is discovered, its URI is used automatically.
+  /// When multiple apps are found, a descriptive error lists them.
+  Future<String> resolveVmServiceUri() async {
+    if (argResults!.rest.isNotEmpty) {
+      return argResults!.rest.single;
+    }
+
+    final apps = await discoverActiveApps();
+
+    if (apps.isEmpty) {
+      throw usageException(
+        'No VM service URI provided and no running Flutter or Dart '
+        'applications were discovered on this machine.\n'
+        'Start your app in debug mode and provide the VM service URI:\n'
+        '  ${runner!.executableName} $commandName <vm-service-uri>',
+      );
+    }
+
+    if (apps.length == 1) {
+      final app = apps.single;
+      warn('Auto-discovered: ${app.projectName} at ${app.vmServiceUri}');
+      return app.vmServiceUri;
+    }
+
+    throw usageException(
+      'No VM service URI provided and ${apps.length} running applications '
+      'were found:\n'
+      '${apps.map((a) => '  ${a.projectName}: ${a.vmServiceUri}').join('\n')}\n'
+      'Use ${runner!.executableName} $commandName <uri> to select one.',
+    );
+  }
+
+  /// The full command name including namespace prefix.
+  String get commandName {
+    final p = parent;
+    return p != null ? '${p.name}:${name}' : name;
+  }
+}

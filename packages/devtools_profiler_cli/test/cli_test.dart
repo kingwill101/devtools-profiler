@@ -224,7 +224,7 @@ void main() {
     await stderrCapture.flush();
 
     expect(exitCode, isNot(0));
-    expect(stderrCapture.text, contains('A VM service URI is required.'));
+    expect(stderrCapture.text, contains('No VM service URI provided'));
   });
 
   test('memory-snapshot rejects missing vm service uri', () async {
@@ -245,7 +245,7 @@ void main() {
     await stderrCapture.flush();
 
     expect(exitCode, isNot(0));
-    expect(stderrCapture.text, contains('A VM service URI is required.'));
+    expect(stderrCapture.text, contains('No VM service URI provided'));
   });
 
   test('widget-tree rejects missing vm service uri', () async {
@@ -266,7 +266,7 @@ void main() {
     await stderrCapture.flush();
 
     expect(exitCode, isNot(0));
-    expect(stderrCapture.text, contains('A VM service URI is required.'));
+    expect(stderrCapture.text, contains('No VM service URI provided'));
   });
 
   test('run prints json output for a profiling session', () async {
