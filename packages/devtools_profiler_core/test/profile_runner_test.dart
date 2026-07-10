@@ -36,7 +36,7 @@ void main() {
           (error) => error.toString(),
           'message',
           contains(
-            'Only "flutter run", "flutter attach", and "flutter test" are supported',
+            'Only "flutter run", "flutter attach", "flutter drive", and "flutter test" are supported',
           ),
         ),
       ),
@@ -105,6 +105,23 @@ void main() {
       'linux',
     ]);
     expect(runArguments, contains('--host-vmservice-port=0'));
+
+    final driveArguments = await _recordedFlutterArguments(const [
+      'drive',
+      '--driver',
+      'test_driver/integration_test.dart',
+      '--target',
+      'integration_test/app.dart',
+    ]);
+    expect(driveArguments, contains(startsWith('--dart-define=')));
+    expect(
+      driveArguments,
+      contains(startsWith('--dart-define=DEVTOOLS_PROFILER_DTD_URI=')),
+    );
+    expect(
+      driveArguments,
+      contains(startsWith('--dart-define=DEVTOOLS_PROFILER_SESSION_ID=')),
+    );
   });
 
   test('allows flutter attach launch shape without profiler defines', () {

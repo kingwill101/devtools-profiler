@@ -455,7 +455,8 @@ Agent-facing tools include:
 - Attach mode captures a fixed whole-session VM-service window from an existing
   process, but explicit region markers normally require launch mode.
 - Dart and Flutter VM-service commands only.
-- Supported Flutter subcommands are `flutter run` and `flutter test`.
+- Supported Flutter subcommands are `flutter run`, `flutter attach`,
+  `flutter drive`, and `flutter test`.
 - Flutter release mode, browser profiling, AOT profiling, and
   `dart compile ...` targets are not supported.
 - Flutter region markers require the target process to reach the profiler's

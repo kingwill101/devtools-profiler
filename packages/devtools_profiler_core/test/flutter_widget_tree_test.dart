@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:devtools_profiler_core/devtools_profiler_core.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
+import 'package:vm_service/vm_service.dart';
 
 void main() {
   group('WidgetTreeCapture', () {
@@ -30,6 +31,54 @@ void main() {
               as Map<String, dynamic>;
       expect(scaffold['name'], 'Scaffold');
     });
+  });
+
+  group('WidgetTreeCaptureService', () {
+    test(
+      'preserves private project widgets when projectOnly is enabled',
+      () async {
+        final vmService = _FakeWidgetTreeVmService({
+          'name': 'MyApp',
+          'description': 'MyApp',
+          'children': [
+            {
+              'name': 'Scaffold',
+              'description': 'Scaffold',
+              'children': [
+                {
+                  'name': 'Padding',
+                  'description': 'Padding',
+                  'children': [
+                    {
+                      'name': '_ScenarioHeader',
+                      'description': '_ScenarioHeader',
+                      'children': [
+                        {
+                          'name': 'Text',
+                          'description': 'Private project widget',
+                          'children': [],
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        });
+
+        final capture = await WidgetTreeCaptureService(
+          vmService: vmService,
+        ).captureWidgetTree(isolateId: 'isolate', projectOnly: true);
+
+        expect(capture.root.children, hasLength(1));
+        final projectWidget = capture.root.children.single;
+        expect(projectWidget.name, '_ScenarioHeader');
+        expect(projectWidget.children, hasLength(1));
+        expect(projectWidget.children.single.name, 'Text');
+        expect(projectWidget.children.single.details, 'Private project widget');
+      },
+    );
   });
 
   group('WidgetTreeNode', () {
@@ -81,4 +130,22 @@ Directory _fixtureDirectory() {
   throw StateError(
     'Could not find fixtures directory. Searched: ${candidates.join(", ")}',
   );
+}
+
+final class _FakeWidgetTreeVmService extends VmService {
+  _FakeWidgetTreeVmService(this.responseJson) : super(Stream.empty(), (_) {});
+
+  final Map<String, Object?> responseJson;
+
+  @override
+  Future<Response> callServiceExtension(
+    String method, {
+    String? isolateId,
+    Map<String, dynamic>? args,
+  }) async {
+    expect(method, 'ext.flutter.inspector.getRootWidgetTree');
+    final response = Response();
+    response.json = {'result': responseJson};
+    return response;
+  }
 }

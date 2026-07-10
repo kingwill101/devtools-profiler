@@ -6,6 +6,7 @@
   hotspot reporting.
 - Added a dedicated `flutter:timeline` alias for frame timing analysis while
   keeping `flutter:frame-profile` as a compatibility alias.
+- Added `flutter drive` launch support for profiled Flutter app launches.
 - `flutter attach` launches now default to 15s and skip DTD because attach
   mode does not use region markers.
 - Added Flutter widget tree capture helpers, including project-only filtering

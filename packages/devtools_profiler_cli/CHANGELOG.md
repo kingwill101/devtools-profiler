@@ -14,6 +14,7 @@
   and MCP support for the same surface.
 - Added `flutter attach` launch support for whole-session profiling of an
   already-running Flutter app.
+- Added `flutter drive` launch support for profiled Flutter app launches.
 - `attach` can auto-discover a single running VM service when no URI is
   provided explicitly.
 - Added `flutter:memory-snapshot` for allocation profile capture.

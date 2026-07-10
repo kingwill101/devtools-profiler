@@ -191,14 +191,14 @@ void validateFlutterCommand(List<String> command) {
   final subcommandIndex = flutterSubcommandIndex(command);
   if (subcommandIndex == null) {
     throw ArgumentError(
-      'A supported Flutter subcommand is required. Use "flutter run", "flutter attach", or "flutter test".',
+      'A supported Flutter subcommand is required. Use "flutter run", "flutter attach", "flutter drive", or "flutter test".',
     );
   }
 
   final subcommand = command[subcommandIndex];
   if (!supportedFlutterSubcommands.contains(subcommand)) {
     throw ArgumentError(
-      'Only "flutter run", "flutter attach", and "flutter test" are supported for Flutter profiling.',
+      'Only "flutter run", "flutter attach", "flutter drive", and "flutter test" are supported for Flutter profiling.',
     );
   }
 
@@ -467,7 +467,7 @@ const knownFlutterSubcommands = {
   'upgrade',
 };
 
-const supportedFlutterSubcommands = {'run', 'attach', 'test'};
+const supportedFlutterSubcommands = {'run', 'attach', 'drive', 'test'};
 
 /// Returns the first recognized Flutter subcommand index in [command].
 int? flutterSubcommandIndex(List<String> command) {

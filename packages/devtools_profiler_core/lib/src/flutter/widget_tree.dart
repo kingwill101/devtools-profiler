@@ -177,7 +177,6 @@ class WidgetTreeCaptureService {
 
   bool _isFrameworkWidget(String name) =>
       name.startsWith('Render') ||
-      name.startsWith('_') ||
       name == 'SizedBox' ||
       name == 'ConstrainedBox' ||
       name == 'Padding' ||
@@ -191,6 +190,17 @@ class WidgetTreeCaptureService {
       name == 'Expanded' ||
       name == 'MediaQuery' ||
       name == 'Directionality' ||
+      name == 'MaterialApp' ||
+      name == 'CupertinoApp' ||
+      name == 'Scaffold' ||
+      name == 'AppBar' ||
+      name == 'Navigator' ||
+      name == 'SafeArea' ||
+      name == 'Theme' ||
+      name == 'ScaffoldMessenger' ||
+      name == 'DefaultTabController' ||
+      name == 'TabBar' ||
+      name == 'TabBarView' ||
       name == 'GestureDetector' ||
       name == 'Listener' ||
       name == 'Builder' ||
