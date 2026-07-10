@@ -49,7 +49,15 @@ class RunCommand extends ProfilerCommand {
       )
       ..addOption(
         'warm-up',
-        help: 'Warm-up duration before the profiling timer starts. ',
+        help: 'Warm-up duration before the profiling timer starts.',
+      )
+      ..addFlag(
+        'flutter',
+        negatable: false,
+        help:
+            'Shorthand for profiling Flutter apps. Sets --warm-up 3s '
+            'automatically. Combine with --hide-sdk and '
+            '--hide-runtime-helpers for focused output.',
       );
   }
 
@@ -71,7 +79,7 @@ class RunCommand extends ProfilerCommand {
       'devtools-profiler run -- dart run bin/main.dart',
       'devtools-profiler run --terminal -- dart run bin/tui.dart',
       'devtools-profiler run --cwd path/to/app -- dart run bin/main.dart',
-      'devtools-profiler run --duration 15s --cwd path/to/flutter_app -- flutter run -d linux -t lib/main.dart',
+      'devtools-profiler run --flutter --duration 30s --cwd path/to/flutter_app -- flutter run -d linux',
       'devtools-profiler run --duration 30s --warm-up 5s --cwd path/to/flutter_app -- flutter run -d linux',
     ],
   );
@@ -94,6 +102,10 @@ class RunCommand extends ProfilerCommand {
       );
     }
 
+    final flutterMode = argResults!['flutter'] as bool;
+    final warmUp =
+        argResults!['warm-up'] as String? ?? (flutterMode ? '3s' : null);
+
     final session = await profileRunner.run(
       ProfileRunRequest(
         artifactDirectory: argResults!['artifact-dir'] as String?,
@@ -107,10 +119,9 @@ class RunCommand extends ProfilerCommand {
           argResults!['duration'] as String?,
           optionName: 'duration',
         ),
-        warmUpDuration: parseDuration(
-          argResults!['warm-up'] as String?,
-          optionName: 'warm-up',
-        ),
+        warmUpDuration: warmUp != null
+            ? parseDuration(warmUp, optionName: 'warm-up')
+            : null,
         vmServiceTimeout: parseDuration(
           argResults!['vm-service-timeout'] as String?,
           optionName: 'vm-service-timeout',
@@ -184,6 +195,13 @@ class AttachCommand extends ProfilerCommand {
             'Skip the Dart Tooling Daemon for this attach session. '
             'Explicit region markers will be unavailable. Use this when the '
             'tooling daemon fails to start or is not needed.',
+      )
+      ..addFlag(
+        'flutter',
+        negatable: false,
+        help:
+            'Shorthand for attaching to Flutter apps. Combine with --hide-sdk '
+            'and --hide-runtime-helpers for focused output.',
       );
   }
 

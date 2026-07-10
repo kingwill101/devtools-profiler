@@ -46,7 +46,7 @@ void main() {
     expect(
       stdoutCapture.text,
       contains(
-        'devtools-profiler run --duration 15s --cwd path/to/flutter_app -- flutter run -d linux -t lib/main.dart',
+        'devtools-profiler run --flutter --duration 30s --cwd path/to/flutter_app -- flutter run -d linux',
       ),
     );
     expect(stderrCapture.text, isEmpty);
