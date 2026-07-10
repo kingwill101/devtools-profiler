@@ -39,6 +39,10 @@ void main() {
         'profile_analyze_trends',
         'profile_find_regressions',
         'profile_inspect_classes',
+        'profile_frame_profile',
+        'profile_timeline',
+        'timeline',
+        'profile_widget_inspector_query',
       ]),
     );
 
@@ -228,6 +232,7 @@ void main() {
       environment.runner.lastAttachRequest?.duration,
       const Duration(seconds: 3),
     );
+    expect(environment.runner.lastAttachRequest?.enableDtd, isFalse);
     expect(environment.runner.lastAttachRequest?.workingDirectory, '/tmp/app');
     final session = result.structuredContent!;
     expect(session['sessionId'], 'session-attach');
@@ -236,6 +241,29 @@ void main() {
       (session['overallProfile'] as Map<String, Object?>)['callTree'],
       isA<Map<String, Object?>>(),
     );
+  });
+
+  test('profile_attach defaults to a bounded profiling window', () async {
+    final environment = _McpTestEnvironment(_FakeProfileRunner());
+    addTearDown(environment.shutdown);
+    await _initializeServer(environment);
+
+    final result = await environment.serverConnection.callTool(
+      CallToolRequest(
+        name: 'profile_attach',
+        arguments: {
+          'vmServiceUri': 'http://127.0.0.1:8181/abcd/',
+          'workingDirectory': '/tmp/app',
+        },
+      ),
+    );
+
+    expect(result.isError, isNot(true));
+    expect(
+      environment.runner.lastAttachRequest?.duration,
+      const Duration(seconds: 15),
+    );
+    expect(environment.runner.lastAttachRequest?.enableDtd, isFalse);
   });
 
   test('emits progress notifications for long-running tool calls', () async {

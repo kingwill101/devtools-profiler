@@ -93,8 +93,9 @@ class McpToolHandlers {
         progress(
           0,
           3,
-          'Attaching to VM service. Explicit region markers are unavailable '
-          'unless the target was launched by devtools-profiler run.',
+          'Attaching to VM service for a fixed whole-session window. '
+          'Explicit region markers remain unavailable unless the target was '
+          'launched by devtools-profiler run.',
         );
         final result = await runner.attach(
           ProfileAttachRequest(
@@ -102,13 +103,15 @@ class McpToolHandlers {
               arguments,
               key: 'artifactDirectory',
             ),
-            duration: _requiredDurationSecondsArgument(arguments),
+            duration:
+                _optionalDurationSecondsArgument(arguments) ??
+                const Duration(seconds: 15),
             vmServiceUri: _requiredUriArgument(arguments, key: 'vmServiceUri'),
             workingDirectory: _optionalStringArgument(
               arguments,
               key: 'workingDirectory',
             ),
-            enableDtd: !(arguments['skipDtd'] as bool? ?? false),
+            enableDtd: !(arguments['skipDtd'] as bool? ?? true),
           ),
         );
         progress(
@@ -779,6 +782,7 @@ class McpToolHandlers {
               ? await captureService.captureSummaryWidgetTree(
                   isolateId: activeIsolate,
                   maxDepth: maxDepth,
+                  projectOnly: projectOnly,
                 )
               : await captureService.captureWidgetTree(
                   isolateId: activeIsolate,
@@ -794,28 +798,45 @@ class McpToolHandlers {
     );
   }
 
-  Future<CallToolResult> profileNavigationStack(CallToolRequest request) {
+  Future<CallToolResult> profileInspectorQuery(CallToolRequest request) {
     return _runTool(
       request: request,
-      successMessage: 'Navigation stack retrieved.',
+      successMessage: 'Widget inspector query completed.',
       action: (progress) async {
         final arguments = request.arguments ?? const <String, Object?>{};
         final uri = _requiredStringArgument(arguments, key: 'vmServiceUri');
-        progress(0, 2, 'Connecting to VM service.');
+        final method = _requiredStringArgument(arguments, key: 'method');
+        final id = _optionalStringArgument(arguments, key: 'id');
+        final subtreeDepth = arguments['subtreeDepth'] as int? ?? 2;
+
+        progress(0, 3, 'Connecting to VM service.');
         final vmService = await _connectVmService(uri);
         try {
-          progress(1, 2, 'Fetching navigation stack.');
+          progress(1, 3, 'Querying inspector extension.');
           final vm = await vmService.getVM();
           final activeIsolate = _findActiveIsolate(vm);
-          final service = NavigationStackService(vmService: vmService);
-          final stack = await service.getNavigationStack(
+          final service = WidgetInspectorQueryService(vmService: vmService);
+          final rpc = _toInspectorRpc(method);
+          final result = await service.query(
             isolateId: activeIsolate,
+            method: rpc,
+            args: {
+              'groupName': 'inspector',
+              'objectGroup': 'inspector',
+              if (id != null) 'arg': id,
+              if (method == 'getDetailsSubtree' ||
+                  method == 'getLayoutExplorerNode')
+                'subtreeDepth': subtreeDepth.toString(),
+            },
           );
-          progress(2, 2, 'Navigation stack retrieved.');
+          progress(2, 3, 'Building inspector query response.');
           return {
-            'kind': 'navigationStack',
+            'kind': 'widgetInspectorQuery',
             'vmServiceUri': uri,
-            ...stack.toJson(),
+            'method': method,
+            'rpc': rpc,
+            'isolateId': activeIsolate,
+            'result': result.result,
           };
         } finally {
           await vmService.dispose();
@@ -940,6 +961,31 @@ class McpToolHandlers {
     }
     final target = active.isNotEmpty ? active.first : isolates.first;
     return target.id!;
+  }
+
+  /// Maps a user-facing inspector method name to a VM-service extension RPC.
+  ///
+  /// Supported name patterns:
+  /// - `get*` / `set*` → `ext.flutter.inspector.$method`
+  /// - `profile*` / `debug*` → `ext.flutter.$method`
+  /// - `ext.flutter.*` → passed through unchanged
+  /// - Anything else → returned as-is
+  ///
+  /// This covers methods such as `getSelectedWidget`, `getProperties`,
+  /// `getChildren`, `getParentChain`, `getDetailsSubtree`,
+  /// `getLayoutExplorerNode`, `isWidgetTreeReady`, and
+  /// `structuredErrors`.
+  String _toInspectorRpc(String method) {
+    if (method.startsWith('ext.flutter.')) {
+      return method;
+    }
+    if (method.startsWith('get') || method.startsWith('set')) {
+      return 'ext.flutter.inspector.$method';
+    }
+    if (method.startsWith('profile') || method.startsWith('debug')) {
+      return 'ext.flutter.$method';
+    }
+    return method;
   }
 
   Future<CallToolResult> _runTool({
@@ -1464,17 +1510,6 @@ Duration? _optionalDurationSecondsArgument(
     throw ArgumentError('The "$key" argument must be a positive integer.');
   }
   return Duration(seconds: value);
-}
-
-Duration _requiredDurationSecondsArgument(
-  Map<String, Object?> arguments, {
-  String key = 'durationSeconds',
-}) {
-  final duration = _optionalDurationSecondsArgument(arguments, key: key);
-  if (duration == null) {
-    throw ArgumentError('The "$key" argument is required.');
-  }
-  return duration;
 }
 
 Uri _requiredUriArgument(

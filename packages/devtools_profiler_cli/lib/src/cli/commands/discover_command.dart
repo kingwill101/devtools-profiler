@@ -48,7 +48,8 @@ class DiscoverCommand extends ProfilerCommand {
 
     comment(
       'Use `devtools-profiler attach --duration <s> <uri>` to profile one of '
-      'these apps.',
+      'these apps, or `devtools-profiler attach --duration <s>` when only one '
+      'app is running.',
     );
 
     return successExitCode;

@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:devtools_profiler_core/devtools_profiler_core.dart';
+import 'package:path/path.dart' as path;
 import 'package:vm_service/vm_service.dart';
 import 'package:vm_service/vm_service_io.dart';
 import 'vm_service_discovery.dart';
@@ -8,10 +9,15 @@ import 'vm_service_discovery.dart';
 import '../constants.dart';
 import 'profiler_command.dart';
 
-/// Command that profiles frame timing from a running Flutter app.
-class FrameProfileCommand extends ProfilerCommand with VmServiceDiscovery {
-  /// Creates a frame profile command.
-  FrameProfileCommand(super.profileRunner) {
+abstract class _FrameTimingCommand extends ProfilerCommand
+    with VmServiceDiscovery {
+  _FrameTimingCommand(
+    super.profileRunner, {
+    required this.commandName,
+    required this.commandDescription,
+    required this.commandTitle,
+    required this.examples,
+  }) {
     argParser.addOption(
       'duration',
       defaultsTo: '5',
@@ -19,25 +25,25 @@ class FrameProfileCommand extends ProfilerCommand with VmServiceDiscovery {
     );
   }
 
-  @override
-  String get name => 'flutter:frame-profile';
+  final String commandName;
+  final String commandDescription;
+  final String commandTitle;
+  final List<String> examples;
 
   @override
-  String get description =>
-      'Profile frame timing from a running Flutter app '
-      'via its VM service URI.';
+  String get name => commandName;
+
+  @override
+  String get description => commandDescription;
 
   @override
   String get invocation =>
-      '${runner!.executableName} flutter:frame-profile [options] <vm-service-uri>';
+      '${runner!.executableName} $commandName [options] <vm-service-uri>';
 
   @override
   String formatUsage({bool includeDescription = true}) => usageWithExamples(
     super.formatUsage(includeDescription: includeDescription),
-    const [
-      'devtools-profiler flutter:frame-profile ws://127.0.0.1:8181/abc123/ws',
-      'devtools-profiler flutter:frame-profile --duration 10 ws://127.0.0.1:8181/abc123/ws',
-    ],
+    examples,
   );
 
   @override
@@ -46,18 +52,12 @@ class FrameProfileCommand extends ProfilerCommand with VmServiceDiscovery {
     final duration =
         int.tryParse(argResults!['duration'] as String? ?? '5') ?? 5;
 
-    final wsUri = vmServiceUri
-        .replaceFirst('http://', 'ws://')
-        .replaceFirst('https://', 'wss://');
-    final cleanWs = wsUri.endsWith('/ws') ? wsUri : '$wsUri/ws';
+    final cleanWs = normalizeWsUri(vmServiceUri);
 
     final vmService = await vmServiceConnectUri(cleanWs);
     try {
-      // Resolve the main isolate for FPS detection
       final vm = await vmService.getVM();
-      final isolates = vm.isolates ?? [];
-      final active = isolates.where((i) => i.isSystemIsolate != true).toList();
-      final isolateId = (active.isNotEmpty ? active.first : isolates.first).id;
+      final isolateId = resolveMainIsolate(vm);
 
       final analyzer = FrameAnalyzer(vmService: vmService);
       final result = await analyzer.profileFrames(
@@ -75,7 +75,7 @@ class FrameProfileCommand extends ProfilerCommand with VmServiceDiscovery {
         final layoutMs = (result.layoutPhaseTimeUs / 1000).toStringAsFixed(2);
         final paintMs = (result.paintPhaseTimeUs / 1000).toStringAsFixed(2);
 
-        io.title('Frame Profile');
+        io.title(commandTitle);
         io.components.definitionList({
           'Duration': '${result.durationMicros ~/ 1000000}s',
           'Total Frames': '${result.totalFrames}',
@@ -127,6 +127,62 @@ class FrameProfileCommand extends ProfilerCommand with VmServiceDiscovery {
   }
 }
 
+/// Command that profiles frame timing from a running Flutter app.
+final class FrameProfileCommand extends _FrameTimingCommand {
+  /// Creates a frame profile command.
+  FrameProfileCommand(super.profileRunner)
+    : super(
+        commandName: 'flutter:frame-profile',
+        commandDescription:
+            'Profile frame timing from a running Flutter app '
+            'via its VM service URI.',
+        commandTitle: 'Frame Profile',
+        examples: const [
+          'devtools-profiler flutter:frame-profile '
+              'ws://127.0.0.1:8181/abc123/ws',
+          'devtools-profiler flutter:frame-profile --duration 10 '
+              'ws://127.0.0.1:8181/abc123/ws',
+        ],
+      );
+}
+
+/// Command that profiles VM timeline frame timing from a running Flutter app.
+final class TimelineProfileCommand extends _FrameTimingCommand {
+  /// Creates a timeline profile command.
+  TimelineProfileCommand(super.profileRunner)
+    : super(
+        commandName: 'flutter:timeline',
+        commandDescription:
+            'Profile VM timeline frame timing from a running Flutter app '
+            'via its VM service URI.',
+        commandTitle: 'Timeline Profile',
+        examples: const [
+          'devtools-profiler flutter:timeline '
+              'ws://127.0.0.1:8181/abc123/ws',
+          'devtools-profiler flutter:timeline --duration 10 '
+              'ws://127.0.0.1:8181/abc123/ws',
+        ],
+      );
+}
+
+/// Command that profiles VM timeline frame timing from any running VM service.
+final class TimelineCommand extends _FrameTimingCommand {
+  /// Creates a timeline command.
+  TimelineCommand(super.profileRunner)
+    : super(
+        commandName: 'timeline',
+        commandDescription:
+            'Profile VM timeline frame timing from a running app via its '
+            'VM service URI.',
+        commandTitle: 'Timeline Profile',
+        examples: const [
+          'devtools-profiler timeline ws://127.0.0.1:8181/abc123/ws',
+          'devtools-profiler timeline --duration 10 '
+              'ws://127.0.0.1:8181/abc123/ws',
+        ],
+      );
+}
+
 /// Command that captures a memory snapshot from a running Flutter/Dart app.
 class MemorySnapshotCommand extends ProfilerCommand with VmServiceDiscovery {
   /// Creates a memory-snapshot command.
@@ -171,26 +227,16 @@ class MemorySnapshotCommand extends ProfilerCommand with VmServiceDiscovery {
   @override
   Future<int> run() async {
     final vmServiceUri = await resolveVmServiceUri();
-    final name = argResults!['name'] as String?;
+    final requestedName = argResults!['name'] as String?;
     final forceGc = !(argResults!['no-gc'] as bool? ?? false);
+    final save = argResults!['save'] as bool? ?? false;
 
-    final wsUri = vmServiceUri
-        .replaceFirst('http://', 'ws://')
-        .replaceFirst('https://', 'wss://');
-    final cleanWs = wsUri.endsWith('/ws') ? wsUri : '$wsUri/ws';
+    final cleanWs = normalizeWsUri(vmServiceUri);
 
     final vmService = await vmServiceConnectUri(cleanWs);
     try {
       final vm = await vmService.getVM();
-      final isolates = vm.isolates ?? [];
-      final activeIsolates = isolates
-          .where((i) => i.isSystemIsolate != true)
-          .toList();
-      if (activeIsolates.isEmpty) {
-        error('No active application isolates found.');
-        return softwareExitCode;
-      }
-      final isolateId = activeIsolates.first.id!;
+      final isolateId = resolveMainIsolate(vm);
 
       final profile = await vmService.getAllocationProfile(
         isolateId,
@@ -206,7 +252,20 @@ class MemorySnapshotCommand extends ProfilerCommand with VmServiceDiscovery {
             ..sort((a, b) => b.sizeCurrent.compareTo(a.sizeCurrent));
 
       final snapshotName =
-          name ?? 'cli-snapshot-${DateTime.now().millisecondsSinceEpoch}';
+          requestedName ??
+          'cli-snapshot-${DateTime.now().millisecondsSinceEpoch}';
+
+      if (save) {
+        await _saveSnapshot(
+          vmServiceUri: vmServiceUri,
+          requestedName: requestedName,
+          isolateId: isolateId,
+          memoryUsage: profile.memoryUsage,
+          members: members,
+          profile: profile,
+          save: save,
+        );
+      }
 
       if (printJson) {
         line(
@@ -253,6 +312,98 @@ class MemorySnapshotCommand extends ProfilerCommand with VmServiceDiscovery {
     }
 
     return successExitCode;
+  }
+
+  Future<void> _saveSnapshot({
+    required String vmServiceUri,
+    required String? requestedName,
+    required String isolateId,
+    required MemoryUsage? memoryUsage,
+    required List<ClassHeapStats> members,
+    required AllocationProfile profile,
+    required bool save,
+  }) async {
+    final timestampMicros = DateTime.now().toUtc().microsecondsSinceEpoch;
+    final heapSample = heapSampleFromMemoryUsage(
+      memoryUsage: memoryUsage,
+      timestampMicros: timestampMicros,
+    );
+    final memory = summarizeMemoryProfile(
+      start: heapSample,
+      end: heapSample,
+      startClasses: members,
+      endClasses: members,
+      rawProfilePath: '',
+      topClassCount: 50,
+    );
+    final rawMemoryPayload = _buildRawMemoryPayload(
+      timestampMicros: timestampMicros,
+      memoryUsage: memoryUsage,
+      isolateId: isolateId,
+      profile: profile,
+    );
+    final sessionId = _generateSessionId();
+    final sessionDirectory = Directory(
+      path.join(
+        Directory.current.path,
+        '.dart_tool',
+        'devtools_profiler',
+        'sessions',
+        sessionId,
+      ),
+    );
+    final artifactStore = ProfileArtifactStore(sessionDirectory);
+    await artifactStore.create();
+    final overallProfile = await artifactStore.writeOverallSuccess(
+      isolateId: isolateId,
+      isolateIds: [isolateId],
+      memory: memory,
+      rawMemoryPayload: rawMemoryPayload,
+    );
+    final sessionResult = ProfileRunResult(
+      sessionId: sessionId,
+      command: [
+        'flutter:memory-snapshot',
+        if (save) '--save',
+        if (requestedName != null) ...['--name', requestedName],
+        vmServiceUri,
+      ],
+      workingDirectory: Directory.current.path,
+      exitCode: 0,
+      artifactDirectory: sessionDirectory.path,
+      regions: const [],
+      warnings: const [],
+      overallProfile: overallProfile,
+      vmServiceUri: vmServiceUri,
+    );
+    await artifactStore.writeSession(sessionResult);
+  }
+
+  Map<String, Object?> _buildRawMemoryPayload({
+    required int timestampMicros,
+    required MemoryUsage? memoryUsage,
+    required String isolateId,
+    required AllocationProfile profile,
+  }) {
+    final start = {
+      'heapSample': heapSampleFromMemoryUsage(
+        memoryUsage: memoryUsage,
+        timestampMicros: timestampMicros,
+      ).toJson(),
+      'profiles': [
+        {'isolateId': isolateId, 'allocationProfile': profile.toJson()},
+      ],
+    };
+    return {
+      'type': 'ProfileMemoryArtifact',
+      'isolateIds': [isolateId],
+      'start': start,
+      'end': start,
+    };
+  }
+
+  String _generateSessionId() {
+    return 'memory-${DateTime.now().toUtc().microsecondsSinceEpoch}';
   }
 }
 
@@ -306,29 +457,19 @@ class WidgetTreeCommand extends ProfilerCommand with VmServiceDiscovery {
     final useSummary = argResults!['summary'] as bool? ?? false;
     final projectOnly = argResults!['project-only'] as bool? ?? false;
 
-    final wsUri = vmServiceUri
-        .replaceFirst('http://', 'ws://')
-        .replaceFirst('https://', 'wss://');
-    final cleanWs = wsUri.endsWith('/ws') ? wsUri : '$wsUri/ws';
+    final cleanWs = normalizeWsUri(vmServiceUri);
 
     final vmService = await vmServiceConnectUri(cleanWs);
     try {
       final vm = await vmService.getVM();
-      final isolates = vm.isolates ?? [];
-      final activeIsolates = isolates
-          .where((i) => i.isSystemIsolate != true)
-          .toList();
-      if (activeIsolates.isEmpty) {
-        error('No active application isolates found.');
-        return softwareExitCode;
-      }
-      final isolateId = activeIsolates.first.id!;
+      final isolateId = resolveMainIsolate(vm);
 
       final captureService = WidgetTreeCaptureService(vmService: vmService);
       final tree = useSummary
           ? await captureService.captureSummaryWidgetTree(
               isolateId: isolateId,
               maxDepth: maxDepth,
+              projectOnly: projectOnly,
             )
           : await captureService.captureWidgetTree(
               isolateId: isolateId,
@@ -370,65 +511,98 @@ class WidgetTreeCommand extends ProfilerCommand with VmServiceDiscovery {
   }
 }
 
-/// Command that inspects the Flutter navigation route stack.
-class RouteStackCommand extends ProfilerCommand with VmServiceDiscovery {
-  /// Creates a route-stack command.
-  RouteStackCommand(super.profileRunner);
+/// Command that queries Flutter widget inspector service extensions.
+class InspectorQueryCommand extends ProfilerCommand with VmServiceDiscovery {
+  /// Creates an inspector-query command.
+  InspectorQueryCommand(super.profileRunner) {
+    argParser
+      ..addOption(
+        'method',
+        help:
+            'Inspector RPC to invoke, such as getSelectedWidget or '
+            'getParentChain.',
+      )
+      ..addOption(
+        'id',
+        help: 'Diagnostics node id for RPCs that need a widget selection.',
+      )
+      ..addOption(
+        'subtree-depth',
+        defaultsTo: '2',
+        help: 'Subtree depth for details/layout RPCs (default: 2).',
+      );
+  }
 
   @override
-  String get name => 'flutter:route-stack';
+  String get name => 'flutter:inspector';
 
   @override
   String get description =>
-      'Inspect the navigation stack from a running Flutter app '
-      'via its VM service URI.';
+      'Query Flutter widget inspector service extensions from a running app.';
 
   @override
   String get invocation =>
-      '${runner!.executableName} flutter:route-stack [options] <vm-service-uri>';
+      '${runner!.executableName} flutter:inspector [options] <vm-service-uri>';
 
   @override
   String formatUsage({bool includeDescription = true}) => usageWithExamples(
     super.formatUsage(includeDescription: includeDescription),
     const [
-      'devtools-profiler flutter:route-stack ws://127.0.0.1:8181/abc123/ws',
+      'devtools-profiler flutter:inspector --method getSelectedWidget ws://127.0.0.1:8181/abc123/ws',
+      'devtools-profiler flutter:inspector --method getLayoutExplorerNode --id inspector-1 --subtree-depth 2 ws://127.0.0.1:8181/abc123/ws',
     ],
   );
 
   @override
   Future<int> run() async {
     final vmServiceUri = await resolveVmServiceUri();
-    final wsUri = vmServiceUri
-        .replaceFirst('http://', 'ws://')
-        .replaceFirst('https://', 'wss://');
-    final cleanWs = wsUri.endsWith('/ws') ? wsUri : '$wsUri/ws';
+    final method = argResults!['method'] as String?;
+    if (method == null || method.isEmpty) {
+      usageException('An inspector method must be provided with --method.');
+    }
+
+    final args = <String, Object?>{
+      'groupName': 'inspector',
+      'objectGroup': 'inspector',
+    };
+    final id = argResults!['id'] as String?;
+    if (id != null && id.isNotEmpty) {
+      args['arg'] = id;
+    }
+
+    final subtreeDepth =
+        int.tryParse(argResults!['subtree-depth'] as String? ?? '2') ?? 2;
+    if (method == 'getDetailsSubtree' || method == 'getLayoutExplorerNode') {
+      args['subtreeDepth'] = subtreeDepth.toString();
+    }
+
+    final cleanWs = normalizeWsUri(vmServiceUri);
 
     final vmService = await vmServiceConnectUri(cleanWs);
     try {
       final vm = await vmService.getVM();
-      final isolateId = _findMainIsolate(vm);
-      final service = NavigationStackService(vmService: vmService);
-      final stack = await service.getNavigationStack(isolateId: isolateId);
+      final isolateId = resolveMainIsolate(vm);
+      final service = WidgetInspectorQueryService(vmService: vmService);
+      final result = await service.query(
+        isolateId: isolateId,
+        method: _methodToRpc(method),
+        args: args,
+      );
+
+      final payload = {
+        'kind': 'widgetInspectorQuery',
+        'method': method,
+        'rpc': _methodToRpc(method),
+        'vmServiceUri': vmServiceUri,
+        'isolateId': isolateId,
+        'result': result.result,
+      };
 
       if (printJson) {
-        line(jsonEncoder.convert(stack.toJson()));
+        line(jsonEncoder.convert(payload));
       } else {
-        io.title('Navigation Stack');
-        io.table(
-          headers: const ['Route', 'Type', 'Settings Name', 'Current'],
-          rows: [
-            for (final route in stack.routes)
-              [
-                route.path,
-                route.name,
-                route.settingsName ?? '-',
-                route.isCurrent ? '*' : '',
-              ],
-          ],
-        );
-        if (stack.currentRoute != null) {
-          comment('Current route: ${stack.currentRoute!.path}');
-        }
+        io.title('Widget Inspector Query');
+        line(jsonEncoder.convert(payload));
       }
     } finally {
       await vmService.dispose();
@@ -437,13 +611,11 @@ class RouteStackCommand extends ProfilerCommand with VmServiceDiscovery {
     return successExitCode;
   }
 
-  String _findMainIsolate(VM vm) {
-    final isolates = vm.isolates ?? [];
-    final active = isolates.where((i) => i.isSystemIsolate != true).toList();
-    if (active.isEmpty && isolates.isEmpty) {
-      throw StateError('No isolates found in the target VM.');
+  String _methodToRpc(String method) {
+    if (method.startsWith('get') || method.startsWith('set')) {
+      return 'ext.flutter.inspector.$method';
     }
-    return (active.isNotEmpty ? active.first : isolates.first).id!;
+    return method;
   }
 }
 
@@ -489,15 +661,12 @@ class ScreenshotCommand extends ProfilerCommand with VmServiceDiscovery {
     final height =
         int.tryParse(argResults!['height'] as String? ?? '600') ?? 600;
 
-    final wsUri = vmServiceUri
-        .replaceFirst('http://', 'ws://')
-        .replaceFirst('https://', 'wss://');
-    final cleanWs = wsUri.endsWith('/ws') ? wsUri : '$wsUri/ws';
+    final cleanWs = normalizeWsUri(vmServiceUri);
 
     final vmService = await vmServiceConnectUri(cleanWs);
     try {
       final vm = await vmService.getVM();
-      final isolateId = _resolveMainIsolate(vm);
+      final isolateId = resolveMainIsolate(vm);
       final service = ScreenshotCaptureService(vmService: vmService);
       final file = await service.captureScreenshotToFile(
         isolateId: isolateId,
@@ -511,15 +680,6 @@ class ScreenshotCommand extends ProfilerCommand with VmServiceDiscovery {
     }
 
     return successExitCode;
-  }
-
-  String _resolveMainIsolate(VM vm) {
-    final isolates = vm.isolates ?? [];
-    final active = isolates.where((i) => i.isSystemIsolate != true).toList();
-    if (active.isEmpty && isolates.isEmpty) {
-      throw StateError('No isolates found in the target VM.');
-    }
-    return (active.isNotEmpty ? active.first : isolates.first).id!;
   }
 }
 
@@ -561,15 +721,12 @@ class DebugDumpCommand extends ProfilerCommand with VmServiceDiscovery {
     final vmServiceUri = await resolveVmServiceUri();
     final kind = argResults!['kind'] as String? ?? 'app';
 
-    final wsUri = vmServiceUri
-        .replaceFirst('http://', 'ws://')
-        .replaceFirst('https://', 'wss://');
-    final cleanWs = wsUri.endsWith('/ws') ? wsUri : '$wsUri/ws';
+    final cleanWs = normalizeWsUri(vmServiceUri);
 
     final vmService = await vmServiceConnectUri(cleanWs);
     try {
       final vm = await vmService.getVM();
-      final isolateId = _resolveMainIsolate(vm);
+      final isolateId = resolveMainIsolate(vm);
       final service = DebugDumpService(vmService: vmService);
 
       if (printJson) {
@@ -585,15 +742,6 @@ class DebugDumpCommand extends ProfilerCommand with VmServiceDiscovery {
     }
 
     return successExitCode;
-  }
-
-  String _resolveMainIsolate(VM vm) {
-    final isolates = vm.isolates ?? [];
-    final active = isolates.where((i) => i.isSystemIsolate != true).toList();
-    if (active.isEmpty && isolates.isEmpty) {
-      throw StateError('No isolates found in the target VM.');
-    }
-    return (active.isNotEmpty ? active.first : isolates.first).id!;
   }
 }
 
@@ -647,10 +795,7 @@ class LogsCommand extends ProfilerCommand with VmServiceDiscovery {
     final outputPath = argResults!['output'] as String?;
     final follow = argResults!['follow'] as bool;
 
-    final wsUri = vmServiceUri
-        .replaceFirst('http://', 'ws://')
-        .replaceFirst('https://', 'wss://');
-    final cleanWs = wsUri.endsWith('/ws') ? wsUri : '$wsUri/ws';
+    final cleanWs = normalizeWsUri(vmServiceUri);
 
     final vmService = await vmServiceConnectUri(cleanWs);
     try {

@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.4.0
+
+- Added live Flutter frame timing analysis with jank attribution and timeline
+  hotspot reporting.
+- Added top-level `timeline` as a first-class alias for frame timing
+  analysis.
+- Added a dedicated `flutter:timeline` alias for frame timing analysis while
+  keeping `flutter:frame-profile` as a compatibility alias.
+- Added `flutter drive` launch support for profiled Flutter app launches.
+- `flutter attach` launches now default to 15s and skip DTD because attach
+  mode does not use region markers.
+- Added Flutter widget tree capture helpers, including project-only filtering
+  that preserves project widgets nested under framework wrappers.
+- Added Flutter memory snapshot capture helpers for CLI and agent workflows.
+- Added `WidgetInspectorQueryService` for calling generic Flutter widget
+  inspector service extensions, enabling `getSelectedWidget`, `getProperties`,
+  `getChildren`, `getParentChain`, `getDetailsSubtree`, and
+  `getLayoutExplorerNode` queries.
+- Frame analysis now resets shader jank tracking per-frame instead of
+  accumulating across the entire profile window, producing more accurate
+  per-frame jank attribution.
+- Replaced `navigation_stack` export with `widget_inspector_query`; removed
+  route stack navigation support since `ext.flutter.inspector.show` routes
+  were removed upstream.
+- Various documentation updates, fixture formatting, and test expectation
+  improvements.
+
 ## 0.3.0
 
 - Added inherited-stdio process IO mode for terminal UI and alternate-screen

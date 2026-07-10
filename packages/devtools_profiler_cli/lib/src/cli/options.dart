@@ -140,9 +140,26 @@ Duration? parseDuration(String? value, {required String optionName}) {
 /// Parses a VM service URI argument.
 Uri parseVmServiceUriArgument(String value) {
   final uri = Uri.parse(value);
-  if (!uri.hasScheme || (uri.scheme != 'http' && uri.scheme != 'https')) {
+  if (!uri.hasScheme) {
     throw const FormatException(
-      'The VM service URI must start with http:// or https://.',
+      'The VM service URI must start with http://, https://, ws://, or wss://.',
+    );
+  }
+  if (uri.scheme == 'ws' || uri.scheme == 'wss') {
+    final scheme = uri.scheme == 'ws' ? 'http' : 'https';
+    final path = uri.path.endsWith('/ws')
+        ? uri.path.substring(0, uri.path.length - 3)
+        : uri.path;
+    final normalizedPath = path.endsWith('/') ? path : '$path/';
+    final query = uri.hasQuery ? '?${uri.query}' : '';
+    final fragment = uri.hasFragment ? '#${uri.fragment}' : '';
+    return Uri.parse(
+      '$scheme://${uri.authority}$normalizedPath$query$fragment',
+    );
+  }
+  if (uri.scheme != 'http' && uri.scheme != 'https') {
+    throw const FormatException(
+      'The VM service URI must start with http://, https://, ws://, or wss://.',
     );
   }
   return uri;

@@ -2,3 +2,7 @@
 analyzer:
   exclude:
     - '**/.dart_tool/**'
+    # Flutter fixture files require package:flutter which is not available
+    # during workspace-level analysis. These fixtures are only used by
+    # integration tests that run with the Flutter SDK.
+    - 'packages/devtools_profiler_core/test/fixtures/profiled_flutter_app/**'

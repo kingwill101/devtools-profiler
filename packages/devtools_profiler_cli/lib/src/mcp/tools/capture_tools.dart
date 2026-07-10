@@ -106,7 +106,8 @@ final Tool profileAttachTool = Tool(
       ),
       'durationSeconds': Schema.int(
         description:
-            'Required duration in seconds to profile the already-running VM service.',
+            'Duration in seconds to profile the already-running VM service. '
+            'Defaults to 15.',
       ),
       'workingDirectory': Schema.string(
         description:
@@ -117,9 +118,8 @@ final Tool profileAttachTool = Tool(
       ),
       'skipDtd': Schema.bool(
         description:
-            'Skip the Dart Tooling Daemon for this attach session. '
-            'Explicit region markers will be unavailable. '
-            'Use this when the tooling daemon fails to start or is not needed.',
+            'Compatibility flag for older guidance. Attach sessions do not '
+            'start the Dart Tooling Daemon by default.',
       ),
       'includeCallTree': Schema.bool(
         description: 'Whether to attach top-down region call trees.',
@@ -162,7 +162,7 @@ final Tool profileAttachTool = Tool(
             'Maximum children per call tree node when includeCallTree is true. Use 0 for unlimited.',
       ),
     },
-    required: ['vmServiceUri', 'durationSeconds'],
+    required: ['vmServiceUri'],
     additionalProperties: false,
   ),
   outputSchema: Schema.object(

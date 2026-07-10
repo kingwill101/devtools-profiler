@@ -58,6 +58,80 @@ final Tool profileFrameProfileTool = Tool(
   ),
 );
 
+final Tool profileTimelineTool = Tool(
+  name: 'profile_timeline',
+  title: 'Profile Timeline',
+  description:
+      'Profile VM timeline frame timing and detect jank from a running '
+      'Flutter application. Connects to the VM service URI, samples frame '
+      'events from the VM timeline for the requested duration, and returns '
+      'frame timing metrics including P90, P99, max frame times, jank '
+      'percentage, and phase breakdowns (build, layout, paint). Use '
+      'profile_discover_apps to find available VM service URIs.',
+  inputSchema: Schema.object(
+    properties: {
+      'vmServiceUri': Schema.string(
+        description:
+            'The VM service WebSocket URI (e.g. '
+            'ws://127.0.0.1:8181/abc123/ws).',
+      ),
+      'durationSeconds': Schema.int(
+        description: 'Duration to profile frames in seconds (default: 5).',
+      ),
+    },
+    required: ['vmServiceUri'],
+    additionalProperties: false,
+  ),
+  outputSchema: Schema.object(
+    description: 'Frame timing analysis results.',
+    additionalProperties: true,
+  ),
+  annotations: ToolAnnotations(
+    destructiveHint: false,
+    idempotentHint: false,
+    openWorldHint: false,
+    readOnlyHint: true,
+    title: 'Profile Timeline',
+  ),
+);
+
+final Tool timelineTool = Tool(
+  name: 'timeline',
+  title: 'Timeline',
+  description:
+      'Profile VM timeline frame timing and detect jank from a running '
+      'Flutter application. Connects to the VM service URI, samples frame '
+      'events from the VM timeline for the requested duration, and returns '
+      'frame timing metrics including P90, P99, max frame times, jank '
+      'percentage, and phase breakdowns (build, layout, paint). Use '
+      'profile_discover_apps to find available VM service URIs.',
+  inputSchema: Schema.object(
+    properties: {
+      'vmServiceUri': Schema.string(
+        description:
+            'The VM service WebSocket URI (e.g. '
+            'ws://127.0.0.1:8181/abc123/ws).',
+      ),
+      'durationSeconds': Schema.int(
+        description: 'Duration to profile frames in seconds (default: 5).',
+      ),
+    },
+    required: ['vmServiceUri'],
+    additionalProperties: false,
+  ),
+  outputSchema: Schema.object(
+    description: 'Frame timing analysis results.',
+    additionalProperties: true,
+  ),
+  annotations: ToolAnnotations(
+    destructiveHint: false,
+    idempotentHint: false,
+    openWorldHint: false,
+    readOnlyHint: true,
+    title: 'Timeline',
+  ),
+);
+
 final Tool profileMemorySnapshotTool = Tool(
   name: 'profile_memory_snapshot',
   title: 'Profile Memory Snapshot',
@@ -141,13 +215,16 @@ final Tool profileWidgetTreeTool = Tool(
   ),
 );
 
-final Tool profileNavigationStackTool = Tool(
-  name: 'profile_navigation_stack',
-  title: 'Profile Navigation Stack',
+final Tool profileWidgetInspectorQueryTool = Tool(
+  name: 'profile_widget_inspector_query',
+  title: 'Profile Widget Inspector Query',
   description:
-      'Inspect the Flutter navigation route stack from a running application. '
-      'Returns the ordered list of routes with their types, settings names, '
-      'and which route is currently displayed.',
+      'Call a Flutter widget inspector service extension on a running '
+      'application and return the decoded JSON payload. Useful for '
+      'getSelectedWidget, getSelectedSummaryWidget, getParentChain, '
+      'getProperties, getChildren, getChildrenSummaryTree, '
+      'getChildrenDetailsSubtree, getDetailsSubtree, and '
+      'getLayoutExplorerNode.',
   inputSchema: Schema.object(
     properties: {
       'vmServiceUri': Schema.string(
@@ -155,12 +232,25 @@ final Tool profileNavigationStackTool = Tool(
             'The VM service WebSocket URI (e.g. '
             'ws://127.0.0.1:8181/abc123/ws).',
       ),
+      'method': Schema.string(
+        description:
+            'Inspector method name such as getSelectedWidget or '
+            'getLayoutExplorerNode.',
+      ),
+      'id': Schema.string(
+        description:
+            'Optional diagnostics node id for methods that target a widget.',
+      ),
+      'subtreeDepth': Schema.int(
+        description:
+            'Optional subtree depth for details and layout explorer queries.',
+      ),
     },
-    required: ['vmServiceUri'],
+    required: ['vmServiceUri', 'method'],
     additionalProperties: false,
   ),
   outputSchema: Schema.object(
-    description: 'Captured Flutter navigation route stack.',
+    description: 'Decoded Flutter widget inspector query response.',
     additionalProperties: true,
   ),
   annotations: ToolAnnotations(
@@ -168,7 +258,7 @@ final Tool profileNavigationStackTool = Tool(
     idempotentHint: true,
     openWorldHint: false,
     readOnlyHint: true,
-    title: 'Profile Navigation Stack',
+    title: 'Profile Widget Inspector Query',
   ),
 );
 
@@ -186,15 +276,12 @@ final Tool profileScreenshotTool = Tool(
             'The VM service WebSocket URI (e.g. '
             'ws://127.0.0.1:8181/abc123/ws).',
       ),
-      'width': Schema.int(
-        description: 'Image width in pixels (default: 800).',
-      ),
+      'width': Schema.int(description: 'Image width in pixels (default: 800).'),
       'height': Schema.int(
         description: 'Image height in pixels (default: 600).',
       ),
       'maxPixelRatio': Schema.int(
-        description:
-            'Maximum pixel ratio for retina screens (default: 3).',
+        description: 'Maximum pixel ratio for retina screens (default: 3).',
       ),
     },
     required: ['vmServiceUri'],

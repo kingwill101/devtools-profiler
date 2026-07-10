@@ -135,9 +135,10 @@ flutter run -d linux -t lib/main_relic_breach.dart --host-vmservice-port=0
 ```
 
 The `attach` command clears the VM's existing CPU samples, captures the
-whole-session VM service view for the requested duration, and does not stop the
-target process. Explicit region markers normally require `run` mode because the
-target must be launched with the profiler's DTD/session configuration.
+whole-session VM service view for a bounded duration, and does not stop the
+target process. It defaults to 15s, and attach sessions skip DTD by default
+because explicit region markers are unavailable in attach mode.
+If exactly one app is running, `attach` can auto-discover its VM service URI.
 
 ## Live Flutter Analysis
 
@@ -154,20 +155,12 @@ devtools-profiler discover
 This scans OS processes for Flutter/Dart development services and lists their
 VM service WebSocket URIs. Pass `--json` for machine-readable output.
 
-Discover running apps:
-
-```bash
-devtools-profiler discover
-```
-
-This scans OS processes for Flutter/Dart development services and lists their
-VM service WebSocket URIs. Pass `--json` for machine-readable output.
-
 All flutter commands below auto-discover the VM service URI when omitted.
 Just run them while your app is running and they connect automatically:
 
 ```bash
-devtools-profiler flutter:frame-profile     # auto-discovers URI
+devtools-profiler timeline                  # auto-discovers URI
+devtools-profiler flutter:timeline          # compatibility alias
 devtools-profiler flutter:screenshot        # same
 ```
 
@@ -177,7 +170,7 @@ one by passing the URI explicitly.
 Profile frame timing and detect jank:
 
 ```bash
-devtools-profiler flutter:frame-profile \
+devtools-profiler flutter:timeline \
   --duration 5 \
   ws://127.0.0.1:8181/abc123/ws
 ```
@@ -185,18 +178,22 @@ devtools-profiler flutter:frame-profile \
 Returns frame timing metrics including total/janky frame counts, average, P90,
 P99, and max frame times, plus a breakdown of build, layout, and paint phases.
 Auto-detects display refresh rate and shader compilation events.
+`flutter:timeline` and `flutter:frame-profile` are available as
+compatibility aliases.
 
 Capture a memory snapshot:
 
 ```bash
 devtools-profiler flutter:memory-snapshot \
   --name before-optimization \
+  --save \
   --no-gc \
   ws://127.0.0.1:8181/abc123/ws
 ```
 
 Returns top allocation classes sorted by current heap size. Omit `--no-gc` to
-force garbage collection before the capture.
+force garbage collection before the capture. Use `--save` to persist the
+snapshot under `.dart_tool/devtools_profiler/sessions` for later comparison.
 
 Capture the widget tree:
 
@@ -208,16 +205,20 @@ devtools-profiler flutter:widget-tree \
 ```
 
 Use `--summary` for a condensed Flutter-only view. Use `--project-only` to
-filter framework widgets and show only project code.
+filter framework widgets and show only project code in either tree shape.
 
-Inspect the navigation stack:
+Query widget inspector RPCs:
 
 ```bash
-devtools-profiler flutter:route-stack \
+devtools-profiler flutter:inspector \
+  --method getSelectedWidget \
   ws://127.0.0.1:8181/abc123/ws
 ```
 
-Returns the ordered list of routes with their types and which is current.
+Supported methods include `getSelectedWidget`, `getSelectedSummaryWidget`,
+`getParentChain`, `getProperties`, `getChildren`, `getChildrenSummaryTree`,
+`getChildrenDetailsSubtree`, `getDetailsSubtree`, and
+`getLayoutExplorerNode`.
 
 Capture a screenshot:
 
@@ -444,9 +445,10 @@ Agent-facing tools include:
 - `profile_inspect_classes`
 - `profile_discover_apps`
 - `profile_frame_profile`
+- `timeline`
 - `profile_memory_snapshot`
 - `profile_widget_tree`
-- `profile_navigation_stack`
+- `profile_widget_inspector_query`
 - `profile_screenshot`
 - `profile_debug_dump`
 - `profile_stream_logs`
@@ -460,9 +462,10 @@ Agent-facing tools include:
 - Attach mode captures a fixed whole-session VM-service window from an existing
   process, but explicit region markers normally require launch mode.
 - Dart and Flutter VM-service commands only.
-- Supported Flutter subcommands are `flutter run` and `flutter test`.
-- Flutter release mode, browser profiling, AOT profiling, and
-  `dart compile ...` targets are not supported.
+- Supported Flutter subcommands are `flutter run`, `flutter attach`,
+  `flutter drive`, and `flutter test`.
+- Flutter release mode, AOT profiling, and `dart compile ...` targets are
+  not supported.
 - Flutter region markers require the target process to reach the profiler's
   local DTD URI. This works for host-side Flutter tests and desktop runs, but
   device runs may need additional networking.

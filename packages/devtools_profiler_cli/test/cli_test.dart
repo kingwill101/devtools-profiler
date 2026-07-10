@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:devtools_profiler_cli/devtools_profiler_cli.dart';
+import 'package:devtools_profiler_cli/src/cli/commands/vm_service_discovery.dart'
+    as vm_service_discovery;
 import 'package:devtools_profiler_core/devtools_profiler_core.dart';
 import 'package:test/test.dart';
 import 'package:vm_service/vm_service.dart';
@@ -72,16 +74,53 @@ void main() {
     expect(exitCode, 0);
     expect(
       stdoutCapture.text,
-      contains('devtools-profiler attach [options] <vm-service-uri>'),
+      contains('devtools-profiler attach [options] [<vm-service-uri>]'),
     );
     expect(stdoutCapture.text, contains('Examples:'));
     expect(
       stdoutCapture.text,
-      contains(
-        'devtools-profiler attach --duration 15s http://127.0.0.1:8181/abcd/',
-      ),
+      contains('devtools-profiler attach http://127.0.0.1:8181/abcd/'),
     );
+    expect(stdoutCapture.text, contains('Defaults to 15s.'));
     expect(stderrCapture.text, isEmpty);
+  });
+
+  test('attach auto-discovers a single running VM service', () async {
+    final runner = _FakeProfileRunner();
+    final stdoutCapture = _OutputCapture();
+    final stderrCapture = _OutputCapture();
+    final previousDiscoverer = vm_service_discovery.discoverVmServiceApps;
+    vm_service_discovery.discoverVmServiceApps = () async => [
+      const DiscoveredApp(
+        vmServiceUri: 'ws://127.0.0.1:8181/abcd/ws',
+        projectName: 'demo_app',
+      ),
+    ];
+    addTearDown(() {
+      vm_service_discovery.discoverVmServiceApps = previousDiscoverer;
+    });
+    addTearDown(() async {
+      await stdoutCapture.close();
+      await stderrCapture.close();
+    });
+
+    final exitCode = await runCli(
+      const ['attach', '--json'],
+      runner: runner,
+      output: stdoutCapture.sink,
+      errorOutput: stderrCapture.sink,
+    );
+    await stdoutCapture.flush();
+    await stderrCapture.flush();
+
+    expect(exitCode, 0);
+    expect(
+      runner.lastAttachRequest?.vmServiceUri,
+      Uri.parse('http://127.0.0.1:8181/abcd/'),
+    );
+    expect(runner.lastAttachRequest?.duration, const Duration(seconds: 15));
+    expect(stdoutCapture.text, contains('session-attach'));
+    expect(stderrCapture.text, contains('Attach mode captures'));
   });
 
   test('discover help shows app discovery description', () async {
@@ -130,6 +169,56 @@ void main() {
     expect(
       stdoutCapture.text,
       contains('Profile frame timing from a running Flutter app'),
+    );
+    expect(stderrCapture.text, isEmpty);
+  });
+
+  test('timeline help shows frame analysis description', () async {
+    final stdoutCapture = _OutputCapture();
+    final stderrCapture = _OutputCapture();
+    addTearDown(() async {
+      await stdoutCapture.close();
+      await stderrCapture.close();
+    });
+
+    final exitCode = await runCli(
+      const ['flutter:timeline', '--help'],
+      runner: _FakeProfileRunner(),
+      output: stdoutCapture.sink,
+      errorOutput: stderrCapture.sink,
+    );
+    await stdoutCapture.flush();
+    await stderrCapture.flush();
+
+    expect(exitCode, 0);
+    expect(
+      stdoutCapture.text,
+      contains('Profile VM timeline frame timing from a running Flutter app'),
+    );
+    expect(stderrCapture.text, isEmpty);
+  });
+
+  test('timeline help shows the top-level alias description', () async {
+    final stdoutCapture = _OutputCapture();
+    final stderrCapture = _OutputCapture();
+    addTearDown(() async {
+      await stdoutCapture.close();
+      await stderrCapture.close();
+    });
+
+    final exitCode = await runCli(
+      const ['timeline', '--help'],
+      runner: _FakeProfileRunner(),
+      output: stdoutCapture.sink,
+      errorOutput: stderrCapture.sink,
+    );
+    await stdoutCapture.flush();
+    await stderrCapture.flush();
+
+    expect(exitCode, 0);
+    expect(
+      stdoutCapture.text,
+      contains('Profile VM timeline frame timing from a running app'),
     );
     expect(stderrCapture.text, isEmpty);
   });
@@ -184,6 +273,32 @@ void main() {
     expect(stderrCapture.text, isEmpty);
   });
 
+  test('inspector help shows widget inspector query description', () async {
+    final stdoutCapture = _OutputCapture();
+    final stderrCapture = _OutputCapture();
+    addTearDown(() async {
+      await stdoutCapture.close();
+      await stderrCapture.close();
+    });
+
+    final exitCode = await runCli(
+      const ['flutter:inspector', '--help'],
+      runner: _FakeProfileRunner(),
+      output: stdoutCapture.sink,
+      errorOutput: stderrCapture.sink,
+    );
+    await stdoutCapture.flush();
+    await stderrCapture.flush();
+
+    expect(exitCode, 0);
+    expect(
+      stdoutCapture.text,
+      contains('Query Flutter widget inspector service extensions'),
+    );
+    expect(stdoutCapture.text, contains('--method'));
+    expect(stderrCapture.text, isEmpty);
+  });
+
   test('profiles help shows profiles listing description', () async {
     final stdoutCapture = _OutputCapture();
     final stderrCapture = _OutputCapture();
@@ -209,7 +324,10 @@ void main() {
   test('frame-profile rejects missing vm service uri', () async {
     final stdoutCapture = _OutputCapture();
     final stderrCapture = _OutputCapture();
+    final previousDiscoverer = vm_service_discovery.discoverVmServiceApps;
+    vm_service_discovery.discoverVmServiceApps = () async => [];
     addTearDown(() async {
+      vm_service_discovery.discoverVmServiceApps = previousDiscoverer;
       await stdoutCapture.close();
       await stderrCapture.close();
     });
@@ -230,7 +348,10 @@ void main() {
   test('memory-snapshot rejects missing vm service uri', () async {
     final stdoutCapture = _OutputCapture();
     final stderrCapture = _OutputCapture();
+    final previousDiscoverer = vm_service_discovery.discoverVmServiceApps;
+    vm_service_discovery.discoverVmServiceApps = () async => [];
     addTearDown(() async {
+      vm_service_discovery.discoverVmServiceApps = previousDiscoverer;
       await stdoutCapture.close();
       await stderrCapture.close();
     });
@@ -251,7 +372,10 @@ void main() {
   test('widget-tree rejects missing vm service uri', () async {
     final stdoutCapture = _OutputCapture();
     final stderrCapture = _OutputCapture();
+    final previousDiscoverer = vm_service_discovery.discoverVmServiceApps;
+    vm_service_discovery.discoverVmServiceApps = () async => [];
     addTearDown(() async {
+      vm_service_discovery.discoverVmServiceApps = previousDiscoverer;
       await stdoutCapture.close();
       await stderrCapture.close();
     });
@@ -443,12 +567,37 @@ void main() {
       Uri.parse('http://127.0.0.1:8181/abcd/'),
     );
     expect(runner.lastAttachRequest?.duration, const Duration(seconds: 2));
+    expect(runner.lastAttachRequest?.enableDtd, isFalse);
     expect(runner.lastAttachRequest?.workingDirectory, '/tmp/app');
     final json = jsonDecode(stdoutCapture.text) as Map<String, Object?>;
     expect(json['sessionId'], 'session-attach');
     expect(json['command'], ['attach', 'http://127.0.0.1:8181/abcd/']);
     expect(stderrCapture.text, contains('Attach mode captures'));
     expect(stderrCapture.text, contains('devtools-profiler run'));
+  });
+
+  test('attach defaults to a bounded profiling window', () async {
+    final runner = _FakeProfileRunner();
+    final stdoutCapture = _OutputCapture();
+    final stderrCapture = _OutputCapture();
+    addTearDown(() async {
+      await stdoutCapture.close();
+      await stderrCapture.close();
+    });
+
+    final exitCode = await runCli(
+      const ['attach', '--json', 'http://127.0.0.1:8181/abcd/'],
+      runner: runner,
+      output: stdoutCapture.sink,
+      errorOutput: stderrCapture.sink,
+    );
+    await stdoutCapture.flush();
+
+    expect(exitCode, 0);
+    expect(runner.lastAttachRequest?.duration, const Duration(seconds: 15));
+    expect(runner.lastAttachRequest?.enableDtd, isFalse);
+    expect(stdoutCapture.text, contains('session-attach'));
+    expect(stderrCapture.text, contains('Attach mode captures'));
   });
 
   test('run prints json output with a call tree when expanded', () async {

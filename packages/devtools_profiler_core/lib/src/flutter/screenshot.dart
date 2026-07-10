@@ -40,9 +40,7 @@ class ScreenshotCaptureService {
     }
 
     if (rootId == null || rootId.isEmpty) {
-      throw StateError(
-        'Could not resolve widget ID for screenshot.',
-      );
+      throw StateError('Could not resolve widget ID for screenshot.');
     }
 
     final response = await _vmService.callServiceExtension(
@@ -57,7 +55,8 @@ class ScreenshotCaptureService {
       },
     );
 
-    final imageData = response.json?['result'] as String? ??
+    final imageData =
+        response.json?['result'] as String? ??
         response.json?['screenshot'] as String?;
 
     if (imageData == null || imageData.isEmpty) {

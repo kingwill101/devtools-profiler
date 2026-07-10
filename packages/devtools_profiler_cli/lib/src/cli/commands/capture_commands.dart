@@ -6,12 +6,13 @@ import '../../presentation.dart';
 import '../../rendering.dart';
 import '../constants.dart';
 import '../options.dart';
+import 'vm_service_discovery.dart';
 import 'profiler_command.dart';
 
 const _attachRegionWarning =
-    'Attach mode captures the existing VM-service process, but explicit '
-    'devtools_region_profiler markers are unavailable unless the target was '
-    'launched by devtools-profiler run.';
+    'Attach mode captures an already-running VM-service process as a fixed '
+    'whole-session window. Explicit devtools_region_profiler markers remain '
+    'unavailable unless the target was launched by devtools-profiler run.';
 
 /// Command that launches and profiles a Dart or Flutter process.
 class RunCommand extends ProfilerCommand {
@@ -176,7 +177,7 @@ class RunCommand extends ProfilerCommand {
 }
 
 /// Command that profiles an already-running Dart VM service.
-class AttachCommand extends ProfilerCommand {
+class AttachCommand extends ProfilerCommand with VmServiceDiscovery {
   /// Creates an attach command.
   AttachCommand(super.profileRunner) {
     argParser
@@ -191,16 +192,17 @@ class AttachCommand extends ProfilerCommand {
       ..addOption(
         'duration',
         help:
-            'Required profiling duration. Supports raw seconds, "10s", "500ms", or "2m".',
+            'Profiling duration. Supports raw seconds, "10s", "500ms", or "2m". '
+            'Defaults to 15s.',
+        defaultsTo: '15s',
       )
       ..addFlag(
         'skip-dtd',
-        defaultsTo: false,
-        negatable: false,
+        defaultsTo: true,
         help:
             'Skip the Dart Tooling Daemon for this attach session. '
-            'Explicit region markers will be unavailable. Use this when the '
-            'tooling daemon fails to start or is not needed.',
+            'Explicit region markers will be unavailable. Pass '
+            '--no-skip-dtd to opt into DTD.',
       )
       ..addFlag(
         'flutter',
@@ -220,43 +222,35 @@ class AttachCommand extends ProfilerCommand {
 
   @override
   String get invocation =>
-      '${runner!.executableName} attach [options] <vm-service-uri>';
+      '${runner!.executableName} attach [options] [<vm-service-uri>]';
 
   @override
   String formatUsage({bool includeDescription = true}) => usageWithExamples(
     super.formatUsage(includeDescription: includeDescription),
     const [
-      'devtools-profiler attach --duration 15s http://127.0.0.1:8181/abcd/',
+      'devtools-profiler attach',
+      'devtools-profiler attach http://127.0.0.1:8181/abcd/',
       'devtools-profiler attach --duration 30s --call-tree --hide-sdk http://127.0.0.1:8181/abcd/',
-      'devtools-profiler attach --skip-dtd --duration 30s http://127.0.0.1:8181/abcd/',
+      'devtools-profiler attach --duration 30s http://127.0.0.1:8181/abcd/',
     ],
   );
 
   @override
   Future<int> run() async {
-    if (argResults!.rest.length != 1) {
-      usageException(
-        'Attach requires exactly one Dart VM service URI. Start the target with '
-        'the Dart VM service enabled, then pass the printed service URI.',
-      );
-    }
-
-    final duration = parseDuration(
-      argResults!['duration'] as String?,
-      optionName: 'duration',
-    );
-    if (duration == null) {
-      usageException(
-        'Attach requires --duration so the capture window is bounded.',
-      );
-    }
+    final duration =
+        parseDuration(
+          argResults!['duration'] as String?,
+          optionName: 'duration',
+        ) ??
+        const Duration(seconds: 15);
+    final vmServiceUri = await resolveVmServiceUri();
 
     io.writelnErr('Warning: $_attachRegionWarning');
     final session = await profileRunner.attach(
       ProfileAttachRequest(
         artifactDirectory: argResults!['artifact-dir'] as String?,
         duration: duration,
-        vmServiceUri: parseVmServiceUriArgument(argResults!.rest.single),
+        vmServiceUri: parseVmServiceUriArgument(vmServiceUri),
         workingDirectory: argResults!['cwd'] as String?,
         enableDtd: !(argResults!['skip-dtd'] as bool),
       ),

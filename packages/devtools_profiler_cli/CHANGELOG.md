@@ -10,9 +10,19 @@
 - Added `discover` command to scan for running Dart/Flutter VM services.
 - Added `flutter:frame-profile` for live frame timing and jank detection
   with dynamic FPS, shader jank, and timeline hotspot analysis.
+- Added top-level `timeline` as a first-class alias for frame timing
+  analysis.
+- Added `flutter:timeline` as a first-class alias for frame timing analysis
+  and MCP support for the same surface.
+- Added top-level `timeline` as an MCP alias for the same analysis surface.
+- Added `flutter attach` launch support for whole-session profiling of an
+  already-running Flutter app.
+- Added `flutter drive` launch support for profiled Flutter app launches.
+- `attach` can auto-discover a single running VM service when no URI is
+  provided explicitly.
 - Added `flutter:memory-snapshot` for allocation profile capture.
 - Added `flutter:widget-tree` for Flutter widget tree inspection.
-- Added `flutter:route-stack` for navigation stack inspection.
+- Added `flutter:inspector` for generic Flutter widget inspector queries.
 - Added `flutter:screenshot` for app screenshot capture.
 - Added `flutter:debug-dump` for app/render/layer/focus/semantics dumps.
 - Added `flutter:logs` for log and output stream capture.
@@ -26,8 +36,8 @@
 - Frame locations now prefer `package:` URIs for portable output.
 - Added MCP tools: `profile_discover_apps`, `profile_frame_profile`,
   `profile_memory_snapshot`, `profile_widget_tree`,
-  `profile_navigation_stack`, `profile_screenshot`,
-  `profile_debug_dump`, `profile_stream_logs`.
+  `profile_widget_inspector_query`, `profile_screenshot`, `profile_debug_dump`,
+  `profile_stream_logs`.
 - Flutter fixture app for manual profiling and testing.
 - Flutter commands now auto-discover the VM service URI when none is
   provided — works with a single running app without typing the URI.
@@ -55,8 +65,8 @@
   inspecting memory class allocations from stored artifacts.
 - Added comparison filters for memory class output, including minimum live bytes
   and memory class count limits.
-- Added `attach --skip-dtd` and the matching MCP option for whole-session attach
-  profiling when explicit region markers are unavailable.
+- Attach sessions now default to a 15s window and skip DTD because explicit
+  region markers are unavailable in attach mode.
 - Improved CLI and JSON output by surfacing region preparation warnings,
   baseline/current comparison warnings, and sample-count fallback warnings.
 - Added warnings when active frame filters remove every CPU frame, plus

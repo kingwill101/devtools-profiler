@@ -188,8 +188,7 @@ final class FrameAnalysisResult {
 /// frame budget dynamically. Falls back to 60fps (16.6ms) when unavailable.
 class FrameAnalyzer {
   /// Creates a frame analyzer backed by [vmService].
-  FrameAnalyzer({required VmService vmService})
-    : _vmService = vmService;
+  FrameAnalyzer({required VmService vmService}) : _vmService = vmService;
 
   final VmService _vmService;
 
@@ -235,9 +234,12 @@ class FrameAnalyzer {
     } catch (_) {}
 
     final events = timeline.traceEvents ?? [];
-    return _analyzeFrameEvents(events, profileDuration,
-        frameBudgetUs: (1000000 / detectedFps).round(),
-        detectedFps: detectedFps);
+    return _analyzeFrameEvents(
+      events,
+      profileDuration,
+      frameBudgetUs: (1000000 / detectedFps).round(),
+      detectedFps: detectedFps,
+    );
   }
 
   FrameAnalysisResult _analyzeFrameEvents(
@@ -256,6 +258,7 @@ class FrameAnalyzer {
     var buildTimeTotal = 0.0;
     var layoutTimeTotal = 0.0;
     var paintTimeTotal = 0.0;
+    var shaderJankInCurrentFrame = false;
 
     for (final event in events) {
       final name = event.json?['name'] as String?;
@@ -272,11 +275,15 @@ class FrameAnalyzer {
       // Detect shader compilation events
       if (_isShaderCompilationEvent(lowerName)) {
         final category = _shaderEventCategory(lowerName);
-        shaderEvents.add(ShaderCompilationEvent(
-          name: name,
-          durationUs: durationUs,
-          category: category,
-        ));
+        shaderEvents.add(
+          ShaderCompilationEvent(
+            name: name,
+            durationUs: durationUs,
+            category: category,
+          ),
+        );
+        shaderJankInCurrentFrame =
+            shaderJankInCurrentFrame || durationUs > 1000;
       }
 
       // Detect frame events
@@ -294,9 +301,10 @@ class FrameAnalyzer {
             'name': name,
             'durationUs': durationUs,
             'severity': severity,
-            'shaderJank': shaderEvents.any((e) => e.durationUs > 1000),
+            'shaderJank': shaderJankInCurrentFrame,
           });
         }
+        shaderJankInCurrentFrame = false;
       }
 
       // Phase breakdowns
@@ -332,16 +340,19 @@ class FrameAnalyzer {
         : 0.0;
 
     // Build hotspot list sorted by total duration descending
-    final hotspots = hotspotMap.entries
-        .map((e) => TimelineHotspot(
-              name: e.key,
-              selfDurationUs: e.value.self,
-              totalDurationUs: e.value.total,
-              callCount: e.value.count,
-              maxDurationUs: e.value.max,
-            ))
-        .toList()
-      ..sort((a, b) => b.totalDurationUs.compareTo(a.totalDurationUs));
+    final hotspots =
+        hotspotMap.entries
+            .map(
+              (e) => TimelineHotspot(
+                name: e.key,
+                selfDurationUs: e.value.self,
+                totalDurationUs: e.value.total,
+                callCount: e.value.count,
+                maxDurationUs: e.value.max,
+              ),
+            )
+            .toList()
+          ..sort((a, b) => b.totalDurationUs.compareTo(a.totalDurationUs));
 
     return FrameAnalysisResult(
       durationMicros: profileDuration.inMicroseconds,
@@ -381,7 +392,6 @@ class FrameAnalyzer {
     if (name.contains('gpu') || name.contains('pipeline')) return 'gpu';
     return 'other';
   }
-
 
   bool _isFrameEvent(String name) {
     return switch (name) {

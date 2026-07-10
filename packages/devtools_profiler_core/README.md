@@ -143,9 +143,11 @@ Future<void> main() async {
 ```
 
 `attach` clears the VM's existing CPU samples, captures the whole-session VM
-service profile view for the requested duration, and does not stop the target
-process. Explicit region markers normally require `run`, because the target must
-be launched with the profiler's DTD URI and session id.
+service profile view for a bounded duration, and does not stop the target
+process. It defaults to 15s. Explicit region markers normally require `run`,
+because the target must be launched with the profiler's DTD URI and session
+id. CLI attach can auto-discover a single running app's VM service URI when one
+is not provided explicitly.
 
 ## Read Stored Artifacts
 
@@ -218,10 +220,13 @@ It intentionally does not depend on `packages/devtools_app`,
 - Attach mode captures a fixed whole-session VM-service window from an existing
   process, but explicit region markers normally require launch mode.
 - Dart and Flutter VM-service commands only.
-- Supported Flutter subcommands are `flutter run` and `flutter test`.
-- Flutter release mode, browser/web targets, and AOT targets are not supported.
+- Supported Flutter subcommands are `flutter run`, `flutter attach`,
+  `flutter drive`, and `flutter test`.
+- Flutter release mode and AOT targets are not supported.
 - CPU and memory capture are implemented.
 - Timeline capture is represented in the shared protocol enum but is not
-  implemented by this backend.
+  implemented as a region capture mode by this backend. Live frame timing
+  analysis is provided by the CLI's `timeline` command, which is also
+  available as `flutter:timeline` and `flutter:frame-profile`.
 - Most users should prefer the globally installed CLI. Use this package
   directly when building custom profiler integrations.

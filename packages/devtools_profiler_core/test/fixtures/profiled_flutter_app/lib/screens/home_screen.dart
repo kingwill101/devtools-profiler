@@ -8,10 +8,7 @@ class HomeScreen extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Profiler Fixture'),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: const Text('Profiler Fixture'), centerTitle: true),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [

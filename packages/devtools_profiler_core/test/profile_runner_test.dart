@@ -35,7 +35,9 @@ void main() {
         isA<ArgumentError>().having(
           (error) => error.toString(),
           'message',
-          contains('Only "flutter run" and "flutter test" are supported'),
+          contains(
+            'Only "flutter run", "flutter attach", "flutter drive", and "flutter test" are supported',
+          ),
         ),
       ),
     );
@@ -103,6 +105,53 @@ void main() {
       'linux',
     ]);
     expect(runArguments, contains('--host-vmservice-port=0'));
+
+    final driveArguments = await _recordedFlutterArguments(const [
+      'drive',
+      '--driver',
+      'test_driver/integration_test.dart',
+      '--target',
+      'integration_test/app.dart',
+    ]);
+    expect(driveArguments, contains(startsWith('--dart-define=')));
+    expect(
+      driveArguments,
+      contains(startsWith('--dart-define=DEVTOOLS_PROFILER_DTD_URI=')),
+    );
+    expect(
+      driveArguments,
+      contains(startsWith('--dart-define=DEVTOOLS_PROFILER_SESSION_ID=')),
+    );
+  });
+
+  test('allows flutter attach launch shape without profiler defines', () {
+    final plan = launch.flutterLaunchPlan(
+      const ['flutter', 'attach', '--debug-uri=http://127.0.0.1:8181/abcd/'],
+      dtdUri: 'http://127.0.0.1:1/',
+      sessionId: 'session-test',
+    );
+
+    expect(plan.arguments, [
+      'attach',
+      '--debug-uri=http://127.0.0.1:8181/abcd/',
+    ]);
+    expect(plan.expectedVmServiceUri, isNull);
+  });
+
+  test('allows flutter attach launch shape in inherited stdio mode', () {
+    final plan = launch.flutterLaunchPlan(
+      const ['flutter', 'attach', '--debug-uri=http://127.0.0.1:8181/abcd/'],
+      dtdUri: 'http://127.0.0.1:1/',
+      sessionId: 'session-test',
+      processIoMode: ProfileProcessIoMode.inheritStdio,
+      vmServicePort: 12345,
+    );
+
+    expect(plan.arguments, [
+      'attach',
+      '--debug-uri=http://127.0.0.1:8181/abcd/',
+    ]);
+    expect(plan.expectedVmServiceUri, isNull);
   });
 
   test(
@@ -420,7 +469,9 @@ Future<void> main() async {
     expect(result.overallProfile!.sampleCount, greaterThan(0));
     expect(
       result.warnings,
-      contains(contains('Attach mode captured an existing VM-service process')),
+      contains(
+        contains('Attach mode captured an already-running VM-service process'),
+      ),
     );
     expect(File(result.overallProfile!.summaryPath).existsSync(), isTrue);
     expect(File(result.overallProfile!.rawProfilePath!).existsSync(), isTrue);
