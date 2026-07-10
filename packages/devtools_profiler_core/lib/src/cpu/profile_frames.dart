@@ -176,14 +176,21 @@ String displayNameForFunction(ProfileFunction function) {
 
 /// Returns the best source location available for a VM profile function.
 String? locationForFunction(ProfileFunction function) {
+  // Prefer package: URIs from script location over resolved file paths.
+  // This gives us stable package-relative paths instead of machine-specific
+  // absolute file paths, making profile output portable across machines.
+  final object = function.function;
+  if (object case FuncRef(location: final location?)) {
+    final scriptUri = location.script?.uri;
+    if (scriptUri != null && scriptUri.isNotEmpty) {
+      return scriptUri;
+    }
+  }
+
+  // Fall back to resolved file path when no package URI is available.
   final resolvedUrl = function.resolvedUrl;
   if (resolvedUrl != null && resolvedUrl.isNotEmpty) {
     return resolvedUrl;
-  }
-
-  final object = function.function;
-  if (object case FuncRef(location: final location?)) {
-    return location.script?.uri;
   }
 
   return null;

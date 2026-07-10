@@ -70,13 +70,29 @@ String formatProfileDuration(Duration duration) {
   return '${duration.inHours}h';
 }
 
-/// Generates a collision-resistant profiler session identifier.
+/// Generates a compact, time-ordered, collision-resistant profiler session
+/// identifier.
+///
+/// Format: `MMDDHHmmss-XXXXX` — 16 characters. The first 10 digits are the
+/// local month, day, hour, minute, and second, so the result is both
+/// human-readable (you can see when the session was created at a glance) and
+/// sortable by creation time. The last 5 hex characters are a random suffix
+/// that prevents collisions when multiple sessions are created in the same
+/// second.
+///
+/// Example identifier: `0709143000-a1b2c`
 String generateProfileSessionId() {
+  final now = DateTime.now();
   final random = Random();
-  final timestamp = DateTime.now().toUtc().toIso8601String();
-  final suffix = random.nextInt(0xFFFFFF).toRadixString(16).padLeft(6, '0');
-  return 'session-${timestamp.replaceAll(':', '-')}-$suffix';
+  final time =
+      '${_twoDigits(now.month)}${_twoDigits(now.day)}'
+      '${_twoDigits(now.hour)}${_twoDigits(now.minute)}'
+      '${_twoDigits(now.second)}';
+  final suffix = random.nextInt(0xFFFFF).toRadixString(16).padLeft(5, '0');
+  return '$time-$suffix';
 }
+
+String _twoDigits(int value) => value.toString().padLeft(2, '0');
 
 /// Coerces an unknown JSON-like value into a string map.
 Map<String, String> stringMap(Object? value) {
