@@ -19,7 +19,8 @@ Start by identifying the user's target:
 
 - Dart script: use `run path/to/file.dart` for a bare file, or `run -- dart
   run ...` when the target has its own arguments.
-- Flutter app or test: use `run` with `flutter run` or `flutter test`.
+- Flutter app or test: use `run` with `flutter run`, `flutter attach`, or
+  `flutter test`.
 - Already-running VM service: use `attach`.
 - Already-running Flutter app with live analysis: use `discover` then
   `timeline` (or `frame-profile`), `memory-snapshot`, or `widget-tree`.

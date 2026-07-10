@@ -12,6 +12,8 @@
   with dynamic FPS, shader jank, and timeline hotspot analysis.
 - Added `flutter:timeline` as a first-class alias for frame timing analysis
   and MCP support for the same surface.
+- Added `flutter attach` launch support for whole-session profiling of an
+  already-running Flutter app.
 - Added `flutter:memory-snapshot` for allocation profile capture.
 - Added `flutter:widget-tree` for Flutter widget tree inspection.
 - Added `flutter:route-stack` for navigation stack inspection.

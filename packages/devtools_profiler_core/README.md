@@ -218,7 +218,8 @@ It intentionally does not depend on `packages/devtools_app`,
 - Attach mode captures a fixed whole-session VM-service window from an existing
   process, but explicit region markers normally require launch mode.
 - Dart and Flutter VM-service commands only.
-- Supported Flutter subcommands are `flutter run` and `flutter test`.
+- Supported Flutter subcommands are `flutter run`, `flutter attach`, and
+  `flutter test`.
 - Flutter release mode, browser/web targets, and AOT targets are not supported.
 - CPU and memory capture are implemented.
 - Timeline capture is represented in the shared protocol enum but is not

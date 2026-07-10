@@ -737,7 +737,9 @@ models. It does not depend on `packages/devtools_app`,
 ## Current Limits
 
 - Attach mode captures a fixed whole-session VM-service window from an existing
-  process, but explicit region markers normally require launch mode.
+  process, but explicit region markers normally require launch mode. Flutter
+  `attach` launches are also accepted for whole-session profiling, but they do
+  not enable region markers on an already-running app.
 - Launch mode supports bare Dart files, Dart VM commands, and supported Flutter
   commands. Put profiler options before the target, and use `--` when the
   target command has its own options.

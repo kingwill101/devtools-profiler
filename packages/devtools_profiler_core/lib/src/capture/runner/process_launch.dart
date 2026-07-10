@@ -191,14 +191,14 @@ void validateFlutterCommand(List<String> command) {
   final subcommandIndex = flutterSubcommandIndex(command);
   if (subcommandIndex == null) {
     throw ArgumentError(
-      'A supported Flutter subcommand is required. Use "flutter run" or "flutter test".',
+      'A supported Flutter subcommand is required. Use "flutter run", "flutter attach", or "flutter test".',
     );
   }
 
   final subcommand = command[subcommandIndex];
   if (!supportedFlutterSubcommands.contains(subcommand)) {
     throw ArgumentError(
-      'Only "flutter run" and "flutter test" are supported for Flutter profiling.',
+      'Only "flutter run", "flutter attach", and "flutter test" are supported for Flutter profiling.',
     );
   }
 
@@ -361,7 +361,7 @@ List<String> flutterProfilerArguments(
   int? vmServicePort,
 }) {
   final usesInheritedStdio = processIoMode == ProfileProcessIoMode.inheritStdio;
-  final profilerPort = usesInheritedStdio
+  final profilerPort = usesInheritedStdio && subcommand == 'run'
       ? _flutterTerminalVmServicePort(
           subcommand,
           arguments,
@@ -383,9 +383,11 @@ List<String> flutterProfilerArguments(
         subcommand == 'run' &&
         !hasOption(arguments, 'disable-service-auth-codes'))
       '--disable-service-auth-codes',
-    '--dart-define=$profilerDtdUriEnvVar=$dtdUri',
-    '--dart-define=$profilerSessionIdEnvVar=$sessionId',
-    '--dart-define=$profilerProtocolVersionEnvVar=1',
+    if (subcommand != 'attach') ...[
+      '--dart-define=$profilerDtdUriEnvVar=$dtdUri',
+      '--dart-define=$profilerSessionIdEnvVar=$sessionId',
+      '--dart-define=$profilerProtocolVersionEnvVar=1',
+    ],
   ];
 }
 
@@ -397,6 +399,9 @@ Uri? _flutterExpectedVmServiceUri(
   required int? vmServicePort,
 }) {
   if (processIoMode != ProfileProcessIoMode.inheritStdio) {
+    return null;
+  }
+  if (subcommand != 'run') {
     return null;
   }
   return _expectedLoopbackVmServiceUri(
@@ -462,7 +467,7 @@ const knownFlutterSubcommands = {
   'upgrade',
 };
 
-const supportedFlutterSubcommands = {'run', 'test'};
+const supportedFlutterSubcommands = {'run', 'attach', 'test'};
 
 /// Returns the first recognized Flutter subcommand index in [command].
 int? flutterSubcommandIndex(List<String> command) {

@@ -35,7 +35,9 @@ void main() {
         isA<ArgumentError>().having(
           (error) => error.toString(),
           'message',
-          contains('Only "flutter run" and "flutter test" are supported'),
+          contains(
+            'Only "flutter run", "flutter attach", and "flutter test" are supported',
+          ),
         ),
       ),
     );
@@ -103,6 +105,36 @@ void main() {
       'linux',
     ]);
     expect(runArguments, contains('--host-vmservice-port=0'));
+  });
+
+  test('allows flutter attach launch shape without profiler defines', () {
+    final plan = launch.flutterLaunchPlan(
+      const ['flutter', 'attach', '--debug-uri=http://127.0.0.1:8181/abcd/'],
+      dtdUri: 'http://127.0.0.1:1/',
+      sessionId: 'session-test',
+    );
+
+    expect(plan.arguments, [
+      'attach',
+      '--debug-uri=http://127.0.0.1:8181/abcd/',
+    ]);
+    expect(plan.expectedVmServiceUri, isNull);
+  });
+
+  test('allows flutter attach launch shape in inherited stdio mode', () {
+    final plan = launch.flutterLaunchPlan(
+      const ['flutter', 'attach', '--debug-uri=http://127.0.0.1:8181/abcd/'],
+      dtdUri: 'http://127.0.0.1:1/',
+      sessionId: 'session-test',
+      processIoMode: ProfileProcessIoMode.inheritStdio,
+      vmServicePort: 12345,
+    );
+
+    expect(plan.arguments, [
+      'attach',
+      '--debug-uri=http://127.0.0.1:8181/abcd/',
+    ]);
+    expect(plan.expectedVmServiceUri, isNull);
   });
 
   test(
