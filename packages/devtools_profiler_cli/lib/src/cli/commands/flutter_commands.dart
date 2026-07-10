@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:devtools_profiler_core/devtools_profiler_core.dart';
 import 'package:vm_service/vm_service.dart';
 import 'package:vm_service/vm_service_io.dart';
@@ -84,8 +86,10 @@ class FrameProfileCommand extends ProfilerCommand {
           'Average Frame': '$avgMs ms',
           'Max Frame': '$maxMs ms',
           'Detected FPS': '${result.detectedFps.toStringAsFixed(0)}',
-          'P90 Frame': '${(result.p90FrameTimeUs / 1000).toStringAsFixed(2)} ms',
-          'P99 Frame': '${(result.p99FrameTimeUs / 1000).toStringAsFixed(2)} ms',
+          'P90 Frame':
+              '${(result.p90FrameTimeUs / 1000).toStringAsFixed(2)} ms',
+          'P99 Frame':
+              '${(result.p99FrameTimeUs / 1000).toStringAsFixed(2)} ms',
           'Build Phase': '$buildMs ms',
           'Layout Phase': '$layoutMs ms',
           'Paint Phase': '$paintMs ms',
@@ -397,9 +401,7 @@ class RouteStackCommand extends ProfilerCommand {
   @override
   String formatUsage({bool includeDescription = true}) => usageWithExamples(
     super.formatUsage(includeDescription: includeDescription),
-    const [
-      'devtools-profiler route-stack ws://127.0.0.1:8181/abc123/ws',
-    ],
+    const ['devtools-profiler route-stack ws://127.0.0.1:8181/abc123/ws'],
   );
 
   @override
@@ -613,5 +615,102 @@ class DebugDumpCommand extends ProfilerCommand {
       throw StateError('No isolates found in the target VM.');
     }
     return (active.isNotEmpty ? active.first : isolates.first).id!;
+  }
+}
+
+/// Command that captures logs from a running Flutter/Dart app.
+class LogsCommand extends ProfilerCommand {
+  /// Creates a logs command.
+  LogsCommand(super.profileRunner) {
+    argParser
+      ..addOption(
+        'duration',
+        defaultsTo: '10',
+        help: 'Duration to capture logs in seconds (default: 10).',
+      )
+      ..addOption(
+        'output',
+        help: 'Output file for captured logs. Prints to stdout when omitted.',
+      )
+      ..addFlag(
+        'follow',
+        negatable: false,
+        help:
+            'Continuously stream logs until interrupted (ignores --duration).',
+      );
+  }
+
+  @override
+  String get name => 'logs';
+
+  @override
+  String get description =>
+      'Capture log and output streams from a running app via its VM service URI.';
+
+  @override
+  String get invocation =>
+      '${runner!.executableName} logs [options] <vm-service-uri>';
+
+  @override
+  String formatUsage({bool includeDescription = true}) => usageWithExamples(
+    super.formatUsage(includeDescription: includeDescription),
+    const [
+      'devtools-profiler logs ws://127.0.0.1:8181/abc123/ws',
+      'devtools-profiler logs --duration 30 --output session.log ws://127.0.0.1:8181/abc123/ws',
+    ],
+  );
+
+  @override
+  Future<int> run() async {
+    if (argResults!.rest.isEmpty) {
+      usageException('A VM service URI is required.');
+    }
+
+    final vmServiceUri = argResults!.rest.single;
+    final duration =
+        int.tryParse(argResults!['duration'] as String? ?? '10') ?? 10;
+    final outputPath = argResults!['output'] as String?;
+    final follow = argResults!['follow'] as bool;
+
+    final wsUri = vmServiceUri
+        .replaceFirst('http://', 'ws://')
+        .replaceFirst('https://', 'wss://');
+    final cleanWs = wsUri.endsWith('/ws') ? wsUri : '$wsUri/ws';
+
+    final vmService = await vmServiceConnectUri(cleanWs);
+    try {
+      final capture = LogStreamCapture(vmService: vmService);
+      await capture.start();
+
+      if (follow) {
+        comment('Streaming logs. Press Ctrl+C to stop.');
+        await Future<void>.delayed(const Duration(days: 365));
+      } else {
+        await Future<void>.delayed(Duration(seconds: duration));
+      }
+
+      final entries = await capture.stop();
+
+      if (outputPath != null) {
+        final file = File(outputPath);
+        await capture.writeToFile(file);
+        comment('Logs written to ${file.path}');
+      } else {
+        if (printJson) {
+          line(
+            jsonEncoder.convert([for (final entry in entries) entry.toJson()]),
+          );
+        } else {
+          io.title('Captured Logs (${entries.length} entries)');
+          for (final entry in entries) {
+            line('[${entry.kind}] ${entry.message}');
+          }
+        }
+      }
+    } finally {
+      await vmService.dispose();
+    }
+
+    return successExitCode;
   }
 }

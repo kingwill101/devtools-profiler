@@ -54,6 +54,7 @@ Future<int> runCli(
         ..addCommand(RouteStackCommand(profiler))
         ..addCommand(ScreenshotCommand(profiler))
         ..addCommand(DebugDumpCommand(profiler))
+        ..addCommand(LogsCommand(profiler))
         ..addCommand(McpCommand(profiler));
 
   try {

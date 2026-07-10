@@ -879,13 +879,41 @@ class McpToolHandlers {
           final activeIsolate = _findActiveIsolate(vm);
           final service = DebugDumpService(vmService: vmService);
           final result = await service.dump(
-            isolateId: activeIsolate, kind: kind,
+            isolateId: activeIsolate,
+            kind: kind,
           );
           progress(2, 2, 'Debug dump completed.');
+          return {'kind': 'debugDump', 'vmServiceUri': uri, ...result.toJson()};
+        } finally {
+          await vmService.dispose();
+        }
+      },
+    );
+  }
+
+  Future<CallToolResult> profileStreamLogs(CallToolRequest request) {
+    return _runTool(
+      request: request,
+      successMessage: 'Logs captured.',
+      action: (progress) async {
+        final arguments = request.arguments ?? const <String, Object?>{};
+        final uri = _requiredStringArgument(arguments, key: 'vmServiceUri');
+        final duration = (arguments['durationSeconds'] as int?) ?? 10;
+        progress(0, 2, 'Connecting to VM service.');
+        final vmService = await _connectVmService(uri);
+        try {
+          progress(1, 2, 'Capturing logs for ${duration}s.');
+          final capture = LogStreamCapture(vmService: vmService);
+          await capture.start();
+          await Future<void>.delayed(Duration(seconds: duration));
+          final entries = await capture.stop();
+          progress(2, 2, 'Logs captured.');
           return {
-            'kind': 'debugDump',
+            'kind': 'logStream',
             'vmServiceUri': uri,
-            ...result.toJson(),
+            'durationSeconds': duration,
+            'entryCount': entries.length,
+            'entries': [for (final entry in entries) entry.toJson()],
           };
         } finally {
           await vmService.dispose();

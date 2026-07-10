@@ -52,6 +52,7 @@ export 'src/memory/memory_profile_summary.dart';
 export 'src/discovery/app_discovery.dart';
 export 'src/flutter/debug_dump.dart';
 export 'src/flutter/frame_analysis.dart';
+export 'src/flutter/log_stream.dart';
 export 'src/flutter/memory_snapshot.dart';
 export 'src/flutter/navigation_stack.dart';
 export 'src/flutter/screenshot.dart';

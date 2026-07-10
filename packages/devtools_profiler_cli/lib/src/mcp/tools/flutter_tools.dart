@@ -246,3 +246,37 @@ final Tool profileDebugDumpTool = Tool(
     title: 'Profile Debug Dump',
   ),
 );
+
+final Tool profileStreamLogsTool = Tool(
+  name: 'profile_stream_logs',
+  title: 'Profile Stream Logs',
+  description:
+      'Capture log and output streams (Logging, Stdout, Stderr) from a '
+      'running Dart or Flutter application for a specified duration. '
+      'Returns structured log entries with timestamps.',
+  inputSchema: Schema.object(
+    properties: {
+      'vmServiceUri': Schema.string(
+        description:
+            'The VM service WebSocket URI (e.g. '
+            'ws://127.0.0.1:8181/abc123/ws).',
+      ),
+      'durationSeconds': Schema.int(
+        description: 'Duration to capture logs in seconds (default: 10).',
+      ),
+    },
+    required: ['vmServiceUri'],
+    additionalProperties: false,
+  ),
+  outputSchema: Schema.object(
+    description: 'Captured log entries.',
+    additionalProperties: true,
+  ),
+  annotations: ToolAnnotations(
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: false,
+    readOnlyHint: true,
+    title: 'Profile Stream Logs',
+  ),
+);
