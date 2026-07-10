@@ -118,7 +118,7 @@ void main() {
     });
 
     final exitCode = await runCli(
-      const ['frame-profile', '--help'],
+      const ['flutter:frame-profile', '--help'],
       runner: _FakeProfileRunner(),
       output: stdoutCapture.sink,
       errorOutput: stderrCapture.sink,
@@ -143,7 +143,7 @@ void main() {
     });
 
     final exitCode = await runCli(
-      const ['memory-snapshot', '--help'],
+      const ['flutter:memory-snapshot', '--help'],
       runner: _FakeProfileRunner(),
       output: stdoutCapture.sink,
       errorOutput: stderrCapture.sink,
@@ -168,7 +168,7 @@ void main() {
     });
 
     final exitCode = await runCli(
-      const ['widget-tree', '--help'],
+      const ['flutter:widget-tree', '--help'],
       runner: _FakeProfileRunner(),
       output: stdoutCapture.sink,
       errorOutput: stderrCapture.sink,
@@ -215,7 +215,7 @@ void main() {
     });
 
     final exitCode = await runCli(
-      const ['frame-profile'],
+      const ['flutter:frame-profile'],
       runner: _FakeProfileRunner(),
       output: stdoutCapture.sink,
       errorOutput: stderrCapture.sink,
@@ -236,7 +236,7 @@ void main() {
     });
 
     final exitCode = await runCli(
-      const ['memory-snapshot'],
+      const ['flutter:memory-snapshot'],
       runner: _FakeProfileRunner(),
       output: stdoutCapture.sink,
       errorOutput: stderrCapture.sink,
@@ -257,7 +257,7 @@ void main() {
     });
 
     final exitCode = await runCli(
-      const ['widget-tree'],
+      const ['flutter:widget-tree'],
       runner: _FakeProfileRunner(),
       output: stdoutCapture.sink,
       errorOutput: stderrCapture.sink,

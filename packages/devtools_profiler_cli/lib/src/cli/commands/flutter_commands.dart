@@ -19,7 +19,7 @@ class FrameProfileCommand extends ProfilerCommand {
   }
 
   @override
-  String get name => 'frame-profile';
+  String get name => 'flutter:frame-profile';
 
   @override
   String get description =>
@@ -28,14 +28,14 @@ class FrameProfileCommand extends ProfilerCommand {
 
   @override
   String get invocation =>
-      '${runner!.executableName} frame-profile [options] <vm-service-uri>';
+      '${runner!.executableName} flutter:frame-profile [options] <vm-service-uri>';
 
   @override
   String formatUsage({bool includeDescription = true}) => usageWithExamples(
     super.formatUsage(includeDescription: includeDescription),
     const [
-      'devtools-profiler frame-profile ws://127.0.0.1:8181/abc123/ws',
-      'devtools-profiler frame-profile --duration 10 ws://127.0.0.1:8181/abc123/ws',
+      'devtools-profiler flutter:frame-profile ws://127.0.0.1:8181/abc123/ws',
+      'devtools-profiler flutter:frame-profile --duration 10 ws://127.0.0.1:8181/abc123/ws',
     ],
   );
 
@@ -152,7 +152,7 @@ class MemorySnapshotCommand extends ProfilerCommand {
   }
 
   @override
-  String get name => 'memory-snapshot';
+  String get name => 'flutter:memory-snapshot';
 
   @override
   String get description =>
@@ -160,14 +160,14 @@ class MemorySnapshotCommand extends ProfilerCommand {
 
   @override
   String get invocation =>
-      '${runner!.executableName} memory-snapshot [options] <vm-service-uri>';
+      '${runner!.executableName} flutter:memory-snapshot [options] <vm-service-uri>';
 
   @override
   String formatUsage({bool includeDescription = true}) => usageWithExamples(
     super.formatUsage(includeDescription: includeDescription),
     const [
-      'devtools-profiler memory-snapshot ws://127.0.0.1:8181/abc123/ws',
-      'devtools-profiler memory-snapshot --name before-opt --no-gc ws://127.0.0.1:8181/abc123/ws',
+      'devtools-profiler flutter:memory-snapshot ws://127.0.0.1:8181/abc123/ws',
+      'devtools-profiler flutter:memory-snapshot --name before-opt --no-gc ws://127.0.0.1:8181/abc123/ws',
     ],
   );
 
@@ -286,7 +286,7 @@ class WidgetTreeCommand extends ProfilerCommand {
   }
 
   @override
-  String get name => 'widget-tree';
+  String get name => 'flutter:widget-tree';
 
   @override
   String get description =>
@@ -294,14 +294,14 @@ class WidgetTreeCommand extends ProfilerCommand {
 
   @override
   String get invocation =>
-      '${runner!.executableName} widget-tree [options] <vm-service-uri>';
+      '${runner!.executableName} flutter:widget-tree [options] <vm-service-uri>';
 
   @override
   String formatUsage({bool includeDescription = true}) => usageWithExamples(
     super.formatUsage(includeDescription: includeDescription),
     const [
-      'devtools-profiler widget-tree ws://127.0.0.1:8181/abc123/ws',
-      'devtools-profiler widget-tree --summary --depth 10 ws://127.0.0.1:8181/abc123/ws',
+      'devtools-profiler flutter:widget-tree ws://127.0.0.1:8181/abc123/ws',
+      'devtools-profiler flutter:widget-tree --summary --depth 10 ws://127.0.0.1:8181/abc123/ws',
     ],
   );
 
@@ -387,7 +387,7 @@ class RouteStackCommand extends ProfilerCommand {
   RouteStackCommand(super.profileRunner);
 
   @override
-  String get name => 'route-stack';
+  String get name => 'flutter:route-stack';
 
   @override
   String get description =>
@@ -396,12 +396,14 @@ class RouteStackCommand extends ProfilerCommand {
 
   @override
   String get invocation =>
-      '${runner!.executableName} route-stack [options] <vm-service-uri>';
+      '${runner!.executableName} flutter:route-stack [options] <vm-service-uri>';
 
   @override
   String formatUsage({bool includeDescription = true}) => usageWithExamples(
     super.formatUsage(includeDescription: includeDescription),
-    const ['devtools-profiler route-stack ws://127.0.0.1:8181/abc123/ws'],
+    const [
+      'devtools-profiler flutter:route-stack ws://127.0.0.1:8181/abc123/ws',
+    ],
   );
 
   @override
@@ -475,7 +477,7 @@ class ScreenshotCommand extends ProfilerCommand {
   }
 
   @override
-  String get name => 'screenshot';
+  String get name => 'flutter:screenshot';
 
   @override
   String get description =>
@@ -483,14 +485,14 @@ class ScreenshotCommand extends ProfilerCommand {
 
   @override
   String get invocation =>
-      '${runner!.executableName} screenshot [options] <vm-service-uri>';
+      '${runner!.executableName} flutter:screenshot [options] <vm-service-uri>';
 
   @override
   String formatUsage({bool includeDescription = true}) => usageWithExamples(
     super.formatUsage(includeDescription: includeDescription),
     const [
-      'devtools-profiler screenshot ws://127.0.0.1:8181/abc123/ws',
-      'devtools-profiler screenshot --output app.png --width 1920 ws://127.0.0.1:8181/abc123/ws',
+      'devtools-profiler flutter:screenshot ws://127.0.0.1:8181/abc123/ws',
+      'devtools-profiler flutter:screenshot --output app.png --width 1920 ws://127.0.0.1:8181/abc123/ws',
     ],
   );
 
@@ -554,7 +556,7 @@ class DebugDumpCommand extends ProfilerCommand {
   }
 
   @override
-  String get name => 'debug-dump';
+  String get name => 'flutter:debug-dump';
 
   @override
   String get description =>
@@ -562,14 +564,14 @@ class DebugDumpCommand extends ProfilerCommand {
 
   @override
   String get invocation =>
-      '${runner!.executableName} debug-dump [options] <vm-service-uri>';
+      '${runner!.executableName} flutter:debug-dump [options] <vm-service-uri>';
 
   @override
   String formatUsage({bool includeDescription = true}) => usageWithExamples(
     super.formatUsage(includeDescription: includeDescription),
     const [
-      'devtools-profiler debug-dump ws://127.0.0.1:8181/abc123/ws',
-      'devtools-profiler debug-dump --kind render ws://127.0.0.1:8181/abc123/ws',
+      'devtools-profiler flutter:debug-dump ws://127.0.0.1:8181/abc123/ws',
+      'devtools-profiler flutter:debug-dump --kind render ws://127.0.0.1:8181/abc123/ws',
     ],
   );
 
@@ -641,7 +643,7 @@ class LogsCommand extends ProfilerCommand {
   }
 
   @override
-  String get name => 'logs';
+  String get name => 'flutter:logs';
 
   @override
   String get description =>
@@ -649,14 +651,14 @@ class LogsCommand extends ProfilerCommand {
 
   @override
   String get invocation =>
-      '${runner!.executableName} logs [options] <vm-service-uri>';
+      '${runner!.executableName} flutter:logs [options] <vm-service-uri>';
 
   @override
   String formatUsage({bool includeDescription = true}) => usageWithExamples(
     super.formatUsage(includeDescription: includeDescription),
     const [
-      'devtools-profiler logs ws://127.0.0.1:8181/abc123/ws',
-      'devtools-profiler logs --duration 30 --output session.log ws://127.0.0.1:8181/abc123/ws',
+      'devtools-profiler flutter:logs ws://127.0.0.1:8181/abc123/ws',
+      'devtools-profiler flutter:logs --duration 30 --output session.log ws://127.0.0.1:8181/abc123/ws',
     ],
   );
 
