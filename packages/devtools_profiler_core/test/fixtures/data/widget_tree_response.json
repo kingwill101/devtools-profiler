@@ -1,0 +1,51 @@
+{
+  "name": "MyApp",
+  "description": "MyApp",
+  "children": [
+    {
+      "name": "MaterialApp",
+      "description": "MaterialApp",
+      "children": [
+        {
+          "name": "Scaffold",
+          "description": "Scaffold",
+          "children": [
+            {
+              "name": "AppBar",
+              "description": "AppBar",
+              "children": [
+                {
+                  "name": "Text",
+                  "description": "Profiler Demo",
+                  "children": []
+                }
+              ]
+            },
+            {
+              "name": "Center",
+              "description": "Center",
+              "children": [
+                {
+                  "name": "Column",
+                  "description": "Column",
+                  "children": [
+                    {
+                      "name": "ElevatedButton",
+                      "description": "Start Profiling",
+                      "children": []
+                    },
+                    {
+                      "name": "Text",
+                      "description": "Status: idle",
+                      "children": []
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

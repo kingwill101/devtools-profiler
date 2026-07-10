@@ -1,0 +1,24 @@
+{
+  "traceEvents": [
+    {"name": "GPURasterizer::Draw", "ph": "X", "dur": 12000, "ts": 1000},
+    {"name": "GPURasterizer::Draw", "ph": "X", "dur": 15000, "ts": 15000},
+    {"name": "GPURasterizer::Draw", "ph": "X", "dur": 18000, "ts": 30000},
+    {"name": "GPURasterizer::Draw", "ph": "X", "dur": 16000, "ts": 45000},
+    {"name": "GPURasterizer::Draw", "ph": "X", "dur": 32000, "ts": 60000},
+    {"name": "GPURasterizer::Draw", "ph": "X", "dur": 14000, "ts": 75000},
+    {"name": "Animator::BeginFrame", "ph": "X", "dur": 2000, "ts": 1000},
+    {"name": "Animator::BeginFrame", "ph": "X", "dur": 3000, "ts": 15000},
+    {"name": "Animator::BeginFrame", "ph": "X", "dur": 2500, "ts": 30000},
+    {"name": "Animator::BeginFrame", "ph": "X", "dur": 2800, "ts": 45000},
+    {"name": "Animator::BeginFrame", "ph": "X", "dur": 5000, "ts": 60000},
+    {"name": "Animator::BeginFrame", "ph": "X", "dur": 2100, "ts": 75000},
+    {"name": "build", "ph": "X", "dur": 8000, "ts": 1500},
+    {"name": "build", "ph": "X", "dur": 10000, "ts": 15200},
+    {"name": "performLayout", "ph": "X", "dur": 3000, "ts": 2000},
+    {"name": "performLayout", "ph": "X", "dur": 4000, "ts": 15500},
+    {"name": "flushPaint", "ph": "X", "dur": 2000, "ts": 2500},
+    {"name": "flushPaint", "ph": "X", "dur": 3000, "ts": 15800}
+  ],
+  "timeOriginMicros": 1000,
+  "timeExtentMicros": 80000
+}

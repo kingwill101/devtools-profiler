@@ -1,0 +1,46 @@
+{
+  "type": "AllocationProfile",
+  "members": [
+    {
+      "class": {"type": "@Class", "name": "String", "id": "class:1"},
+      "bytesCurrent": 64000,
+      "accumulatedSize": 320000,
+      "instancesCurrent": 1000,
+      "instancesAccumulated": 5000
+    },
+    {
+      "class": {"type": "@Class", "name": "_List<dynamic>", "id": "class:2"},
+      "bytesCurrent": 48000,
+      "accumulatedSize": 240000,
+      "instancesCurrent": 80,
+      "instancesAccumulated": 400
+    },
+    {
+      "class": {"type": "@Class", "name": "_Map<dynamic, dynamic>", "id": "class:3"},
+      "bytesCurrent": 32000,
+      "accumulatedSize": 160000,
+      "instancesCurrent": 40,
+      "instancesAccumulated": 200
+    },
+    {
+      "class": {"type": "@Class", "name": "Future", "id": "class:4"},
+      "bytesCurrent": 16000,
+      "accumulatedSize": 80000,
+      "instancesCurrent": 100,
+      "instancesAccumulated": 500
+    },
+    {
+      "class": {"type": "@Class", "name": "int", "id": "class:5"},
+      "bytesCurrent": 8000,
+      "accumulatedSize": 40000,
+      "instancesCurrent": 500,
+      "instancesAccumulated": 2500
+    }
+  ],
+  "memoryUsage": {
+    "type": "MemoryUsage",
+    "heapUsage": 168000,
+    "heapCapacity": 512000,
+    "externalUsage": 32000
+  }
+}

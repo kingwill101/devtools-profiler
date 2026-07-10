@@ -84,6 +84,191 @@ void main() {
     expect(stderrCapture.text, isEmpty);
   });
 
+  test('discover help shows app discovery description', () async {
+    final stdoutCapture = _OutputCapture();
+    final stderrCapture = _OutputCapture();
+    addTearDown(() async {
+      await stdoutCapture.close();
+      await stderrCapture.close();
+    });
+
+    final exitCode = await runCli(
+      const ['discover', '--help'],
+      runner: _FakeProfileRunner(),
+      output: stdoutCapture.sink,
+      errorOutput: stderrCapture.sink,
+    );
+    await stdoutCapture.flush();
+    await stderrCapture.flush();
+
+    expect(exitCode, 0);
+    expect(
+      stdoutCapture.text,
+      contains('Discover running Flutter/Dart apps with VM service URIs.'),
+    );
+    expect(stderrCapture.text, isEmpty);
+  });
+
+  test('frame-profile help shows frame analysis description', () async {
+    final stdoutCapture = _OutputCapture();
+    final stderrCapture = _OutputCapture();
+    addTearDown(() async {
+      await stdoutCapture.close();
+      await stderrCapture.close();
+    });
+
+    final exitCode = await runCli(
+      const ['frame-profile', '--help'],
+      runner: _FakeProfileRunner(),
+      output: stdoutCapture.sink,
+      errorOutput: stderrCapture.sink,
+    );
+    await stdoutCapture.flush();
+    await stderrCapture.flush();
+
+    expect(exitCode, 0);
+    expect(
+      stdoutCapture.text,
+      contains('Profile frame timing from a running Flutter app'),
+    );
+    expect(stderrCapture.text, isEmpty);
+  });
+
+  test('memory-snapshot help shows memory capture description', () async {
+    final stdoutCapture = _OutputCapture();
+    final stderrCapture = _OutputCapture();
+    addTearDown(() async {
+      await stdoutCapture.close();
+      await stderrCapture.close();
+    });
+
+    final exitCode = await runCli(
+      const ['memory-snapshot', '--help'],
+      runner: _FakeProfileRunner(),
+      output: stdoutCapture.sink,
+      errorOutput: stderrCapture.sink,
+    );
+    await stdoutCapture.flush();
+    await stderrCapture.flush();
+
+    expect(exitCode, 0);
+    expect(
+      stdoutCapture.text,
+      contains('Capture an allocation profile from a running app'),
+    );
+    expect(stderrCapture.text, isEmpty);
+  });
+
+  test('widget-tree help shows widget tree description', () async {
+    final stdoutCapture = _OutputCapture();
+    final stderrCapture = _OutputCapture();
+    addTearDown(() async {
+      await stdoutCapture.close();
+      await stderrCapture.close();
+    });
+
+    final exitCode = await runCli(
+      const ['widget-tree', '--help'],
+      runner: _FakeProfileRunner(),
+      output: stdoutCapture.sink,
+      errorOutput: stderrCapture.sink,
+    );
+    await stdoutCapture.flush();
+    await stderrCapture.flush();
+
+    expect(exitCode, 0);
+    expect(
+      stdoutCapture.text,
+      contains('Capture the widget tree from a running Flutter app'),
+    );
+    expect(stderrCapture.text, isEmpty);
+  });
+
+  test('profiles help shows profiles listing description', () async {
+    final stdoutCapture = _OutputCapture();
+    final stderrCapture = _OutputCapture();
+    addTearDown(() async {
+      await stdoutCapture.close();
+      await stderrCapture.close();
+    });
+
+    final exitCode = await runCli(
+      const ['profiles', '--help'],
+      runner: _FakeProfileRunner(),
+      output: stdoutCapture.sink,
+      errorOutput: stderrCapture.sink,
+    );
+    await stdoutCapture.flush();
+    await stderrCapture.flush();
+
+    expect(exitCode, 0);
+    expect(stdoutCapture.text, contains('List available profiling sessions.'));
+    expect(stderrCapture.text, isEmpty);
+  });
+
+  test('frame-profile rejects missing vm service uri', () async {
+    final stdoutCapture = _OutputCapture();
+    final stderrCapture = _OutputCapture();
+    addTearDown(() async {
+      await stdoutCapture.close();
+      await stderrCapture.close();
+    });
+
+    final exitCode = await runCli(
+      const ['frame-profile'],
+      runner: _FakeProfileRunner(),
+      output: stdoutCapture.sink,
+      errorOutput: stderrCapture.sink,
+    );
+    await stdoutCapture.flush();
+    await stderrCapture.flush();
+
+    expect(exitCode, isNot(0));
+    expect(stderrCapture.text, contains('A VM service URI is required.'));
+  });
+
+  test('memory-snapshot rejects missing vm service uri', () async {
+    final stdoutCapture = _OutputCapture();
+    final stderrCapture = _OutputCapture();
+    addTearDown(() async {
+      await stdoutCapture.close();
+      await stderrCapture.close();
+    });
+
+    final exitCode = await runCli(
+      const ['memory-snapshot'],
+      runner: _FakeProfileRunner(),
+      output: stdoutCapture.sink,
+      errorOutput: stderrCapture.sink,
+    );
+    await stdoutCapture.flush();
+    await stderrCapture.flush();
+
+    expect(exitCode, isNot(0));
+    expect(stderrCapture.text, contains('A VM service URI is required.'));
+  });
+
+  test('widget-tree rejects missing vm service uri', () async {
+    final stdoutCapture = _OutputCapture();
+    final stderrCapture = _OutputCapture();
+    addTearDown(() async {
+      await stdoutCapture.close();
+      await stderrCapture.close();
+    });
+
+    final exitCode = await runCli(
+      const ['widget-tree'],
+      runner: _FakeProfileRunner(),
+      output: stdoutCapture.sink,
+      errorOutput: stderrCapture.sink,
+    );
+    await stdoutCapture.flush();
+    await stderrCapture.flush();
+
+    expect(exitCode, isNot(0));
+    expect(stderrCapture.text, contains('A VM service URI is required.'));
+  });
+
   test('run prints json output for a profiling session', () async {
     final runner = _FakeProfileRunner();
     final stdoutCapture = _OutputCapture();
