@@ -143,9 +143,10 @@ Future<void> main() async {
 ```
 
 `attach` clears the VM's existing CPU samples, captures the whole-session VM
-service profile view for the requested duration, and does not stop the target
-process. Explicit region markers normally require `run`, because the target must
-be launched with the profiler's DTD URI and session id.
+service profile view for a bounded duration, and does not stop the target
+process. It defaults to 15s. Explicit region markers normally require `run`,
+because the target must be launched with the profiler's DTD URI and session
+id.
 
 ## Read Stored Artifacts
 

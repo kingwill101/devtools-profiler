@@ -241,6 +241,29 @@ void main() {
     );
   });
 
+  test('profile_attach defaults to a bounded profiling window', () async {
+    final environment = _McpTestEnvironment(_FakeProfileRunner());
+    addTearDown(environment.shutdown);
+    await _initializeServer(environment);
+
+    final result = await environment.serverConnection.callTool(
+      CallToolRequest(
+        name: 'profile_attach',
+        arguments: {
+          'vmServiceUri': 'http://127.0.0.1:8181/abcd/',
+          'workingDirectory': '/tmp/app',
+        },
+      ),
+    );
+
+    expect(result.isError, isNot(true));
+    expect(
+      environment.runner.lastAttachRequest?.duration,
+      const Duration(seconds: 15),
+    );
+    expect(environment.runner.lastAttachRequest?.enableDtd, isFalse);
+  });
+
   test('emits progress notifications for long-running tool calls', () async {
     final environment = _McpTestEnvironment(_FakeProfileRunner());
     addTearDown(environment.shutdown);

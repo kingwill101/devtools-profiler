@@ -102,7 +102,9 @@ class McpToolHandlers {
               arguments,
               key: 'artifactDirectory',
             ),
-            duration: _requiredDurationSecondsArgument(arguments),
+            duration:
+                _optionalDurationSecondsArgument(arguments) ??
+                const Duration(seconds: 15),
             vmServiceUri: _requiredUriArgument(arguments, key: 'vmServiceUri'),
             workingDirectory: _optionalStringArgument(
               arguments,
@@ -1465,17 +1467,6 @@ Duration? _optionalDurationSecondsArgument(
     throw ArgumentError('The "$key" argument must be a positive integer.');
   }
   return Duration(seconds: value);
-}
-
-Duration _requiredDurationSecondsArgument(
-  Map<String, Object?> arguments, {
-  String key = 'durationSeconds',
-}) {
-  final duration = _optionalDurationSecondsArgument(arguments, key: key);
-  if (duration == null) {
-    throw ArgumentError('The "$key" argument is required.');
-  }
-  return duration;
 }
 
 Uri _requiredUriArgument(

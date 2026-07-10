@@ -106,7 +106,8 @@ final Tool profileAttachTool = Tool(
       ),
       'durationSeconds': Schema.int(
         description:
-            'Required duration in seconds to profile the already-running VM service.',
+            'Duration in seconds to profile the already-running VM service. '
+            'Defaults to 15.',
       ),
       'workingDirectory': Schema.string(
         description:
@@ -161,7 +162,7 @@ final Tool profileAttachTool = Tool(
             'Maximum children per call tree node when includeCallTree is true. Use 0 for unlimited.',
       ),
     },
-    required: ['vmServiceUri', 'durationSeconds'],
+    required: ['vmServiceUri'],
     additionalProperties: false,
   ),
   outputSchema: Schema.object(

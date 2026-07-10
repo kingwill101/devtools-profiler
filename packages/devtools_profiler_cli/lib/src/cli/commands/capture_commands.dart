@@ -191,7 +191,9 @@ class AttachCommand extends ProfilerCommand {
       ..addOption(
         'duration',
         help:
-            'Required profiling duration. Supports raw seconds, "10s", "500ms", or "2m".',
+            'Profiling duration. Supports raw seconds, "10s", "500ms", or "2m". '
+            'Defaults to 15s.',
+        defaultsTo: '15s',
       )
       ..addFlag(
         'skip-dtd',
@@ -225,7 +227,7 @@ class AttachCommand extends ProfilerCommand {
   String formatUsage({bool includeDescription = true}) => usageWithExamples(
     super.formatUsage(includeDescription: includeDescription),
     const [
-      'devtools-profiler attach --duration 15s http://127.0.0.1:8181/abcd/',
+      'devtools-profiler attach http://127.0.0.1:8181/abcd/',
       'devtools-profiler attach --duration 30s --call-tree --hide-sdk http://127.0.0.1:8181/abcd/',
       'devtools-profiler attach --duration 30s http://127.0.0.1:8181/abcd/',
     ],
@@ -240,15 +242,12 @@ class AttachCommand extends ProfilerCommand {
       );
     }
 
-    final duration = parseDuration(
-      argResults!['duration'] as String?,
-      optionName: 'duration',
-    );
-    if (duration == null) {
-      usageException(
-        'Attach requires --duration so the capture window is bounded.',
-      );
-    }
+    final duration =
+        parseDuration(
+          argResults!['duration'] as String?,
+          optionName: 'duration',
+        ) ??
+        const Duration(seconds: 15);
 
     io.writelnErr('Warning: $_attachRegionWarning');
     final session = await profileRunner.attach(

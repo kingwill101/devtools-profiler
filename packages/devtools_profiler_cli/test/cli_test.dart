@@ -77,10 +77,9 @@ void main() {
     expect(stdoutCapture.text, contains('Examples:'));
     expect(
       stdoutCapture.text,
-      contains(
-        'devtools-profiler attach --duration 15s http://127.0.0.1:8181/abcd/',
-      ),
+      contains('devtools-profiler attach http://127.0.0.1:8181/abcd/'),
     );
+    expect(stdoutCapture.text, contains('Defaults to 15s.'));
     expect(stderrCapture.text, isEmpty);
   });
 
@@ -475,6 +474,30 @@ void main() {
     expect(json['command'], ['attach', 'http://127.0.0.1:8181/abcd/']);
     expect(stderrCapture.text, contains('Attach mode captures'));
     expect(stderrCapture.text, contains('devtools-profiler run'));
+  });
+
+  test('attach defaults to a bounded profiling window', () async {
+    final runner = _FakeProfileRunner();
+    final stdoutCapture = _OutputCapture();
+    final stderrCapture = _OutputCapture();
+    addTearDown(() async {
+      await stdoutCapture.close();
+      await stderrCapture.close();
+    });
+
+    final exitCode = await runCli(
+      const ['attach', '--json', 'http://127.0.0.1:8181/abcd/'],
+      runner: runner,
+      output: stdoutCapture.sink,
+      errorOutput: stderrCapture.sink,
+    );
+    await stdoutCapture.flush();
+
+    expect(exitCode, 0);
+    expect(runner.lastAttachRequest?.duration, const Duration(seconds: 15));
+    expect(runner.lastAttachRequest?.enableDtd, isFalse);
+    expect(stdoutCapture.text, contains('session-attach'));
+    expect(stderrCapture.text, contains('Attach mode captures'));
   });
 
   test('run prints json output with a call tree when expanded', () async {
