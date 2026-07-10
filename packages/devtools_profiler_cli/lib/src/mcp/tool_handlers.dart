@@ -798,36 +798,6 @@ class McpToolHandlers {
     );
   }
 
-  Future<CallToolResult> profileNavigationStack(CallToolRequest request) {
-    return _runTool(
-      request: request,
-      successMessage: 'Navigation stack retrieved.',
-      action: (progress) async {
-        final arguments = request.arguments ?? const <String, Object?>{};
-        final uri = _requiredStringArgument(arguments, key: 'vmServiceUri');
-        progress(0, 2, 'Connecting to VM service.');
-        final vmService = await _connectVmService(uri);
-        try {
-          progress(1, 2, 'Fetching navigation stack.');
-          final vm = await vmService.getVM();
-          final activeIsolate = _findActiveIsolate(vm);
-          final service = NavigationStackService(vmService: vmService);
-          final stack = await service.getNavigationStack(
-            isolateId: activeIsolate,
-          );
-          progress(2, 2, 'Navigation stack retrieved.');
-          return {
-            'kind': 'navigationStack',
-            'vmServiceUri': uri,
-            ...stack.toJson(),
-          };
-        } finally {
-          await vmService.dispose();
-        }
-      },
-    );
-  }
-
   Future<CallToolResult> profileScreenshot(CallToolRequest request) {
     return _runTool(
       request: request,

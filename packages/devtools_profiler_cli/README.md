@@ -207,16 +207,6 @@ devtools-profiler flutter:widget-tree \
 Use `--summary` for a condensed Flutter-only view. Use `--project-only` to
 filter framework widgets and show only project code in either tree shape.
 
-Inspect the navigation stack:
-
-```bash
-devtools-profiler flutter:route-stack \
-  ws://127.0.0.1:8181/abc123/ws
-```
-
-Returns the ordered list of routes with their types and which is current when
-the target Flutter runtime exposes `ext.flutter.inspector.getRouteStack`.
-
 Capture a screenshot:
 
 ```bash
@@ -445,7 +435,6 @@ Agent-facing tools include:
 - `timeline`
 - `profile_memory_snapshot`
 - `profile_widget_tree`
-- `profile_navigation_stack`
 - `profile_screenshot`
 - `profile_debug_dump`
 - `profile_stream_logs`

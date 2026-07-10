@@ -53,7 +53,6 @@ Future<int> runCli(
         ..addCommand(TimelineProfileCommand(profiler))
         ..addCommand(MemorySnapshotCommand(profiler))
         ..addCommand(WidgetTreeCommand(profiler))
-        ..addCommand(RouteStackCommand(profiler))
         ..addCommand(ScreenshotCommand(profiler))
         ..addCommand(DebugDumpCommand(profiler))
         ..addCommand(LogsCommand(profiler))

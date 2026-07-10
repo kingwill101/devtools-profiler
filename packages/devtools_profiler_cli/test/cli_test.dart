@@ -298,7 +298,10 @@ void main() {
   test('frame-profile rejects missing vm service uri', () async {
     final stdoutCapture = _OutputCapture();
     final stderrCapture = _OutputCapture();
+    final previousDiscoverer = vm_service_discovery.discoverVmServiceApps;
+    vm_service_discovery.discoverVmServiceApps = () async => [];
     addTearDown(() async {
+      vm_service_discovery.discoverVmServiceApps = previousDiscoverer;
       await stdoutCapture.close();
       await stderrCapture.close();
     });
@@ -319,7 +322,10 @@ void main() {
   test('memory-snapshot rejects missing vm service uri', () async {
     final stdoutCapture = _OutputCapture();
     final stderrCapture = _OutputCapture();
+    final previousDiscoverer = vm_service_discovery.discoverVmServiceApps;
+    vm_service_discovery.discoverVmServiceApps = () async => [];
     addTearDown(() async {
+      vm_service_discovery.discoverVmServiceApps = previousDiscoverer;
       await stdoutCapture.close();
       await stderrCapture.close();
     });
@@ -340,7 +346,10 @@ void main() {
   test('widget-tree rejects missing vm service uri', () async {
     final stdoutCapture = _OutputCapture();
     final stderrCapture = _OutputCapture();
+    final previousDiscoverer = vm_service_discovery.discoverVmServiceApps;
+    vm_service_discovery.discoverVmServiceApps = () async => [];
     addTearDown(() async {
+      vm_service_discovery.discoverVmServiceApps = previousDiscoverer;
       await stdoutCapture.close();
       await stderrCapture.close();
     });
