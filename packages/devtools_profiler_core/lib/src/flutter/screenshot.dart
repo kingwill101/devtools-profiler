@@ -24,19 +24,24 @@ class ScreenshotCaptureService {
     double maxPixelRatio = 3.0,
     double margin = 0.0,
   }) async {
-    // First inspect the root widget to get the render object ID
+    // Call getRootWidget to obtain a reference to the root widget
+    // with a proper inspector object ID for the screenshot extension.
     final rootResponse = await _vmService.callServiceExtension(
-      'ext.flutter.inspector.getRootWidgetSummaryTree',
+      'ext.flutter.inspector.getRootWidget',
       isolateId: isolateId,
       args: {'objectGroup': 'screenshot'},
     );
 
+    // The response contains valueId fields for inspector object references
     final rootJson = rootResponse.json?['result'] as Map<String, Object?>?;
-    final rootId = rootJson?['objectId'] as String?;
+    String? rootId;
+    if (rootJson != null) {
+      rootId = rootJson['valueId'] as String?;
+    }
 
-    if (rootId == null) {
+    if (rootId == null || rootId.isEmpty) {
       throw StateError(
-        'Could not resolve root widget ID for screenshot.',
+        'Could not resolve widget ID for screenshot.',
       );
     }
 

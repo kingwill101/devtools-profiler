@@ -77,7 +77,7 @@ class WidgetTreeCaptureService {
     bool projectOnly = false,
   }) async {
     final response = await _vmService.callServiceExtension(
-      'ext.flutter.inspector.getWidgetTree',
+      'ext.flutter.inspector.getRootWidgetTree',
       isolateId: isolateId,
       args: {
         'maxDepth': maxDepth.toString(),
@@ -110,7 +110,7 @@ class WidgetTreeCaptureService {
     int maxDepth = 15,
   }) async {
     final response = await _vmService.callServiceExtension(
-      'ext.flutter.inspector.getWidgetSummaryTree',
+      'ext.flutter.inspector.getRootWidgetSummaryTree',
       isolateId: isolateId,
       args: {'maxDepth': maxDepth.toString(), 'objectGroup': 'inspector'},
     );

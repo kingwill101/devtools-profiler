@@ -11,6 +11,7 @@ void main() {
   runApp(const ProfilerDemoApp());
 }
 
+
 class ProfilerDemoApp extends StatelessWidget {
   const ProfilerDemoApp({super.key});
 
