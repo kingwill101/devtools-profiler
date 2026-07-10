@@ -129,7 +129,13 @@ class RunCommand extends ProfilerCommand {
         workingDirectory: argResults!['cwd'] as String?,
       ),
     );
-    final options = presentationOptions;
+    final baseOpts = presentationOptions;
+    final options = argResults!['flutter'] as bool
+        ? baseOpts.copyWith(
+            hideSdk: baseOpts.hideSdk || true,
+            hideRuntimeHelpers: baseOpts.hideRuntimeHelpers || true,
+          )
+        : baseOpts;
     final prepared = await prepareSessionPresentation(
       profileRunner,
       session,
@@ -255,7 +261,13 @@ class AttachCommand extends ProfilerCommand {
         enableDtd: !(argResults!['skip-dtd'] as bool),
       ),
     );
-    final options = presentationOptions;
+    final baseOpts = presentationOptions;
+    final options = argResults!['flutter'] as bool
+        ? baseOpts.copyWith(
+            hideSdk: baseOpts.hideSdk || true,
+            hideRuntimeHelpers: baseOpts.hideRuntimeHelpers || true,
+          )
+        : baseOpts;
     final prepared = await prepareSessionPresentation(
       profileRunner,
       session,
