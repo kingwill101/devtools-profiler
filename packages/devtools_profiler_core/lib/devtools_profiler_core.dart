@@ -49,3 +49,7 @@ export 'src/cpu/method_table.dart';
 export 'src/cpu/profile_frames.dart';
 export 'src/memory/memory_models.dart';
 export 'src/memory/memory_profile_summary.dart';
+export 'src/discovery/app_discovery.dart';
+export 'src/flutter/frame_analysis.dart';
+export 'src/flutter/memory_snapshot.dart';
+export 'src/flutter/widget_tree.dart';
