@@ -22,6 +22,7 @@
   provided explicitly.
 - Added `flutter:memory-snapshot` for allocation profile capture.
 - Added `flutter:widget-tree` for Flutter widget tree inspection.
+- Added `flutter:inspector` for generic Flutter widget inspector queries.
 - Added `flutter:screenshot` for app screenshot capture.
 - Added `flutter:debug-dump` for app/render/layer/focus/semantics dumps.
 - Added `flutter:logs` for log and output stream capture.
@@ -34,8 +35,9 @@
   frame budgets (supports 60Hz, 90Hz, 120Hz displays).
 - Frame locations now prefer `package:` URIs for portable output.
 - Added MCP tools: `profile_discover_apps`, `profile_frame_profile`,
-  `profile_memory_snapshot`, `profile_widget_tree`, `profile_screenshot`,
-  `profile_debug_dump`, `profile_stream_logs`.
+  `profile_memory_snapshot`, `profile_widget_tree`,
+  `profile_widget_inspector_query`, `profile_screenshot`, `profile_debug_dump`,
+  `profile_stream_logs`.
 - Flutter fixture app for manual profiling and testing.
 - Flutter commands now auto-discover the VM service URI when none is
   provided — works with a single running app without typing the URI.

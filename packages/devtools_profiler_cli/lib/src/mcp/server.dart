@@ -72,6 +72,10 @@ base class ProfilerMcpServer extends MCPServer with ToolsSupport {
     registerTool(timelineTool, handlers.profileFrameProfile);
     registerTool(profileMemorySnapshotTool, handlers.profileMemorySnapshot);
     registerTool(profileWidgetTreeTool, handlers.profileWidgetTree);
+    registerTool(
+      profileWidgetInspectorQueryTool,
+      handlers.profileInspectorQuery,
+    );
     registerTool(profileScreenshotTool, handlers.profileScreenshot);
     registerTool(profileDebugDumpTool, handlers.profileDebugDump);
     registerTool(profileStreamLogsTool, handlers.profileStreamLogs);

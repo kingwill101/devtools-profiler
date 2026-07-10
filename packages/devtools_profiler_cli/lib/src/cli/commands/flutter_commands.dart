@@ -543,6 +543,126 @@ class WidgetTreeCommand extends ProfilerCommand with VmServiceDiscovery {
   }
 }
 
+/// Command that queries Flutter widget inspector service extensions.
+class InspectorQueryCommand extends ProfilerCommand with VmServiceDiscovery {
+  /// Creates an inspector-query command.
+  InspectorQueryCommand(super.profileRunner) {
+    argParser
+      ..addOption(
+        'method',
+        help:
+            'Inspector RPC to invoke, such as getSelectedWidget or '
+            'getParentChain.',
+      )
+      ..addOption(
+        'id',
+        help: 'Diagnostics node id for RPCs that need a widget selection.',
+      )
+      ..addOption(
+        'subtree-depth',
+        defaultsTo: '2',
+        help: 'Subtree depth for details/layout RPCs (default: 2).',
+      );
+  }
+
+  @override
+  String get name => 'flutter:inspector';
+
+  @override
+  String get description =>
+      'Query Flutter widget inspector service extensions from a running app.';
+
+  @override
+  String get invocation =>
+      '${runner!.executableName} flutter:inspector [options] <vm-service-uri>';
+
+  @override
+  String formatUsage({bool includeDescription = true}) => usageWithExamples(
+    super.formatUsage(includeDescription: includeDescription),
+    const [
+      'devtools-profiler flutter:inspector --method getSelectedWidget ws://127.0.0.1:8181/abc123/ws',
+      'devtools-profiler flutter:inspector --method getLayoutExplorerNode --id inspector-1 --subtree-depth 2 ws://127.0.0.1:8181/abc123/ws',
+    ],
+  );
+
+  @override
+  Future<int> run() async {
+    final vmServiceUri = await resolveVmServiceUri();
+    final method = argResults!['method'] as String?;
+    if (method == null || method.isEmpty) {
+      usageException('An inspector method must be provided with --method.');
+    }
+
+    final args = <String, Object?>{
+      'groupName': 'inspector',
+      'objectGroup': 'inspector',
+    };
+    final id = argResults!['id'] as String?;
+    if (id != null && id.isNotEmpty) {
+      args['arg'] = id;
+    }
+
+    final subtreeDepth =
+        int.tryParse(argResults!['subtree-depth'] as String? ?? '2') ?? 2;
+    if (method == 'getDetailsSubtree' || method == 'getLayoutExplorerNode') {
+      args['subtreeDepth'] = subtreeDepth.toString();
+    }
+
+    final wsUri = vmServiceUri
+        .replaceFirst('http://', 'ws://')
+        .replaceFirst('https://', 'wss://');
+    final cleanWs = wsUri.endsWith('/ws') ? wsUri : '$wsUri/ws';
+
+    final vmService = await vmServiceConnectUri(cleanWs);
+    try {
+      final vm = await vmService.getVM();
+      final isolateId = _resolveMainIsolate(vm);
+      final service = WidgetInspectorQueryService(vmService: vmService);
+      final result = await service.query(
+        isolateId: isolateId,
+        method: _methodToRpc(method),
+        args: args,
+      );
+
+      final payload = {
+        'kind': 'widgetInspectorQuery',
+        'method': method,
+        'rpc': _methodToRpc(method),
+        'vmServiceUri': vmServiceUri,
+        'isolateId': isolateId,
+        'result': result.result,
+      };
+
+      if (printJson) {
+        line(jsonEncoder.convert(payload));
+      } else {
+        io.title('Widget Inspector Query');
+        line(jsonEncoder.convert(payload));
+      }
+    } finally {
+      await vmService.dispose();
+    }
+
+    return successExitCode;
+  }
+
+  String _methodToRpc(String method) {
+    if (method.startsWith('get') || method.startsWith('set')) {
+      return 'ext.flutter.inspector.$method';
+    }
+    return method;
+  }
+
+  String _resolveMainIsolate(VM vm) {
+    final isolates = vm.isolates ?? [];
+    final active = isolates.where((i) => i.isSystemIsolate != true).toList();
+    if (active.isEmpty) {
+      throw StateError('No active application isolates found.');
+    }
+    return active.first.id!;
+  }
+}
+
 /// Command that captures a screenshot from a running Flutter app.
 class ScreenshotCommand extends ProfilerCommand with VmServiceDiscovery {
   /// Creates a screenshot command.

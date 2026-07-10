@@ -273,6 +273,32 @@ void main() {
     expect(stderrCapture.text, isEmpty);
   });
 
+  test('inspector help shows widget inspector query description', () async {
+    final stdoutCapture = _OutputCapture();
+    final stderrCapture = _OutputCapture();
+    addTearDown(() async {
+      await stdoutCapture.close();
+      await stderrCapture.close();
+    });
+
+    final exitCode = await runCli(
+      const ['flutter:inspector', '--help'],
+      runner: _FakeProfileRunner(),
+      output: stdoutCapture.sink,
+      errorOutput: stderrCapture.sink,
+    );
+    await stdoutCapture.flush();
+    await stderrCapture.flush();
+
+    expect(exitCode, 0);
+    expect(
+      stdoutCapture.text,
+      contains('Query Flutter widget inspector service extensions'),
+    );
+    expect(stdoutCapture.text, contains('--method'));
+    expect(stderrCapture.text, isEmpty);
+  });
+
   test('profiles help shows profiles listing description', () async {
     final stdoutCapture = _OutputCapture();
     final stderrCapture = _OutputCapture();

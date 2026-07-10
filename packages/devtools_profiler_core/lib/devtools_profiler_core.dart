@@ -54,5 +54,6 @@ export 'src/flutter/debug_dump.dart';
 export 'src/flutter/frame_analysis.dart';
 export 'src/flutter/log_stream.dart';
 export 'src/flutter/memory_snapshot.dart';
+export 'src/flutter/widget_inspector_query.dart';
 export 'src/flutter/screenshot.dart';
 export 'src/flutter/widget_tree.dart';

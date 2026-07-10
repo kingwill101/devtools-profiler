@@ -215,6 +215,53 @@ final Tool profileWidgetTreeTool = Tool(
   ),
 );
 
+final Tool profileWidgetInspectorQueryTool = Tool(
+  name: 'profile_widget_inspector_query',
+  title: 'Profile Widget Inspector Query',
+  description:
+      'Call a Flutter widget inspector service extension on a running '
+      'application and return the decoded JSON payload. Useful for '
+      'getSelectedWidget, getSelectedSummaryWidget, getParentChain, '
+      'getProperties, getChildren, getChildrenSummaryTree, '
+      'getChildrenDetailsSubtree, getDetailsSubtree, and '
+      'getLayoutExplorerNode.',
+  inputSchema: Schema.object(
+    properties: {
+      'vmServiceUri': Schema.string(
+        description:
+            'The VM service WebSocket URI (e.g. '
+            'ws://127.0.0.1:8181/abc123/ws).',
+      ),
+      'method': Schema.string(
+        description:
+            'Inspector method name such as getSelectedWidget or '
+            'getLayoutExplorerNode.',
+      ),
+      'id': Schema.string(
+        description:
+            'Optional diagnostics node id for methods that target a widget.',
+      ),
+      'subtreeDepth': Schema.int(
+        description:
+            'Optional subtree depth for details and layout explorer queries.',
+      ),
+    },
+    required: ['vmServiceUri', 'method'],
+    additionalProperties: false,
+  ),
+  outputSchema: Schema.object(
+    description: 'Decoded Flutter widget inspector query response.',
+    additionalProperties: true,
+  ),
+  annotations: ToolAnnotations(
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: false,
+    readOnlyHint: true,
+    title: 'Profile Widget Inspector Query',
+  ),
+);
+
 final Tool profileScreenshotTool = Tool(
   name: 'profile_screenshot',
   title: 'Profile Screenshot',

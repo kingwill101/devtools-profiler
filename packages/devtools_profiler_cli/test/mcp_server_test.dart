@@ -42,6 +42,7 @@ void main() {
         'profile_frame_profile',
         'profile_timeline',
         'timeline',
+        'profile_widget_inspector_query',
       ]),
     );
 

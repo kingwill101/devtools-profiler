@@ -798,6 +798,53 @@ class McpToolHandlers {
     );
   }
 
+  Future<CallToolResult> profileInspectorQuery(CallToolRequest request) {
+    return _runTool(
+      request: request,
+      successMessage: 'Widget inspector query completed.',
+      action: (progress) async {
+        final arguments = request.arguments ?? const <String, Object?>{};
+        final uri = _requiredStringArgument(arguments, key: 'vmServiceUri');
+        final method = _requiredStringArgument(arguments, key: 'method');
+        final id = _optionalStringArgument(arguments, key: 'id');
+        final subtreeDepth = arguments['subtreeDepth'] as int? ?? 2;
+
+        progress(0, 3, 'Connecting to VM service.');
+        final vmService = await _connectVmService(uri);
+        try {
+          progress(1, 3, 'Querying inspector extension.');
+          final vm = await vmService.getVM();
+          final activeIsolate = _findActiveIsolate(vm);
+          final service = WidgetInspectorQueryService(vmService: vmService);
+          final rpc = _toInspectorRpc(method);
+          final result = await service.query(
+            isolateId: activeIsolate,
+            method: rpc,
+            args: {
+              'groupName': 'inspector',
+              'objectGroup': 'inspector',
+              if (id != null) 'arg': id,
+              if (method == 'getDetailsSubtree' ||
+                  method == 'getLayoutExplorerNode')
+                'subtreeDepth': subtreeDepth.toString(),
+            },
+          );
+          progress(2, 3, 'Building inspector query response.');
+          return {
+            'kind': 'widgetInspectorQuery',
+            'vmServiceUri': uri,
+            'method': method,
+            'rpc': rpc,
+            'isolateId': activeIsolate,
+            'result': result.result,
+          };
+        } finally {
+          await vmService.dispose();
+        }
+      },
+    );
+  }
+
   Future<CallToolResult> profileScreenshot(CallToolRequest request) {
     return _runTool(
       request: request,
@@ -914,6 +961,19 @@ class McpToolHandlers {
     }
     final target = active.isNotEmpty ? active.first : isolates.first;
     return target.id!;
+  }
+
+  String _toInspectorRpc(String method) {
+    if (method.startsWith('ext.flutter.')) {
+      return method;
+    }
+    if (method.startsWith('get') || method.startsWith('set')) {
+      return 'ext.flutter.inspector.$method';
+    }
+    if (method.startsWith('profile') || method.startsWith('debug')) {
+      return 'ext.flutter.$method';
+    }
+    return method;
   }
 
   Future<CallToolResult> _runTool({

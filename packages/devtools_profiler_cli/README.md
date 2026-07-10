@@ -207,6 +207,19 @@ devtools-profiler flutter:widget-tree \
 Use `--summary` for a condensed Flutter-only view. Use `--project-only` to
 filter framework widgets and show only project code in either tree shape.
 
+Query widget inspector RPCs:
+
+```bash
+devtools-profiler flutter:inspector \
+  --method getSelectedWidget \
+  ws://127.0.0.1:8181/abc123/ws
+```
+
+Supported methods include `getSelectedWidget`, `getSelectedSummaryWidget`,
+`getParentChain`, `getProperties`, `getChildren`, `getChildrenSummaryTree`,
+`getChildrenDetailsSubtree`, `getDetailsSubtree`, and
+`getLayoutExplorerNode`.
+
 Capture a screenshot:
 
 ```bash
@@ -435,6 +448,7 @@ Agent-facing tools include:
 - `timeline`
 - `profile_memory_snapshot`
 - `profile_widget_tree`
+- `profile_widget_inspector_query`
 - `profile_screenshot`
 - `profile_debug_dump`
 - `profile_stream_logs`
