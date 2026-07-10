@@ -34,8 +34,8 @@ class ProfileRunner {
   /// [ProfileRunResult].
   ///
   /// The command in [request] must start with `dart`, `flutter`, or a Dart
-  /// file path. Unsupported launch shapes such as Flutter release mode, browser
-  /// targets, or AOT-style runs are rejected before the process starts.
+  /// file path. Unsupported launch shapes such as Flutter release mode or
+  /// AOT-style runs are rejected before the process starts.
   Future<ProfileRunResult> run(ProfileRunRequest request) async {
     final command = normalizeProfileCommand(request.command);
     validateProfileCommand(command);

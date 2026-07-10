@@ -457,8 +457,8 @@ Agent-facing tools include:
 - Dart and Flutter VM-service commands only.
 - Supported Flutter subcommands are `flutter run`, `flutter attach`,
   `flutter drive`, and `flutter test`.
-- Flutter release mode, browser profiling, AOT profiling, and
-  `dart compile ...` targets are not supported.
+- Flutter release mode, AOT profiling, and `dart compile ...` targets are
+  not supported.
 - Flutter region markers require the target process to reach the profiler's
   local DTD URI. This works for host-side Flutter tests and desktop runs, but
   device runs may need additional networking.

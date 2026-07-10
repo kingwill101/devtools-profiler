@@ -113,9 +113,8 @@ devtools-profiler run \
 ```
 
 Flutter profiling supports VM-service targets exposed by `flutter run`,
-`flutter attach`, `flutter drive`, and `flutter test`. Flutter release mode,
-browser/web targets, and AOT builds do not expose the VM service needed by
-this profiler.
+`flutter attach`, `flutter drive`, and `flutter test`. Flutter release mode
+and AOT builds do not expose the VM service needed by this profiler.
 
 `--duration` starts after the VM service is available, so Flutter build time is
 not counted as profiling time. Flutter commands get a longer default VM-service
@@ -747,8 +746,7 @@ models. It does not depend on `packages/devtools_app`,
   target command has its own options.
 - `dart compile ...` targets and Flutter release/AOT targets are not supported.
 - Flutter support is limited to VM-service targets from `flutter run`,
-  `flutter attach`, `flutter drive`, and `flutter test`; browser/web profiling
-  is not supported.
+  `flutter attach`, `flutter drive`, and `flutter test`.
 - CPU and memory capture are implemented. The protocol reserves a `timeline`
   capture kind, but timeline capture is not implemented as a region capture
   mode. Live frame timing analysis is provided by the CLI's `flutter:timeline`
