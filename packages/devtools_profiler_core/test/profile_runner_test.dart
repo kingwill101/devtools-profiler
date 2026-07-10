@@ -469,7 +469,9 @@ Future<void> main() async {
     expect(result.overallProfile!.sampleCount, greaterThan(0));
     expect(
       result.warnings,
-      contains(contains('Attach mode captured an existing VM-service process')),
+      contains(
+        contains('Attach mode captured an already-running VM-service process'),
+      ),
     );
     expect(File(result.overallProfile!.summaryPath).existsSync(), isTrue);
     expect(File(result.overallProfile!.rawProfilePath!).existsSync(), isTrue);
