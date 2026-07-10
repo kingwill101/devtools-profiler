@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.0
+
+- Added live Flutter frame timing analysis with jank attribution and timeline
+  hotspot reporting.
+- Added Flutter widget tree capture helpers, including project-only filtering
+  that preserves project widgets nested under framework wrappers.
+- Added Flutter memory snapshot capture helpers for CLI and agent workflows.
+
 ## 0.3.0
 
 - Added inherited-stdio process IO mode for terminal UI and alternate-screen
