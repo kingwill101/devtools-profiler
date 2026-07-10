@@ -9,10 +9,15 @@ import 'vm_service_discovery.dart';
 import '../constants.dart';
 import 'profiler_command.dart';
 
-/// Command that profiles frame timing from a running Flutter app.
-class FrameProfileCommand extends ProfilerCommand with VmServiceDiscovery {
-  /// Creates a frame profile command.
-  FrameProfileCommand(super.profileRunner) {
+abstract class _FrameTimingCommand extends ProfilerCommand
+    with VmServiceDiscovery {
+  _FrameTimingCommand(
+    super.profileRunner, {
+    required this.commandName,
+    required this.commandDescription,
+    required this.commandTitle,
+    required this.examples,
+  }) {
     argParser.addOption(
       'duration',
       defaultsTo: '5',
@@ -20,25 +25,25 @@ class FrameProfileCommand extends ProfilerCommand with VmServiceDiscovery {
     );
   }
 
-  @override
-  String get name => 'flutter:frame-profile';
+  final String commandName;
+  final String commandDescription;
+  final String commandTitle;
+  final List<String> examples;
 
   @override
-  String get description =>
-      'Profile frame timing from a running Flutter app '
-      'via its VM service URI.';
+  String get name => commandName;
+
+  @override
+  String get description => commandDescription;
 
   @override
   String get invocation =>
-      '${runner!.executableName} flutter:frame-profile [options] <vm-service-uri>';
+      '${runner!.executableName} $commandName [options] <vm-service-uri>';
 
   @override
   String formatUsage({bool includeDescription = true}) => usageWithExamples(
     super.formatUsage(includeDescription: includeDescription),
-    const [
-      'devtools-profiler flutter:frame-profile ws://127.0.0.1:8181/abc123/ws',
-      'devtools-profiler flutter:frame-profile --duration 10 ws://127.0.0.1:8181/abc123/ws',
-    ],
+    examples,
   );
 
   @override
@@ -80,7 +85,7 @@ class FrameProfileCommand extends ProfilerCommand with VmServiceDiscovery {
         final layoutMs = (result.layoutPhaseTimeUs / 1000).toStringAsFixed(2);
         final paintMs = (result.paintPhaseTimeUs / 1000).toStringAsFixed(2);
 
-        io.title('Frame Profile');
+        io.title(commandTitle);
         io.components.definitionList({
           'Duration': '${result.durationMicros ~/ 1000000}s',
           'Total Frames': '${result.totalFrames}',
@@ -130,6 +135,44 @@ class FrameProfileCommand extends ProfilerCommand with VmServiceDiscovery {
 
     return successExitCode;
   }
+}
+
+/// Command that profiles frame timing from a running Flutter app.
+final class FrameProfileCommand extends _FrameTimingCommand {
+  /// Creates a frame profile command.
+  FrameProfileCommand(super.profileRunner)
+    : super(
+        commandName: 'flutter:frame-profile',
+        commandDescription:
+            'Profile frame timing from a running Flutter app '
+            'via its VM service URI.',
+        commandTitle: 'Frame Profile',
+        examples: const [
+          'devtools-profiler flutter:frame-profile '
+              'ws://127.0.0.1:8181/abc123/ws',
+          'devtools-profiler flutter:frame-profile --duration 10 '
+              'ws://127.0.0.1:8181/abc123/ws',
+        ],
+      );
+}
+
+/// Command that profiles VM timeline frame timing from a running Flutter app.
+final class TimelineProfileCommand extends _FrameTimingCommand {
+  /// Creates a timeline profile command.
+  TimelineProfileCommand(super.profileRunner)
+    : super(
+        commandName: 'flutter:timeline',
+        commandDescription:
+            'Profile VM timeline frame timing from a running Flutter app '
+            'via its VM service URI.',
+        commandTitle: 'Timeline Profile',
+        examples: const [
+          'devtools-profiler flutter:timeline '
+              'ws://127.0.0.1:8181/abc123/ws',
+          'devtools-profiler flutter:timeline --duration 10 '
+              'ws://127.0.0.1:8181/abc123/ws',
+        ],
+      );
 }
 
 /// Command that captures a memory snapshot from a running Flutter/Dart app.

@@ -158,7 +158,7 @@ All flutter commands below auto-discover the VM service URI when omitted.
 Just run them while your app is running and they connect automatically:
 
 ```bash
-devtools-profiler flutter:frame-profile     # auto-discovers URI
+devtools-profiler flutter:timeline          # auto-discovers URI
 devtools-profiler flutter:screenshot        # same
 ```
 
@@ -168,7 +168,7 @@ one by passing the URI explicitly.
 Profile frame timing and detect jank:
 
 ```bash
-devtools-profiler flutter:frame-profile \
+devtools-profiler flutter:timeline \
   --duration 5 \
   ws://127.0.0.1:8181/abc123/ws
 ```
@@ -176,6 +176,7 @@ devtools-profiler flutter:frame-profile \
 Returns frame timing metrics including total/janky frame counts, average, P90,
 P99, and max frame times, plus a breakdown of build, layout, and paint phases.
 Auto-detects display refresh rate and shader compilation events.
+`flutter:frame-profile` is available as a compatibility alias.
 
 Capture a memory snapshot:
 

@@ -22,7 +22,7 @@ Start by identifying the user's target:
 - Flutter app or test: use `run` with `flutter run` or `flutter test`.
 - Already-running VM service: use `attach`.
 - Already-running Flutter app with live analysis: use `discover` then
-  `frame-profile`, `memory-snapshot`, or `widget-tree`.
+  `timeline` (or `frame-profile`), `memory-snapshot`, or `widget-tree`.
 - Application code can be edited: offer region markers.
 - Agent automation: offer the stdio MCP server.
 
@@ -226,7 +226,7 @@ All flutter commands auto-discover the VM service when no URI is given.
 When exactly one Flutter app is running, the URI is resolved automatically:
 
 ```bash
-devtools-profiler flutter:frame-profile  # no URI needed
+devtools-profiler flutter:timeline        # no URI needed
 devtools-profiler flutter:widget-tree    # same
 ```
 
@@ -236,7 +236,7 @@ pick one by passing the URI.
 Profile frame timing and detect rendering jank:
 
 ```bash
-devtools-profiler flutter:frame-profile \
+devtools-profiler flutter:timeline \
   --duration 5 \
   ws://127.0.0.1:8181/abc123/ws
 ```
@@ -244,6 +244,7 @@ devtools-profiler flutter:frame-profile \
 Returns frame timing metrics: total/janky frames, P90/P99/max frame times,
 a build-vs-layout-vs-paint phase breakdown, shader compilation events, and
 automatically detects display refresh rate (60/90/120Hz).
+`flutter:frame-profile` remains available as a compatibility alias.
 
 Capture an allocation profile (memory snapshot):
 

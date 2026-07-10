@@ -134,6 +134,31 @@ void main() {
     expect(stderrCapture.text, isEmpty);
   });
 
+  test('timeline help shows frame analysis description', () async {
+    final stdoutCapture = _OutputCapture();
+    final stderrCapture = _OutputCapture();
+    addTearDown(() async {
+      await stdoutCapture.close();
+      await stderrCapture.close();
+    });
+
+    final exitCode = await runCli(
+      const ['flutter:timeline', '--help'],
+      runner: _FakeProfileRunner(),
+      output: stdoutCapture.sink,
+      errorOutput: stderrCapture.sink,
+    );
+    await stdoutCapture.flush();
+    await stderrCapture.flush();
+
+    expect(exitCode, 0);
+    expect(
+      stdoutCapture.text,
+      contains('Profile VM timeline frame timing from a running Flutter app'),
+    );
+    expect(stderrCapture.text, isEmpty);
+  });
+
   test('memory-snapshot help shows memory capture description', () async {
     final stdoutCapture = _OutputCapture();
     final stderrCapture = _OutputCapture();

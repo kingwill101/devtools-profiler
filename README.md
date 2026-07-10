@@ -746,8 +746,8 @@ models. It does not depend on `packages/devtools_app`,
   `flutter test`; browser/web profiling is not supported.
 - CPU and memory capture are implemented. The protocol reserves a `timeline`
   capture kind, but timeline capture is not implemented as a region capture
-  mode. Live frame timing analysis is provided separately by the CLI's
-  `flutter:frame-profile` command.
+  mode. Live frame timing analysis is provided by the CLI's `flutter:timeline`
+  command, which is also available as `flutter:frame-profile`.
 - MCP is local stdio only.
 
 ## Development Checks

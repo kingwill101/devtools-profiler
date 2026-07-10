@@ -39,6 +39,8 @@ void main() {
         'profile_analyze_trends',
         'profile_find_regressions',
         'profile_inspect_classes',
+        'profile_frame_profile',
+        'profile_timeline',
       ]),
     );
 

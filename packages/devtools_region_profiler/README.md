@@ -175,8 +175,8 @@ await profileRegion(
 
 The protocol reserves `ProfileCaptureKind.timeline`, but the current backend
 does not implement timeline capture as a region capture mode. Live frame
-timing analysis is provided separately by the CLI's `flutter:frame-profile`
-command.
+timing analysis is provided by the CLI's `flutter:timeline` command, which is
+also available as `flutter:frame-profile`.
 
 ## Names, IDs, And Attributes
 
