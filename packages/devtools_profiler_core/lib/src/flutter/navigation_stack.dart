@@ -40,10 +40,7 @@ final class RouteEntry {
 /// Captured navigation stack from a running Flutter app.
 final class NavigationStack {
   /// Creates a navigation stack.
-  const NavigationStack({
-    required this.routes,
-    required this.currentRoute,
-  });
+  const NavigationStack({required this.routes, required this.currentRoute});
 
   /// All routes in the stack (first to last).
   final List<RouteEntry> routes;
@@ -73,12 +70,11 @@ class NavigationStackService {
     final response = await _vmService.callServiceExtension(
       'ext.flutter.inspector.getRouteStack',
       isolateId: isolateId,
-      args: {
-        'objectGroup': 'inspector',
-      },
+      args: {'objectGroup': 'inspector'},
     );
 
-    final routesJson = response.json?['result'] as List<Object?>? ??
+    final routesJson =
+        response.json?['result'] as List<Object?>? ??
         response.json?['routes'] as List<Object?>? ??
         [];
 
@@ -88,12 +84,12 @@ class NavigationStackService {
     for (final entry in routesJson) {
       if (entry is! Map<String, Object?>) continue;
 
-      final name = entry['name'] as String? ??
+      final name =
+          entry['name'] as String? ??
           entry['routeName'] as String? ??
           'unknown';
-      final path = entry['path'] as String? ??
-          entry['description'] as String? ??
-          '';
+      final path =
+          entry['path'] as String? ?? entry['description'] as String? ?? '';
       final settingsName = entry['settingsName'] as String?;
       final isCurrent =
           (entry['isCurrent'] as bool?) ?? (entry['current'] as bool?) ?? false;

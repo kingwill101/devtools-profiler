@@ -3,10 +3,7 @@ import 'package:vm_service/vm_service.dart';
 /// Results from a Flutter debug dump call.
 final class DebugDumpResult {
   /// Creates a debug dump result.
-  const DebugDumpResult({
-    required this.kind,
-    required this.content,
-  });
+  const DebugDumpResult({required this.kind, required this.content});
 
   /// The kind of dump (app, render, layer, focus, semantics).
   final String kind;
@@ -15,17 +12,13 @@ final class DebugDumpResult {
   final String content;
 
   /// JSON-compatible representation.
-  Map<String, Object?> toJson() => {
-    'kind': kind,
-    'content': content,
-  };
+  Map<String, Object?> toJson() => {'kind': kind, 'content': content};
 }
 
 /// Calls Flutter debug dump service extensions for diagnostics.
 class DebugDumpService {
   /// Creates a debug dump service.
-  DebugDumpService({required VmService vmService})
-    : _vmService = vmService;
+  DebugDumpService({required VmService vmService}) : _vmService = vmService;
 
   final VmService _vmService;
 

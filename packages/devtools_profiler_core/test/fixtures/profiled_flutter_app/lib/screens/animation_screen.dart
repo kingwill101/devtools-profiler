@@ -22,12 +22,14 @@ class _AnimationScreenState extends State<AnimationScreen>
       vsync: this,
       duration: const Duration(seconds: 2),
     );
-    _rotation = Tween<double>(begin: 0, end: 2 * 3.14159).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
-    _scale = Tween<double>(begin: 0.5, end: 1.5).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.elasticInOut),
-    );
+    _rotation = Tween<double>(
+      begin: 0,
+      end: 2 * 3.14159,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+    _scale = Tween<double>(
+      begin: 0.5,
+      end: 1.5,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.elasticInOut));
   }
 
   @override
