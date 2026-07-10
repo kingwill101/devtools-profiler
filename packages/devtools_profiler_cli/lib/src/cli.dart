@@ -7,6 +7,9 @@ import 'package:devtools_profiler_core/devtools_profiler_core.dart';
 import 'cli/commands/analysis_commands.dart';
 import 'cli/commands/artifact_commands.dart';
 import 'cli/commands/capture_commands.dart';
+import 'cli/commands/discover_command.dart';
+import 'cli/commands/flutter_commands.dart';
+import 'cli/commands/profiles_command.dart';
 import 'cli/constants.dart';
 
 /// Runs the `devtools-profiler` CLI.
@@ -43,6 +46,11 @@ Future<int> runCli(
         ..addCommand(CompareMethodCommand(profiler))
         ..addCommand(SearchMethodsCommand(profiler))
         ..addCommand(InspectClassesCommand(profiler))
+        ..addCommand(ProfilesCommand(profiler))
+        ..addCommand(DiscoverCommand(profiler))
+        ..addCommand(FrameProfileCommand(profiler))
+        ..addCommand(MemorySnapshotCommand(profiler))
+        ..addCommand(WidgetTreeCommand(profiler))
         ..addCommand(McpCommand(profiler));
 
   try {
