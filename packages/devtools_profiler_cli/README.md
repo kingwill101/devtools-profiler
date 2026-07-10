@@ -154,21 +154,31 @@ devtools-profiler discover
 This scans OS processes for Flutter/Dart development services and lists their
 VM service WebSocket URIs. Pass `--json` for machine-readable output.
 
+Discover running apps:
+
+```bash
+devtools-profiler discover
+```
+
+This scans OS processes for Flutter/Dart development services and lists their
+VM service WebSocket URIs. Pass `--json` for machine-readable output.
+
 Profile frame timing and detect jank:
 
 ```bash
-devtools-profiler frame-profile \
+devtools-profiler flutter:frame-profile \
   --duration 5 \
   ws://127.0.0.1:8181/abc123/ws
 ```
 
 Returns frame timing metrics including total/janky frame counts, average, P90,
 P99, and max frame times, plus a breakdown of build, layout, and paint phases.
+Auto-detects display refresh rate and shader compilation events.
 
 Capture a memory snapshot:
 
 ```bash
-devtools-profiler memory-snapshot \
+devtools-profiler flutter:memory-snapshot \
   --name before-optimization \
   --no-gc \
   ws://127.0.0.1:8181/abc123/ws
@@ -180,7 +190,7 @@ force garbage collection before the capture.
 Capture the widget tree:
 
 ```bash
-devtools-profiler widget-tree \
+devtools-profiler flutter:widget-tree \
   --depth 15 \
   --summary \
   ws://127.0.0.1:8181/abc123/ws
@@ -188,6 +198,45 @@ devtools-profiler widget-tree \
 
 Use `--summary` for a condensed Flutter-only view. Use `--project-only` to
 filter framework widgets and show only project code.
+
+Inspect the navigation stack:
+
+```bash
+devtools-profiler flutter:route-stack \
+  ws://127.0.0.1:8181/abc123/ws
+```
+
+Returns the ordered list of routes with their types and which is current.
+
+Capture a screenshot:
+
+```bash
+devtools-profiler flutter:screenshot \
+  --output app.png --width 1920 \
+  ws://127.0.0.1:8181/abc123/ws
+```
+
+Uses the Flutter inspector screenshot service extension.
+
+Dump diagnostic information:
+
+```bash
+devtools-profiler flutter:debug-dump --kind render \
+  ws://127.0.0.1:8181/abc123/ws
+```
+
+Available kinds: `app`, `render`, `layer`, `focus`, `semantics`.
+
+Capture log and output streams:
+
+```bash
+devtools-profiler flutter:logs \
+  --duration 30 --output session.log \
+  ws://127.0.0.1:8181/abc123/ws
+```
+
+Captures Logging, Stdout, and Stderr streams. Use `--follow` for continuous
+streaming until interrupted.
 
 ## What You Get Back
 
@@ -322,6 +371,8 @@ devtools-profiler trends \
 - `--warm-up <duration>` waits this long after VM service connection before
   starting the profiling timer. Useful for Flutter apps to skip startup and
   first-frame rendering. Examples: `5s`, `30s`.
+- `--flutter` sets `--warm-up 3s`, `--hide-sdk`, and `--hide-runtime-helpers`
+  together as Flutter-friendly defaults.
 - `--vm-service-timeout <duration>` controls startup wait time before the VM
   service is available. Examples: `3m`, `300s`.
 - `--terminal` gives the launched process direct terminal access for TUI and
@@ -384,6 +435,10 @@ Agent-facing tools include:
 - `profile_frame_profile`
 - `profile_memory_snapshot`
 - `profile_widget_tree`
+- `profile_navigation_stack`
+- `profile_screenshot`
+- `profile_debug_dump`
+- `profile_stream_logs`
 - `profile_compare`
 - `profile_compare_method`
 - `profile_find_regressions`

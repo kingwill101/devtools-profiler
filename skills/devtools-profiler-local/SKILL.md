@@ -222,21 +222,31 @@ devtools-profiler discover
 This scans OS processes for DDS-powered applications and prints their VM
 service WebSocket URIs.
 
+Discover running apps:
+
+```bash
+devtools-profiler discover
+```
+
+This scans OS processes for DDS-powered applications and prints their VM
+service WebSocket URIs.
+
 Profile frame timing and detect rendering jank:
 
 ```bash
-devtools-profiler frame-profile \
+devtools-profiler flutter:frame-profile \
   --duration 5 \
   ws://127.0.0.1:8181/abc123/ws
 ```
 
 Returns frame timing metrics: total/janky frames, P90/P99/max frame times,
-and a build-vs-layout-vs-paint phase breakdown.
+a build-vs-layout-vs-paint phase breakdown, shader compilation events, and
+automatically detects display refresh rate (60/90/120Hz).
 
 Capture an allocation profile (memory snapshot):
 
 ```bash
-devtools-profiler memory-snapshot \
+devtools-profiler flutter:memory-snapshot \
   --name before-opt \
   ws://127.0.0.1:8181/abc123/ws
 ```
@@ -247,7 +257,7 @@ Returns the top allocation classes sorted by current heap size. Use
 Capture the Flutter widget tree:
 
 ```bash
-devtools-profiler widget-tree \
+devtools-profiler flutter:widget-tree \
   --depth 10 \
   --summary \
   ws://127.0.0.1:8181/abc123/ws
@@ -255,6 +265,34 @@ devtools-profiler widget-tree \
 
 Use `--summary` for a condensed Flutter-only tree. Use `--project-only` to
 hide framework widgets.
+
+Inspect the navigation stack:
+
+```bash
+devtools-profiler flutter:route-stack \
+  ws://127.0.0.1:8181/abc123/ws
+```
+
+Capture a screenshot:
+
+```bash
+devtools-profiler flutter:screenshot --output app.png \
+  ws://127.0.0.1:8181/abc123/ws
+```
+
+Dump render tree:
+
+```bash
+devtools-profiler flutter:debug-dump --kind render \
+  ws://127.0.0.1:8181/abc123/ws
+```
+
+Capture logs:
+
+```bash
+devtools-profiler flutter:logs --duration 30 \
+  ws://127.0.0.1:8181/abc123/ws
+```
 
 ## Read Existing Artifacts
 

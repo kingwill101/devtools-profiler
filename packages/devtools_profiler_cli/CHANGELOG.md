@@ -3,30 +3,32 @@
 ## 0.4.0
 
 - Added `profiles` command that lists stored profiling sessions in a
-  compact format by default. Use `--extended` for the full session table
-  with working directory, exit code, region count, and warnings.
-- Analysis commands (`summarize`, `explain`, `inspect`, `search-methods`,
-  `inspect-classes`) no longer require a profile path. When omitted, the
-  latest stored session is used automatically.
-- Comparison commands (`compare`, `compare-method`, `trends`) resolve the
-  latest two stored sessions when no paths are given.
-- Added `--session-id` option to single-target commands for explicit
-  session selection by id, `"latest"`, or `"previous"`.
-- Added `--limit` option to `profiles` command to control how many
-  sessions are displayed.
-- Compacted session identifiers from ~40 characters to 16 characters
-  (`MMDDHHmmss-XXXXX`) while preserving time ordering and collision
-  resistance.
-- Added `discover` command and `profile_discover_apps` MCP tool to scan
-  for running Flutter and Dart applications exposing a VM service URI.
-- Added `frame-profile` command and `profile_frame_profile` MCP tool for
-  live frame timing analysis and jank detection using the VM timeline.
-- Added `memory-snapshot` command and `profile_memory_snapshot` MCP tool
-  for capturing allocation profiles from a running application.
-- Added `widget-tree` command and `profile_widget_tree` MCP tool for
-  capturing the Flutter widget tree via service extensions.
-- Added `FrameAnalyzer`, `WidgetTreeCaptureService`, `MemorySnapshotCapture`,
-  and `discoverActiveApps` to the core library for programmatic use.
+  compact format by default. Use `--extended` for the full session table.
+- Analysis commands no longer require a profile path — default to latest.
+- Added `--session-id`, `--cwd`, `--limit` for session selection.
+- Compacted session identifiers to `MMDDHHmmss-XXXXX`.
+- Added `discover` command to scan for running Dart/Flutter VM services.
+- Added `flutter:frame-profile` for live frame timing and jank detection
+  with dynamic FPS, shader jank, and timeline hotspot analysis.
+- Added `flutter:memory-snapshot` for allocation profile capture.
+- Added `flutter:widget-tree` for Flutter widget tree inspection.
+- Added `flutter:route-stack` for navigation stack inspection.
+- Added `flutter:screenshot` for app screenshot capture.
+- Added `flutter:debug-dump` for app/render/layer/focus/semantics dumps.
+- Added `flutter:logs` for log and output stream capture.
+- Added `--warm-up` flag with Flutter readiness detection (polls for
+  `ext.flutter.*` extensions instead of a fixed delay).
+- Added `--flutter` flag that sets `--warm-up 3s`, `--hide-sdk`, and
+  `--hide-runtime-helpers` together.
+- Added shader compilation event detection to frame analysis.
+- Frame analysis now auto-detects display refresh rate for accurate
+  frame budgets (supports 60Hz, 90Hz, 120Hz displays).
+- Frame locations now prefer `package:` URIs for portable output.
+- Added MCP tools: `profile_discover_apps`, `profile_frame_profile`,
+  `profile_memory_snapshot`, `profile_widget_tree`,
+  `profile_navigation_stack`, `profile_screenshot`,
+  `profile_debug_dump`, `profile_stream_logs`.
+- Flutter fixture app for manual profiling and testing.
 
 ## 0.3.0
 
