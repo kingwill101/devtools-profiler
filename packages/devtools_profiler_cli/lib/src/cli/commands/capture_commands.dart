@@ -195,12 +195,11 @@ class AttachCommand extends ProfilerCommand {
       )
       ..addFlag(
         'skip-dtd',
-        defaultsTo: false,
+        defaultsTo: true,
         negatable: false,
         help:
-            'Skip the Dart Tooling Daemon for this attach session. '
-            'Explicit region markers will be unavailable. Use this when the '
-            'tooling daemon fails to start or is not needed.',
+            'Attach sessions do not use the Dart Tooling Daemon by default. '
+            'This flag is retained for compatibility with older guidance.',
       )
       ..addFlag(
         'flutter',
@@ -228,7 +227,7 @@ class AttachCommand extends ProfilerCommand {
     const [
       'devtools-profiler attach --duration 15s http://127.0.0.1:8181/abcd/',
       'devtools-profiler attach --duration 30s --call-tree --hide-sdk http://127.0.0.1:8181/abcd/',
-      'devtools-profiler attach --skip-dtd --duration 30s http://127.0.0.1:8181/abcd/',
+      'devtools-profiler attach --duration 30s http://127.0.0.1:8181/abcd/',
     ],
   );
 

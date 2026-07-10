@@ -279,11 +279,6 @@ class ProfileRunner {
       sessionController.addWarning(
         'Attach mode captured an existing VM-service process. Explicit region markers are unavailable unless the target was launched by devtools-profiler run.',
       );
-      if (!request.enableDtd) {
-        sessionController.addWarning(
-          'The Dart Tooling Daemon was disabled for this attach session. Explicit region markers are unavailable.',
-        );
-      }
       await sessionController.attachToVmService(
         request.vmServiceUri,
         clearCpuSamples: true,
@@ -544,8 +539,7 @@ Future<void> _waitForFlutterExtensions(
   try {
     final vm = await vmService.getVM();
     final isolates = vm.isolates ?? [];
-    final active =
-        isolates.where((i) => i.isSystemIsolate != true).toList();
+    final active = isolates.where((i) => i.isSystemIsolate != true).toList();
     mainIsolateId = active.isNotEmpty ? active.first.id : null;
     mainIsolateId ??= isolates.isNotEmpty ? isolates.first.id : null;
   } catch (_) {}

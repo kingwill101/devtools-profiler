@@ -468,6 +468,7 @@ void main() {
       Uri.parse('http://127.0.0.1:8181/abcd/'),
     );
     expect(runner.lastAttachRequest?.duration, const Duration(seconds: 2));
+    expect(runner.lastAttachRequest?.enableDtd, isFalse);
     expect(runner.lastAttachRequest?.workingDirectory, '/tmp/app');
     final json = jsonDecode(stdoutCapture.text) as Map<String, Object?>;
     expect(json['sessionId'], 'session-attach');

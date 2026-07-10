@@ -59,8 +59,8 @@
   inspecting memory class allocations from stored artifacts.
 - Added comparison filters for memory class output, including minimum live bytes
   and memory class count limits.
-- Added `attach --skip-dtd` and the matching MCP option for whole-session attach
-  profiling when explicit region markers are unavailable.
+- Attach sessions now skip DTD by default because explicit region markers are
+  unavailable in attach mode.
 - Improved CLI and JSON output by surfacing region preparation warnings,
   baseline/current comparison warnings, and sample-count fallback warnings.
 - Added warnings when active frame filters remove every CPU frame, plus

@@ -6,8 +6,8 @@
   hotspot reporting.
 - Added a dedicated `flutter:timeline` alias for frame timing analysis while
   keeping `flutter:frame-profile` as a compatibility alias.
-- Added `flutter attach` launch support for whole-session profiling of an
-  already-running Flutter app.
+- `flutter attach` launches now skip DTD by default because attach mode does
+  not use region markers.
 - Added Flutter widget tree capture helpers, including project-only filtering
   that preserves project widgets nested under framework wrappers.
 - Added Flutter memory snapshot capture helpers for CLI and agent workflows.

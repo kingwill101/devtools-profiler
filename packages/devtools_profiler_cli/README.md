@@ -136,8 +136,8 @@ flutter run -d linux -t lib/main_relic_breach.dart --host-vmservice-port=0
 
 The `attach` command clears the VM's existing CPU samples, captures the
 whole-session VM service view for the requested duration, and does not stop the
-target process. Explicit region markers normally require `run` mode because the
-target must be launched with the profiler's DTD/session configuration.
+target process. Attach sessions skip DTD by default because explicit region
+markers are unavailable in attach mode.
 
 ## Live Flutter Analysis
 

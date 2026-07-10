@@ -117,9 +117,8 @@ final Tool profileAttachTool = Tool(
       ),
       'skipDtd': Schema.bool(
         description:
-            'Skip the Dart Tooling Daemon for this attach session. '
-            'Explicit region markers will be unavailable. '
-            'Use this when the tooling daemon fails to start or is not needed.',
+            'Compatibility flag for older guidance. Attach sessions do not '
+            'start the Dart Tooling Daemon by default.',
       ),
       'includeCallTree': Schema.bool(
         description: 'Whether to attach top-down region call trees.',

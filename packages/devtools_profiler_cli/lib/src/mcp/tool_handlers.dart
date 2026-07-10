@@ -108,7 +108,7 @@ class McpToolHandlers {
               arguments,
               key: 'workingDirectory',
             ),
-            enableDtd: !(arguments['skipDtd'] as bool? ?? false),
+            enableDtd: !(arguments['skipDtd'] as bool? ?? true),
           ),
         );
         progress(

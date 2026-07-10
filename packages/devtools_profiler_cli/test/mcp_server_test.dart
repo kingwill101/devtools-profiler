@@ -230,6 +230,7 @@ void main() {
       environment.runner.lastAttachRequest?.duration,
       const Duration(seconds: 3),
     );
+    expect(environment.runner.lastAttachRequest?.enableDtd, isFalse);
     expect(environment.runner.lastAttachRequest?.workingDirectory, '/tmp/app');
     final session = result.structuredContent!;
     expect(session['sessionId'], 'session-attach');
