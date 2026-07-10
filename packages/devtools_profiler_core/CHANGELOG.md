@@ -14,6 +14,18 @@
 - Added Flutter widget tree capture helpers, including project-only filtering
   that preserves project widgets nested under framework wrappers.
 - Added Flutter memory snapshot capture helpers for CLI and agent workflows.
+- Added `WidgetInspectorQueryService` for calling generic Flutter widget
+  inspector service extensions, enabling `getSelectedWidget`, `getProperties`,
+  `getChildren`, `getParentChain`, `getDetailsSubtree`, and
+  `getLayoutExplorerNode` queries.
+- Frame analysis now resets shader jank tracking per-frame instead of
+  accumulating across the entire profile window, producing more accurate
+  per-frame jank attribution.
+- Replaced `navigation_stack` export with `widget_inspector_query`; removed
+  route stack navigation support since `ext.flutter.inspector.show` routes
+  were removed upstream.
+- Various documentation updates, fixture formatting, and test expectation
+  improvements.
 
 ## 0.3.0
 
