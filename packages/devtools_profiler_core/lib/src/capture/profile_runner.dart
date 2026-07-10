@@ -277,7 +277,7 @@ class ProfileRunner {
     try {
       await sessionController.registerServices();
       sessionController.addWarning(
-        'Attach mode captured an existing VM-service process. Explicit region markers are unavailable unless the target was launched by devtools-profiler run.',
+        'Attach mode captured an already-running VM-service process as a fixed whole-session window. Explicit region markers remain unavailable unless the target was launched by devtools-profiler run.',
       );
       await sessionController.attachToVmService(
         request.vmServiceUri,

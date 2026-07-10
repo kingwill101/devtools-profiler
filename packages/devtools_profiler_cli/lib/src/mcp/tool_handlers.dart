@@ -93,8 +93,9 @@ class McpToolHandlers {
         progress(
           0,
           3,
-          'Attaching to VM service. Explicit region markers are unavailable '
-          'unless the target was launched by devtools-profiler run.',
+          'Attaching to VM service for a fixed whole-session window. '
+          'Explicit region markers remain unavailable unless the target was '
+          'launched by devtools-profiler run.',
         );
         final result = await runner.attach(
           ProfileAttachRequest(

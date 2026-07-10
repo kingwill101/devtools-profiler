@@ -10,9 +10,9 @@ import 'vm_service_discovery.dart';
 import 'profiler_command.dart';
 
 const _attachRegionWarning =
-    'Attach mode captures the existing VM-service process, but explicit '
-    'devtools_region_profiler markers are unavailable unless the target was '
-    'launched by devtools-profiler run.';
+    'Attach mode captures an already-running VM-service process as a fixed '
+    'whole-session window. Explicit devtools_region_profiler markers remain '
+    'unavailable unless the target was launched by devtools-profiler run.';
 
 /// Command that launches and profiles a Dart or Flutter process.
 class RunCommand extends ProfilerCommand {

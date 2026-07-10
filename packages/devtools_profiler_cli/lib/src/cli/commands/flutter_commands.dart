@@ -175,6 +175,24 @@ final class TimelineProfileCommand extends _FrameTimingCommand {
       );
 }
 
+/// Command that profiles VM timeline frame timing from any running VM service.
+final class TimelineCommand extends _FrameTimingCommand {
+  /// Creates a timeline command.
+  TimelineCommand(super.profileRunner)
+    : super(
+        commandName: 'timeline',
+        commandDescription:
+            'Profile VM timeline frame timing from a running app via its '
+            'VM service URI.',
+        commandTitle: 'Timeline Profile',
+        examples: const [
+          'devtools-profiler timeline ws://127.0.0.1:8181/abc123/ws',
+          'devtools-profiler timeline --duration 10 '
+              'ws://127.0.0.1:8181/abc123/ws',
+        ],
+      );
+}
+
 /// Command that captures a memory snapshot from a running Flutter/Dart app.
 class MemorySnapshotCommand extends ProfilerCommand with VmServiceDiscovery {
   /// Creates a memory-snapshot command.

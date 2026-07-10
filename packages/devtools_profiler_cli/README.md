@@ -159,7 +159,8 @@ All flutter commands below auto-discover the VM service URI when omitted.
 Just run them while your app is running and they connect automatically:
 
 ```bash
-devtools-profiler flutter:timeline          # auto-discovers URI
+devtools-profiler timeline                  # auto-discovers URI
+devtools-profiler flutter:timeline          # compatibility alias
 devtools-profiler flutter:screenshot        # same
 ```
 
@@ -177,7 +178,8 @@ devtools-profiler flutter:timeline \
 Returns frame timing metrics including total/janky frame counts, average, P90,
 P99, and max frame times, plus a breakdown of build, layout, and paint phases.
 Auto-detects display refresh rate and shader compilation events.
-`flutter:frame-profile` is available as a compatibility alias.
+`flutter:timeline` and `flutter:frame-profile` are available as
+compatibility aliases.
 
 Capture a memory snapshot:
 

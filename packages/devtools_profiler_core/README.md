@@ -226,7 +226,7 @@ It intentionally does not depend on `packages/devtools_app`,
 - CPU and memory capture are implemented.
 - Timeline capture is represented in the shared protocol enum but is not
   implemented as a region capture mode by this backend. Live frame timing
-  analysis is provided by the CLI's `flutter:timeline` command, which is also
-  available as `flutter:frame-profile`.
+  analysis is provided by the CLI's `timeline` command, which is also
+  available as `flutter:timeline` and `flutter:frame-profile`.
 - Most users should prefer the globally installed CLI. Use this package
   directly when building custom profiler integrations.

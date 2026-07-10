@@ -4,6 +4,8 @@
 
 - Added live Flutter frame timing analysis with jank attribution and timeline
   hotspot reporting.
+- Added top-level `timeline` as a first-class alias for frame timing
+  analysis.
 - Added a dedicated `flutter:timeline` alias for frame timing analysis while
   keeping `flutter:frame-profile` as a compatibility alias.
 - Added `flutter drive` launch support for profiled Flutter app launches.

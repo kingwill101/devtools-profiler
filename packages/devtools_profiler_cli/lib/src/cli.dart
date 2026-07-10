@@ -49,6 +49,7 @@ Future<int> runCli(
         ..addCommand(ProfilesCommand(profiler))
         ..addCommand(DiscoverCommand(profiler))
         ..addCommand(FrameProfileCommand(profiler))
+        ..addCommand(TimelineCommand(profiler))
         ..addCommand(TimelineProfileCommand(profiler))
         ..addCommand(MemorySnapshotCommand(profiler))
         ..addCommand(WidgetTreeCommand(profiler))
