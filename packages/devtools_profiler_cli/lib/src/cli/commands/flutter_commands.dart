@@ -76,10 +76,37 @@ class FrameProfileCommand extends ProfilerCommand {
           'Janky Frames': '${result.jankyFrames} (${jankPct}%)',
           'Average Frame': '$avgMs ms',
           'Max Frame': '$maxMs ms',
+          'P90 Frame': '${(result.p90FrameTimeUs / 1000).toStringAsFixed(2)} ms',
+          'P99 Frame': '${(result.p99FrameTimeUs / 1000).toStringAsFixed(2)} ms',
           'Build Phase': '$buildMs ms',
           'Layout Phase': '$layoutMs ms',
           'Paint Phase': '$paintMs ms',
         });
+
+        if (result.hasShaderJank) {
+          warn(
+            'Shader jank detected: ${result.shaderCompilationEvents.length} '
+            'compilation events '
+            '(${(result.totalShaderCompilationTimeUs / 1000).toStringAsFixed(1)}ms total). '
+            'Consider SkSL warmup or Impeller for consistent frame times.',
+          );
+        }
+
+        if (result.timelineHotspots.isNotEmpty) {
+          io.section('Timeline Hotspots');
+          io.table(
+            headers: const ['Event', 'Total (ms)', 'Count', 'Max (ms)'],
+            rows: [
+              for (final hotspot in result.timelineHotspots.take(8))
+                [
+                  hotspot.name,
+                  (hotspot.totalDurationUs / 1000).toStringAsFixed(1),
+                  '${hotspot.callCount}',
+                  (hotspot.maxDurationUs / 1000).toStringAsFixed(1),
+                ],
+            ],
+          );
+        }
 
         comment('VM Service URI: $vmServiceUri');
       }

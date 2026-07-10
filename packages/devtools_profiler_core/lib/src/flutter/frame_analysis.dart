@@ -4,6 +4,68 @@ import 'package:vm_service/vm_service.dart';
 const _kFrameBudgetUs = 16666;
 const _kDefaultFrameProfileDuration = Duration(seconds: 5);
 
+/// A timeline event related to shader compilation.
+final class ShaderCompilationEvent {
+  /// Creates a shader compilation event.
+  const ShaderCompilationEvent({
+    required this.name,
+    required this.durationUs,
+    required this.category,
+  });
+
+  /// The event name (e.g. GrGLProgramBuilder, Program::compile).
+  final String name;
+
+  /// Duration in microseconds.
+  final double durationUs;
+
+  /// Category: 'skia', 'impeller', 'gpu', or 'other'.
+  final String category;
+
+  /// JSON-compatible representation.
+  Map<String, Object?> toJson() => {
+    'name': name,
+    'durationUs': durationUs,
+    'category': category,
+  };
+}
+
+/// A hotspot insight extracted from the VM timeline.
+final class TimelineHotspot {
+  /// Creates a timeline hotspot.
+  const TimelineHotspot({
+    required this.name,
+    required this.selfDurationUs,
+    required this.totalDurationUs,
+    required this.callCount,
+    required this.maxDurationUs,
+  });
+
+  /// The event name.
+  final String name;
+
+  /// Self (exclusive) duration in microseconds.
+  final double selfDurationUs;
+
+  /// Total (inclusive) duration in microseconds.
+  final double totalDurationUs;
+
+  /// Number of times this event occurred.
+  final int callCount;
+
+  /// Maximum single duration in microseconds.
+  final double maxDurationUs;
+
+  /// JSON-compatible representation.
+  Map<String, Object?> toJson() => {
+    'name': name,
+    'selfDurationUs': selfDurationUs,
+    'totalDurationUs': totalDurationUs,
+    'callCount': callCount,
+    'maxDurationUs': maxDurationUs,
+  };
+}
+
 /// Results from a frame/jank analysis session.
 final class FrameAnalysisResult {
   /// Creates a frame analysis result.
@@ -20,6 +82,8 @@ final class FrameAnalysisResult {
     required this.paintPhaseTimeUs,
     required this.jankyFrameEvents,
     required this.rawTimelineEventCount,
+    this.shaderCompilationEvents = const [],
+    this.timelineHotspots = const [],
   });
 
   /// Total duration of the profiling window in microseconds.
@@ -58,6 +122,23 @@ final class FrameAnalysisResult {
   /// Total number of timeline events inspected.
   final int rawTimelineEventCount;
 
+  /// Detected shader compilation events.
+  final List<ShaderCompilationEvent> shaderCompilationEvents;
+
+  /// Timeline hotspot events sorted by total duration.
+  final List<TimelineHotspot> timelineHotspots;
+
+  /// Whether shader compilation jank was detected.
+  bool get hasShaderJank => shaderCompilationEvents.isNotEmpty;
+
+  /// Total time spent in shader compilation.
+  double get totalShaderCompilationTimeUs {
+    if (shaderCompilationEvents.isEmpty) return 0;
+    return shaderCompilationEvents
+        .map((e) => e.durationUs)
+        .reduce((a, b) => a + b);
+  }
+
   /// Ratio of janky frames to total frames.
   double get jankRatio => totalFrames > 0 ? jankyFrames / totalFrames : 0.0;
 
@@ -79,6 +160,16 @@ final class FrameAnalysisResult {
     'paintPhaseTimeUs': paintPhaseTimeUs,
     'jankyFrameEvents': jankyFrameEvents,
     'rawTimelineEventCount': rawTimelineEventCount,
+    'hasShaderJank': hasShaderJank,
+    'totalShaderCompilationTimeUs': totalShaderCompilationTimeUs,
+    if (shaderCompilationEvents.isNotEmpty)
+      'shaderCompilationEvents': [
+        for (final e in shaderCompilationEvents) e.toJson(),
+      ],
+    if (timelineHotspots.isNotEmpty)
+      'timelineHotspots': [
+        for (final h in timelineHotspots.take(10)) h.toJson(),
+      ],
   };
 }
 
@@ -121,6 +212,8 @@ class FrameAnalyzer {
     var maxFrameTimeUs = 0.0;
     final frameDurations = <double>[];
     final jankyFrameEvents = <Map<String, Object?>>[];
+    final shaderEvents = <ShaderCompilationEvent>[];
+    final hotspotMap = <String, _HotspotAccumulator>{};
     var buildTimeTotal = 0.0;
     var layoutTimeTotal = 0.0;
     var paintTimeTotal = 0.0;
@@ -133,6 +226,19 @@ class FrameAnalyzer {
 
       final lowerName = name.toLowerCase();
       final durationUs = dur.toDouble();
+
+      // Track per-event-name totals for hotspot detection
+      hotspotMap.putIfAbsent(name, () => _HotspotAccumulator()).add(durationUs);
+
+      // Detect shader compilation events
+      if (_isShaderCompilationEvent(lowerName)) {
+        final category = _shaderEventCategory(lowerName);
+        shaderEvents.add(ShaderCompilationEvent(
+          name: name,
+          durationUs: durationUs,
+          category: category,
+        ));
+      }
 
       // Detect frame events
       if (_isFrameEvent(lowerName)) {
@@ -149,6 +255,7 @@ class FrameAnalyzer {
             'name': name,
             'durationUs': durationUs,
             'severity': severity,
+            'shaderJank': shaderEvents.any((e) => e.durationUs > 1000),
           });
         }
       }
@@ -185,6 +292,18 @@ class FrameAnalyzer {
         ? frameDurations[(frameDurations.length * 0.99).floor()]
         : 0.0;
 
+    // Build hotspot list sorted by total duration descending
+    final hotspots = hotspotMap.entries
+        .map((e) => TimelineHotspot(
+              name: e.key,
+              selfDurationUs: e.value.self,
+              totalDurationUs: e.value.total,
+              callCount: e.value.count,
+              maxDurationUs: e.value.max,
+            ))
+        .toList()
+      ..sort((a, b) => b.totalDurationUs.compareTo(a.totalDurationUs));
+
     return FrameAnalysisResult(
       durationMicros: profileDuration.inMicroseconds,
       totalFrames: totalFrames,
@@ -198,8 +317,31 @@ class FrameAnalyzer {
       paintPhaseTimeUs: paintTimeTotal,
       jankyFrameEvents: jankyFrameEvents,
       rawTimelineEventCount: events.length,
+      shaderCompilationEvents: shaderEvents,
+      timelineHotspots: hotspots,
     );
   }
+
+  bool _isShaderCompilationEvent(String name) {
+    return name.contains('grglprogrambuilder') ||
+        name.contains('program::compile') ||
+        name.contains('programcompilation') ||
+        name.contains('shadercompile') ||
+        name.contains('shader') && name.contains('compile') ||
+        name.contains('impeller::shader') ||
+        name.contains('pipeline::build') ||
+        name.contains('pipelinebuild') ||
+        name.contains('grprogram') ||
+        name.contains('skia::gpu') && name.contains('compile');
+  }
+
+  String _shaderEventCategory(String name) {
+    if (name.contains('impeller')) return 'impeller';
+    if (name.contains('skia') || name.contains('gr')) return 'skia';
+    if (name.contains('gpu') || name.contains('pipeline')) return 'gpu';
+    return 'other';
+  }
+
 
   bool _isFrameEvent(String name) {
     return switch (name) {
@@ -215,5 +357,20 @@ class FrameAnalyzer {
         true,
       _ => false,
     };
+  }
+}
+
+/// Accumulator for per-event-name timing during frame analysis.
+class _HotspotAccumulator {
+  double self = 0;
+  double total = 0;
+  int count = 0;
+  double max = 0;
+
+  void add(double duration) {
+    self += duration;
+    total += duration;
+    count++;
+    if (duration > max) max = duration;
   }
 }

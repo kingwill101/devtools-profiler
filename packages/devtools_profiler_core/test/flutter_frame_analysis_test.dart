@@ -121,6 +121,92 @@ void main() {
       expect(layoutEvents, hasLength(2));
       expect(paintEvents, hasLength(2));
     });
+
+    test('hasShaderJank is false when no shader events', () {
+      final result = FrameAnalysisResult(
+        durationMicros: 5_000_000,
+        totalFrames: 60,
+        jankyFrames: 3,
+        averageFrameTimeUs: 15000,
+        maxFrameTimeUs: 35000,
+        p90FrameTimeUs: 16500,
+        p99FrameTimeUs: 22000,
+        buildPhaseTimeUs: 500_000,
+        layoutPhaseTimeUs: 200_000,
+        paintPhaseTimeUs: 300_000,
+        jankyFrameEvents: [],
+        rawTimelineEventCount: 120,
+      );
+      expect(result.hasShaderJank, false);
+      expect(result.shaderCompilationEvents, isEmpty);
+    });
+
+    test('hasShaderJank is true with shader events', () {
+      final result = FrameAnalysisResult(
+        durationMicros: 5_000_000,
+        totalFrames: 60,
+        jankyFrames: 3,
+        averageFrameTimeUs: 15000,
+        maxFrameTimeUs: 35000,
+        p90FrameTimeUs: 16500,
+        p99FrameTimeUs: 22000,
+        buildPhaseTimeUs: 500_000,
+        layoutPhaseTimeUs: 200_000,
+        paintPhaseTimeUs: 300_000,
+        jankyFrameEvents: [],
+        rawTimelineEventCount: 120,
+        shaderCompilationEvents: [
+          ShaderCompilationEvent(
+            name: 'GrGLProgramBuilder',
+            durationUs: 25000,
+            category: 'skia',
+          ),
+        ],
+      );
+      expect(result.hasShaderJank, true);
+      expect(result.shaderCompilationEvents, hasLength(1));
+      expect(result.totalShaderCompilationTimeUs, 25000);
+    });
+
+    test('timelineHotspots sorted by total duration', () {
+      final result = FrameAnalysisResult(
+        durationMicros: 5_000_000,
+        totalFrames: 60,
+        jankyFrames: 0,
+        averageFrameTimeUs: 15000,
+        maxFrameTimeUs: 20000,
+        p90FrameTimeUs: 16500,
+        p99FrameTimeUs: 18000,
+        buildPhaseTimeUs: 500_000,
+        layoutPhaseTimeUs: 200_000,
+        paintPhaseTimeUs: 300_000,
+        jankyFrameEvents: [],
+        rawTimelineEventCount: 50,
+        timelineHotspots: [
+          TimelineHotspot(
+            name: 'GPURasterizer::Draw',
+            selfDurationUs: 300_000,
+            totalDurationUs: 300_000,
+            callCount: 20,
+            maxDurationUs: 35000,
+          ),
+          TimelineHotspot(
+            name: 'Build',
+            selfDurationUs: 100_000,
+            totalDurationUs: 100_000,
+            callCount: 15,
+            maxDurationUs: 12000,
+          ),
+        ],
+      );
+      expect(result.timelineHotspots, hasLength(2));
+      expect(result.timelineHotspots.first.name, 'GPURasterizer::Draw');
+      expect(result.timelineHotspots.first.totalDurationUs, 300_000);
+
+      final json = result.toJson();
+      expect(json['hasShaderJank'], false);
+      expect(json['timelineHotspots'], hasLength(2));
+    });
   });
 }
 
