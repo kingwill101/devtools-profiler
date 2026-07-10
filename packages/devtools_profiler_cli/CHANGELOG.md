@@ -14,6 +14,7 @@
   analysis.
 - Added `flutter:timeline` as a first-class alias for frame timing analysis
   and MCP support for the same surface.
+- Added top-level `timeline` as an MCP alias for the same analysis surface.
 - Added `flutter attach` launch support for whole-session profiling of an
   already-running Flutter app.
 - Added `flutter drive` launch support for profiled Flutter app launches.

@@ -441,6 +441,7 @@ Agent-facing tools include:
 - `profile_inspect_classes`
 - `profile_discover_apps`
 - `profile_frame_profile`
+- `timeline`
 - `profile_memory_snapshot`
 - `profile_widget_tree`
 - `profile_navigation_stack`

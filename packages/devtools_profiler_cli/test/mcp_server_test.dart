@@ -41,6 +41,7 @@ void main() {
         'profile_inspect_classes',
         'profile_frame_profile',
         'profile_timeline',
+        'timeline',
       ]),
     );
 

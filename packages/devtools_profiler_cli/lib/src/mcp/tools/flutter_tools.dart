@@ -95,6 +95,43 @@ final Tool profileTimelineTool = Tool(
   ),
 );
 
+final Tool timelineTool = Tool(
+  name: 'timeline',
+  title: 'Timeline',
+  description:
+      'Profile VM timeline frame timing and detect jank from a running '
+      'Flutter application. Connects to the VM service URI, samples frame '
+      'events from the VM timeline for the requested duration, and returns '
+      'frame timing metrics including P90, P99, max frame times, jank '
+      'percentage, and phase breakdowns (build, layout, paint). Use '
+      'profile_discover_apps to find available VM service URIs.',
+  inputSchema: Schema.object(
+    properties: {
+      'vmServiceUri': Schema.string(
+        description:
+            'The VM service WebSocket URI (e.g. '
+            'ws://127.0.0.1:8181/abc123/ws).',
+      ),
+      'durationSeconds': Schema.int(
+        description: 'Duration to profile frames in seconds (default: 5).',
+      ),
+    },
+    required: ['vmServiceUri'],
+    additionalProperties: false,
+  ),
+  outputSchema: Schema.object(
+    description: 'Frame timing analysis results.',
+    additionalProperties: true,
+  ),
+  annotations: ToolAnnotations(
+    destructiveHint: false,
+    idempotentHint: false,
+    openWorldHint: false,
+    readOnlyHint: true,
+    title: 'Timeline',
+  ),
+);
+
 final Tool profileMemorySnapshotTool = Tool(
   name: 'profile_memory_snapshot',
   title: 'Profile Memory Snapshot',
