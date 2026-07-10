@@ -46,6 +46,10 @@ class RunCommand extends ProfilerCommand {
         negatable: false,
         help:
             'Give the launched process direct terminal access for TUI and alternate-screen apps.',
+      )
+      ..addOption(
+        'warm-up',
+        help: 'Warm-up duration before the profiling timer starts. ',
       );
   }
 
@@ -68,6 +72,7 @@ class RunCommand extends ProfilerCommand {
       'devtools-profiler run --terminal -- dart run bin/tui.dart',
       'devtools-profiler run --cwd path/to/app -- dart run bin/main.dart',
       'devtools-profiler run --duration 15s --cwd path/to/flutter_app -- flutter run -d linux -t lib/main.dart',
+      'devtools-profiler run --duration 30s --warm-up 5s --cwd path/to/flutter_app -- flutter run -d linux',
     ],
   );
 
@@ -101,6 +106,10 @@ class RunCommand extends ProfilerCommand {
         runDuration: parseDuration(
           argResults!['duration'] as String?,
           optionName: 'duration',
+        ),
+        warmUpDuration: parseDuration(
+          argResults!['warm-up'] as String?,
+          optionName: 'warm-up',
         ),
         vmServiceTimeout: parseDuration(
           argResults!['vm-service-timeout'] as String?,

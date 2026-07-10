@@ -3,10 +3,10 @@ import 'package:devtools_profiler_core/devtools_profiler_core.dart';
 import '../../presentation.dart';
 import '../../rendering.dart';
 import '../constants.dart';
-import 'profiler_command.dart';
+import 'profile_target_command.dart';
 
 /// Command that summarizes a session directory or profile artifact.
-class SummarizeCommand extends ProfilerCommand {
+class SummarizeCommand extends ProfileTargetCommand {
   /// Creates a summarize command.
   SummarizeCommand(super.profileRunner);
 
@@ -17,12 +17,21 @@ class SummarizeCommand extends ProfilerCommand {
   String get description => 'Summarize a session directory or artifact.';
 
   @override
-  Future<int> run() async {
-    if (argResults!.rest.isEmpty) {
-      usageException('A session directory or artifact path is required.');
-    }
+  String get invocation => '${runner!.executableName} summarize [path]';
 
-    final targetPath = argResults!.rest.first;
+  @override
+  String formatUsage({bool includeDescription = true}) => usageWithExamples(
+    super.formatUsage(includeDescription: includeDescription),
+    const [
+      'devtools-profiler summarize',
+      'devtools-profiler summarize --call-tree --method-table',
+      'devtools-profiler summarize --hide-sdk --hide-runtime-helpers path/to/session',
+    ],
+  );
+
+  @override
+  Future<int> run() async {
+    final targetPath = await resolveTargetPath();
     final options = presentationOptions;
     final summary = await profileRunner.summarizeArtifact(targetPath);
 
@@ -97,7 +106,7 @@ class SummarizeCommand extends ProfilerCommand {
 }
 
 /// Command that explains likely hotspots in a stored profile.
-class ExplainCommand extends ProfilerCommand {
+class ExplainCommand extends ProfileTargetCommand {
   /// Creates an explain command.
   ExplainCommand(super.profileRunner) {
     argParser.addOption(
@@ -114,17 +123,24 @@ class ExplainCommand extends ProfilerCommand {
       'Explain the hotspots in a session/profile artifact.';
 
   @override
-  Future<int> run() async {
-    if (argResults!.rest.length != 1) {
-      usageException(
-        'Explain requires exactly one session directory or profile artifact path.',
-      );
-    }
+  String get invocation => '${runner!.executableName} explain [path]';
 
+  @override
+  String formatUsage({bool includeDescription = true}) => usageWithExamples(
+    super.formatUsage(includeDescription: includeDescription),
+    const [
+      'devtools-profiler explain --profile-id overall',
+      'devtools-profiler explain --hide-sdk',
+    ],
+  );
+
+  @override
+  Future<int> run() async {
+    final targetPath = await resolveTargetPath();
     final options = presentationOptions;
     final explanation = await prepareProfileExplanation(
       profileRunner,
-      targetPath: argResults!.rest.single,
+      targetPath: targetPath,
       profileId: argResults!['profile-id'] as String?,
       options: options,
     );
