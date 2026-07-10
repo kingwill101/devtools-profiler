@@ -52,6 +52,8 @@ Future<int> runCli(
         ..addCommand(MemorySnapshotCommand(profiler))
         ..addCommand(WidgetTreeCommand(profiler))
         ..addCommand(RouteStackCommand(profiler))
+        ..addCommand(ScreenshotCommand(profiler))
+        ..addCommand(DebugDumpCommand(profiler))
         ..addCommand(McpCommand(profiler));
 
   try {

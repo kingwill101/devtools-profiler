@@ -824,6 +824,76 @@ class McpToolHandlers {
     );
   }
 
+  Future<CallToolResult> profileScreenshot(CallToolRequest request) {
+    return _runTool(
+      request: request,
+      successMessage: 'Screenshot captured.',
+      action: (progress) async {
+        final arguments = request.arguments ?? const <String, Object?>{};
+        final uri = _requiredStringArgument(arguments, key: 'vmServiceUri');
+        final width = (arguments['width'] as int?) ?? 800;
+        final height = (arguments['height'] as int?) ?? 600;
+        final maxPixelRatio = (arguments['maxPixelRatio'] as int?) ?? 3;
+        progress(0, 2, 'Connecting to VM service.');
+        final vmService = await _connectVmService(uri);
+        try {
+          progress(1, 2, 'Capturing screenshot.');
+          final vm = await vmService.getVM();
+          final activeIsolate = _findActiveIsolate(vm);
+          final service = ScreenshotCaptureService(vmService: vmService);
+          final bytes = await service.captureScreenshot(
+            isolateId: activeIsolate,
+            width: width.toDouble(),
+            height: height.toDouble(),
+            maxPixelRatio: maxPixelRatio.toDouble(),
+          );
+          progress(2, 2, 'Screenshot captured.');
+          return {
+            'kind': 'screenshot',
+            'vmServiceUri': uri,
+            'width': width,
+            'height': height,
+            'imageDataBase64': base64Encode(bytes),
+            'sizeBytes': bytes.length,
+          };
+        } finally {
+          await vmService.dispose();
+        }
+      },
+    );
+  }
+
+  Future<CallToolResult> profileDebugDump(CallToolRequest request) {
+    return _runTool(
+      request: request,
+      successMessage: 'Debug dump completed.',
+      action: (progress) async {
+        final arguments = request.arguments ?? const <String, Object?>{};
+        final uri = _requiredStringArgument(arguments, key: 'vmServiceUri');
+        final kind = _optionalStringArgument(arguments, key: 'kind') ?? 'app';
+        progress(0, 2, 'Connecting to VM service.');
+        final vmService = await _connectVmService(uri);
+        try {
+          progress(1, 2, 'Dumping $kind diagnostics.');
+          final vm = await vmService.getVM();
+          final activeIsolate = _findActiveIsolate(vm);
+          final service = DebugDumpService(vmService: vmService);
+          final result = await service.dump(
+            isolateId: activeIsolate, kind: kind,
+          );
+          progress(2, 2, 'Debug dump completed.');
+          return {
+            'kind': 'debugDump',
+            'vmServiceUri': uri,
+            ...result.toJson(),
+          };
+        } finally {
+          await vmService.dispose();
+        }
+      },
+    );
+  }
+
   /// Connects to a VM service WebSocket URI.
   Future<VmService> _connectVmService(String uri) async {
     final wsUri = uri

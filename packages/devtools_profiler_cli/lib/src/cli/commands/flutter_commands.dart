@@ -457,3 +457,161 @@ class RouteStackCommand extends ProfilerCommand {
     return (active.isNotEmpty ? active.first : isolates.first).id!;
   }
 }
+
+/// Command that captures a screenshot from a running Flutter app.
+class ScreenshotCommand extends ProfilerCommand {
+  /// Creates a screenshot command.
+  ScreenshotCommand(super.profileRunner) {
+    argParser
+      ..addOption(
+        'output',
+        defaultsTo: 'screenshot.png',
+        help: 'Output file path (default: screenshot.png).',
+      )
+      ..addOption('width', defaultsTo: '800', help: 'Image width in pixels.')
+      ..addOption('height', defaultsTo: '600', help: 'Image height in pixels.');
+  }
+
+  @override
+  String get name => 'screenshot';
+
+  @override
+  String get description =>
+      'Capture a screenshot from a running Flutter app via its VM service URI.';
+
+  @override
+  String get invocation =>
+      '${runner!.executableName} screenshot [options] <vm-service-uri>';
+
+  @override
+  String formatUsage({bool includeDescription = true}) => usageWithExamples(
+    super.formatUsage(includeDescription: includeDescription),
+    const [
+      'devtools-profiler screenshot ws://127.0.0.1:8181/abc123/ws',
+      'devtools-profiler screenshot --output app.png --width 1920 ws://127.0.0.1:8181/abc123/ws',
+    ],
+  );
+
+  @override
+  Future<int> run() async {
+    if (argResults!.rest.isEmpty) {
+      usageException('A VM service URI is required.');
+    }
+
+    final vmServiceUri = argResults!.rest.single;
+    final outputPath = argResults!['output'] as String? ?? 'screenshot.png';
+    final width = int.tryParse(argResults!['width'] as String? ?? '800') ?? 800;
+    final height =
+        int.tryParse(argResults!['height'] as String? ?? '600') ?? 600;
+
+    final wsUri = vmServiceUri
+        .replaceFirst('http://', 'ws://')
+        .replaceFirst('https://', 'wss://');
+    final cleanWs = wsUri.endsWith('/ws') ? wsUri : '$wsUri/ws';
+
+    final vmService = await vmServiceConnectUri(cleanWs);
+    try {
+      final vm = await vmService.getVM();
+      final isolateId = _resolveMainIsolate(vm);
+      final service = ScreenshotCaptureService(vmService: vmService);
+      final file = await service.captureScreenshotToFile(
+        isolateId: isolateId,
+        outputPath: outputPath,
+        width: width.toDouble(),
+        height: height.toDouble(),
+      );
+      comment('Screenshot saved to ${file.path}');
+    } finally {
+      await vmService.dispose();
+    }
+
+    return successExitCode;
+  }
+
+  String _resolveMainIsolate(VM vm) {
+    final isolates = vm.isolates ?? [];
+    final active = isolates.where((i) => i.isSystemIsolate != true).toList();
+    if (active.isEmpty && isolates.isEmpty) {
+      throw StateError('No isolates found in the target VM.');
+    }
+    return (active.isNotEmpty ? active.first : isolates.first).id!;
+  }
+}
+
+/// Command that dumps Flutter debug diagnostics.
+class DebugDumpCommand extends ProfilerCommand {
+  /// Creates a debug-dump command.
+  DebugDumpCommand(super.profileRunner) {
+    argParser.addOption(
+      'kind',
+      defaultsTo: 'app',
+      allowed: DebugDumpService.availableKinds,
+      help:
+          'What to dump: ${DebugDumpService.availableKinds.join(", ")} (default: app).',
+    );
+  }
+
+  @override
+  String get name => 'debug-dump';
+
+  @override
+  String get description =>
+      'Dump Flutter diagnostic information from a running app via its VM service URI.';
+
+  @override
+  String get invocation =>
+      '${runner!.executableName} debug-dump [options] <vm-service-uri>';
+
+  @override
+  String formatUsage({bool includeDescription = true}) => usageWithExamples(
+    super.formatUsage(includeDescription: includeDescription),
+    const [
+      'devtools-profiler debug-dump ws://127.0.0.1:8181/abc123/ws',
+      'devtools-profiler debug-dump --kind render ws://127.0.0.1:8181/abc123/ws',
+    ],
+  );
+
+  @override
+  Future<int> run() async {
+    if (argResults!.rest.isEmpty) {
+      usageException('A VM service URI is required.');
+    }
+
+    final vmServiceUri = argResults!.rest.single;
+    final kind = argResults!['kind'] as String? ?? 'app';
+
+    final wsUri = vmServiceUri
+        .replaceFirst('http://', 'ws://')
+        .replaceFirst('https://', 'wss://');
+    final cleanWs = wsUri.endsWith('/ws') ? wsUri : '$wsUri/ws';
+
+    final vmService = await vmServiceConnectUri(cleanWs);
+    try {
+      final vm = await vmService.getVM();
+      final isolateId = _resolveMainIsolate(vm);
+      final service = DebugDumpService(vmService: vmService);
+
+      if (printJson) {
+        final result = await service.dump(isolateId: isolateId, kind: kind);
+        line(jsonEncoder.convert(result.toJson()));
+      } else {
+        io.title('Debug Dump ($kind)');
+        final result = await service.dump(isolateId: isolateId, kind: kind);
+        line(result.content);
+      }
+    } finally {
+      await vmService.dispose();
+    }
+
+    return successExitCode;
+  }
+
+  String _resolveMainIsolate(VM vm) {
+    final isolates = vm.isolates ?? [];
+    final active = isolates.where((i) => i.isSystemIsolate != true).toList();
+    if (active.isEmpty && isolates.isEmpty) {
+      throw StateError('No isolates found in the target VM.');
+    }
+    return (active.isNotEmpty ? active.first : isolates.first).id!;
+  }
+}

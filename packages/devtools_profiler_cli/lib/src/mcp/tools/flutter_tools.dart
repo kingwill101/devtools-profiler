@@ -171,3 +171,78 @@ final Tool profileNavigationStackTool = Tool(
     title: 'Profile Navigation Stack',
   ),
 );
+
+final Tool profileScreenshotTool = Tool(
+  name: 'profile_screenshot',
+  title: 'Profile Screenshot',
+  description:
+      'Capture a screenshot from a running Flutter application. '
+      'Uses the ext.flutter.inspector.screenshot service extension. '
+      'Returns base64-encoded PNG image data.',
+  inputSchema: Schema.object(
+    properties: {
+      'vmServiceUri': Schema.string(
+        description:
+            'The VM service WebSocket URI (e.g. '
+            'ws://127.0.0.1:8181/abc123/ws).',
+      ),
+      'width': Schema.int(
+        description: 'Image width in pixels (default: 800).',
+      ),
+      'height': Schema.int(
+        description: 'Image height in pixels (default: 600).',
+      ),
+      'maxPixelRatio': Schema.int(
+        description:
+            'Maximum pixel ratio for retina screens (default: 3).',
+      ),
+    },
+    required: ['vmServiceUri'],
+    additionalProperties: false,
+  ),
+  outputSchema: Schema.object(
+    description: 'Captured Flutter app screenshot.',
+    additionalProperties: true,
+  ),
+  annotations: ToolAnnotations(
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: false,
+    readOnlyHint: true,
+    title: 'Profile Screenshot',
+  ),
+);
+
+final Tool profileDebugDumpTool = Tool(
+  name: 'profile_debug_dump',
+  title: 'Profile Debug Dump',
+  description:
+      'Call Flutter debug dump service extensions (app, render, layer, focus, '
+      'semantics) for diagnostic information from a running application.',
+  inputSchema: Schema.object(
+    properties: {
+      'vmServiceUri': Schema.string(
+        description:
+            'The VM service WebSocket URI (e.g. '
+            'ws://127.0.0.1:8181/abc123/ws).',
+      ),
+      'kind': Schema.string(
+        description:
+            'What to dump: app, render, layer, focus, semantics (default: app).',
+      ),
+    },
+    required: ['vmServiceUri'],
+    additionalProperties: false,
+  ),
+  outputSchema: Schema.object(
+    description: 'Debug dump diagnostic output.',
+    additionalProperties: true,
+  ),
+  annotations: ToolAnnotations(
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: false,
+    readOnlyHint: true,
+    title: 'Profile Debug Dump',
+  ),
+);
