@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:devtools_profiler_cli/devtools_profiler_cli.dart';
+import 'package:devtools_profiler_cli/src/cli/commands/vm_service_discovery.dart'
+    as vm_service_discovery;
 import 'package:devtools_profiler_core/devtools_profiler_core.dart';
 import 'package:test/test.dart';
 import 'package:vm_service/vm_service.dart';
@@ -72,7 +74,7 @@ void main() {
     expect(exitCode, 0);
     expect(
       stdoutCapture.text,
-      contains('devtools-profiler attach [options] <vm-service-uri>'),
+      contains('devtools-profiler attach [options] [<vm-service-uri>]'),
     );
     expect(stdoutCapture.text, contains('Examples:'));
     expect(
@@ -81,6 +83,44 @@ void main() {
     );
     expect(stdoutCapture.text, contains('Defaults to 15s.'));
     expect(stderrCapture.text, isEmpty);
+  });
+
+  test('attach auto-discovers a single running VM service', () async {
+    final runner = _FakeProfileRunner();
+    final stdoutCapture = _OutputCapture();
+    final stderrCapture = _OutputCapture();
+    final previousDiscoverer = vm_service_discovery.discoverVmServiceApps;
+    vm_service_discovery.discoverVmServiceApps = () async => [
+      const DiscoveredApp(
+        vmServiceUri: 'ws://127.0.0.1:8181/abcd/ws',
+        projectName: 'demo_app',
+      ),
+    ];
+    addTearDown(() {
+      vm_service_discovery.discoverVmServiceApps = previousDiscoverer;
+    });
+    addTearDown(() async {
+      await stdoutCapture.close();
+      await stderrCapture.close();
+    });
+
+    final exitCode = await runCli(
+      const ['attach', '--json'],
+      runner: runner,
+      output: stdoutCapture.sink,
+      errorOutput: stderrCapture.sink,
+    );
+    await stdoutCapture.flush();
+    await stderrCapture.flush();
+
+    expect(exitCode, 0);
+    expect(
+      runner.lastAttachRequest?.vmServiceUri,
+      Uri.parse('http://127.0.0.1:8181/abcd/'),
+    );
+    expect(runner.lastAttachRequest?.duration, const Duration(seconds: 15));
+    expect(stdoutCapture.text, contains('session-attach'));
+    expect(stderrCapture.text, contains('Attach mode captures'));
   });
 
   test('discover help shows app discovery description', () async {

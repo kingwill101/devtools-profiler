@@ -138,6 +138,7 @@ The `attach` command clears the VM's existing CPU samples, captures the
 whole-session VM service view for a bounded duration, and does not stop the
 target process. It defaults to 15s, and attach sessions skip DTD by default
 because explicit region markers are unavailable in attach mode.
+If exactly one app is running, `attach` can auto-discover its VM service URI.
 
 ## Live Flutter Analysis
 

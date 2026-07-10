@@ -146,7 +146,8 @@ Future<void> main() async {
 service profile view for a bounded duration, and does not stop the target
 process. It defaults to 15s. Explicit region markers normally require `run`,
 because the target must be launched with the profiler's DTD URI and session
-id.
+id. CLI attach can auto-discover a single running app's VM service URI when one
+is not provided explicitly.
 
 ## Read Stored Artifacts
 

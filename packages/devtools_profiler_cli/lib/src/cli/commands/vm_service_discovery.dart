@@ -2,6 +2,10 @@ import 'package:devtools_profiler_core/devtools_profiler_core.dart';
 
 import 'profiler_command.dart';
 
+/// Discovers running apps for CLI commands that can auto-select a VM service.
+Future<List<DiscoveredApp>> Function() discoverVmServiceApps =
+    discoverActiveApps;
+
 /// Mixin for flutter commands that can auto-discover a VM service URI
 /// when none is explicitly provided.
 mixin VmServiceDiscovery on ProfilerCommand {
@@ -15,7 +19,7 @@ mixin VmServiceDiscovery on ProfilerCommand {
       return argResults!.rest.single;
     }
 
-    final apps = await discoverActiveApps();
+    final apps = await discoverVmServiceApps();
 
     if (apps.isEmpty) {
       throw usageException(

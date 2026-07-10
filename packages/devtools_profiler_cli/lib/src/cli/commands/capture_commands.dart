@@ -6,6 +6,7 @@ import '../../presentation.dart';
 import '../../rendering.dart';
 import '../constants.dart';
 import '../options.dart';
+import 'vm_service_discovery.dart';
 import 'profiler_command.dart';
 
 const _attachRegionWarning =
@@ -176,7 +177,7 @@ class RunCommand extends ProfilerCommand {
 }
 
 /// Command that profiles an already-running Dart VM service.
-class AttachCommand extends ProfilerCommand {
+class AttachCommand extends ProfilerCommand with VmServiceDiscovery {
   /// Creates an attach command.
   AttachCommand(super.profileRunner) {
     argParser
@@ -221,12 +222,13 @@ class AttachCommand extends ProfilerCommand {
 
   @override
   String get invocation =>
-      '${runner!.executableName} attach [options] <vm-service-uri>';
+      '${runner!.executableName} attach [options] [<vm-service-uri>]';
 
   @override
   String formatUsage({bool includeDescription = true}) => usageWithExamples(
     super.formatUsage(includeDescription: includeDescription),
     const [
+      'devtools-profiler attach',
       'devtools-profiler attach http://127.0.0.1:8181/abcd/',
       'devtools-profiler attach --duration 30s --call-tree --hide-sdk http://127.0.0.1:8181/abcd/',
       'devtools-profiler attach --duration 30s http://127.0.0.1:8181/abcd/',
@@ -235,26 +237,20 @@ class AttachCommand extends ProfilerCommand {
 
   @override
   Future<int> run() async {
-    if (argResults!.rest.length != 1) {
-      usageException(
-        'Attach requires exactly one Dart VM service URI. Start the target with '
-        'the Dart VM service enabled, then pass the printed service URI.',
-      );
-    }
-
     final duration =
         parseDuration(
           argResults!['duration'] as String?,
           optionName: 'duration',
         ) ??
         const Duration(seconds: 15);
+    final vmServiceUri = await resolveVmServiceUri();
 
     io.writelnErr('Warning: $_attachRegionWarning');
     final session = await profileRunner.attach(
       ProfileAttachRequest(
         artifactDirectory: argResults!['artifact-dir'] as String?,
         duration: duration,
-        vmServiceUri: parseVmServiceUriArgument(argResults!.rest.single),
+        vmServiceUri: parseVmServiceUriArgument(vmServiceUri),
         workingDirectory: argResults!['cwd'] as String?,
         enableDtd: !(argResults!['skip-dtd'] as bool),
       ),
