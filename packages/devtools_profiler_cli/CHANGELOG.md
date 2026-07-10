@@ -10,6 +10,8 @@
 - Added `discover` command to scan for running Dart/Flutter VM services.
 - Added `flutter:frame-profile` for live frame timing and jank detection
   with dynamic FPS, shader jank, and timeline hotspot analysis.
+- Added `flutter:timeline` as a first-class alias for frame timing analysis
+  and MCP support for the same surface.
 - Added `flutter:memory-snapshot` for allocation profile capture.
 - Added `flutter:widget-tree` for Flutter widget tree inspection.
 - Added `flutter:route-stack` for navigation stack inspection.

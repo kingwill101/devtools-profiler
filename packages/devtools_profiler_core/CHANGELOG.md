@@ -4,6 +4,8 @@
 
 - Added live Flutter frame timing analysis with jank attribution and timeline
   hotspot reporting.
+- Added a dedicated `flutter:timeline` alias for frame timing analysis while
+  keeping `flutter:frame-profile` as a compatibility alias.
 - Added Flutter widget tree capture helpers, including project-only filtering
   that preserves project widgets nested under framework wrappers.
 - Added Flutter memory snapshot capture helpers for CLI and agent workflows.
