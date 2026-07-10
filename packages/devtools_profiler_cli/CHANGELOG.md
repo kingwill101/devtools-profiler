@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.4.0
+
+- Added `profiles` command that lists stored profiling sessions in a
+  compact format by default. Use `--extended` for the full session table
+  with working directory, exit code, region count, and warnings.
+- Analysis commands (`summarize`, `explain`, `inspect`, `search-methods`,
+  `inspect-classes`) no longer require a profile path. When omitted, the
+  latest stored session is used automatically.
+- Comparison commands (`compare`, `compare-method`, `trends`) resolve the
+  latest two stored sessions when no paths are given.
+- Added `--session-id` option to single-target commands for explicit
+  session selection by id, `"latest"`, or `"previous"`.
+- Added `--limit` option to `profiles` command to control how many
+  sessions are displayed.
+- Compacted session identifiers from ~40 characters to 16 characters
+  (`MMDDHHmmss-XXXXX`) while preserving time ordering and collision
+  resistance.
+- Added `discover` command and `profile_discover_apps` MCP tool to scan
+  for running Flutter and Dart applications exposing a VM service URI.
+- Added `frame-profile` command and `profile_frame_profile` MCP tool for
+  live frame timing analysis and jank detection using the VM timeline.
+- Added `memory-snapshot` command and `profile_memory_snapshot` MCP tool
+  for capturing allocation profiles from a running application.
+- Added `widget-tree` command and `profile_widget_tree` MCP tool for
+  capturing the Flutter widget tree via service extensions.
+- Added `FrameAnalyzer`, `WidgetTreeCaptureService`, `MemorySnapshotCapture`,
+  and `discoverActiveApps` to the core library for programmatic use.
+
 ## 0.3.0
 
 - Added `run --terminal` for profiling terminal UI and alternate-screen apps

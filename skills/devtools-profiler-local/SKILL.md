@@ -21,6 +21,8 @@ Start by identifying the user's target:
   run ...` when the target has its own arguments.
 - Flutter app or test: use `run` with `flutter run` or `flutter test`.
 - Already-running VM service: use `attach`.
+- Already-running Flutter app with live analysis: use `discover` then
+  `frame-profile`, `memory-snapshot`, or `widget-tree`.
 - Application code can be edited: offer region markers.
 - Agent automation: offer the stdio MCP server.
 
@@ -28,6 +30,9 @@ Prefer one working command over a broad explanation. Once the first capture
 works, help the user add filters, regions, method inspection, or comparisons.
 Use `inspect-classes` when the question is about retained memory classes or
 allocation deltas.
+
+For already-running apps, `discover` finds the VM service URI automatically so
+the user does not need to copy-paste the URI from the terminal.
 
 ## Install The CLI
 
@@ -129,6 +134,29 @@ For tests, replace the target command with:
 -- flutter test test/widget_test.dart
 ```
 
+Profile the bundled Flutter fixture app (requires a display or GPU):
+
+```bash
+devtools-profiler run \
+  --hide-sdk \
+  --hide-runtime-helpers \
+  --call-tree \
+  --method-table \
+  --duration 30s \
+  --cwd packages/devtools_profiler_core/test/fixtures/profiled_flutter_app \
+  -- flutter run -d linux
+```
+
+The Flutter fixture app has routes for different profiling scenarios:
+
+- `/compute` — CPU-bound work inside nested profiler regions
+- `/animation` — animated widget triggering frame rebuilds
+- `/memory` — memory allocation and release patterns
+- `/scroll` — long scrollable list with paint complexity
+
+Navigate to a scenario after launch and interact while the profiler captures.
+Use `--duration` to stop the app after a profiling window.
+
 Do not use Flutter release mode, AOT builds, or browser/web targets. They do
 not expose the Dart VM service needed by this profiler.
 
@@ -179,9 +207,67 @@ table, and memory summaries.
 Use `run` mode for region capture because the profiler launches the target with
 the session and DTD configuration needed by the region library.
 
+## Live Flutter Analysis
+
+The CLI can connect to already-running Flutter or Dart applications for live
+analysis. Use the `discover` command to find apps on the local machine, then
+pass the VM service URI to the analysis commands.
+
+Discover running apps:
+
+```bash
+devtools-profiler discover
+```
+
+This scans OS processes for DDS-powered applications and prints their VM
+service WebSocket URIs.
+
+Profile frame timing and detect rendering jank:
+
+```bash
+devtools-profiler frame-profile \
+  --duration 5 \
+  ws://127.0.0.1:8181/abc123/ws
+```
+
+Returns frame timing metrics: total/janky frames, P90/P99/max frame times,
+and a build-vs-layout-vs-paint phase breakdown.
+
+Capture an allocation profile (memory snapshot):
+
+```bash
+devtools-profiler memory-snapshot \
+  --name before-opt \
+  ws://127.0.0.1:8181/abc123/ws
+```
+
+Returns the top allocation classes sorted by current heap size. Use
+`--no-gc` to skip forcing garbage collection before the capture.
+
+Capture the Flutter widget tree:
+
+```bash
+devtools-profiler widget-tree \
+  --depth 10 \
+  --summary \
+  ws://127.0.0.1:8181/abc123/ws
+```
+
+Use `--summary` for a condensed Flutter-only tree. Use `--project-only` to
+hide framework widgets.
+
 ## Read Existing Artifacts
 
-Summarize a stored session:
+List stored sessions:
+
+```bash
+devtools-profiler profiles
+
+devtools-profiler profiles --extended   # full details
+devtools-profiler profiles --limit 0    # all stored sessions
+```
+
+Summarize a stored session (path is optional — defaults to latest):
 
 ```bash
 devtools-profiler summarize \
@@ -227,6 +313,12 @@ devtools-profiler compare \
   path/to/current-session
 ```
 
+When no path is given, analysis commands (`summarize`, `explain`, `inspect`,
+`search-methods`, `inspect-classes`) default to the latest stored session.
+Comparison commands (`compare`, `compare-method`, `trends`) default to the
+latest two sessions. Use `--session-id latest`, `--session-id previous`, or
+`--session-id <id>` to select a different stored session explicitly.
+
 Use `--profile-id overall` for the whole session. Use the printed region id to
 inspect a marked region.
 
@@ -256,6 +348,8 @@ Useful MCP tools:
 - Explain and drill down: `profile_explain_hotspots`,
   `profile_search_methods`, `profile_inspect_method`,
   `profile_inspect_classes`.
+- Flutter live analysis: `profile_discover_apps`, `profile_frame_profile`,
+  `profile_memory_snapshot`, `profile_widget_tree`.
 - Compare: `profile_compare`, `profile_compare_method`,
   `profile_find_regressions`, `profile_analyze_trends`.
 
@@ -277,6 +371,14 @@ sessions when comparing region-scoped runs.
   --input data.json`.
 - If a TUI app does not render, add `--terminal` so the target receives direct
   terminal IO instead of profiler-managed pipes.
+- If the user wants live frame timing analysis, use `discover` to find the
+  VM service URI, then `frame-profile <uri>`.
+- If the user wants to inspect the widget tree of a running Flutter app, use
+  `widget-tree <uri>`.
+- If the user wants to check memory allocations without a full session, use
+  `memory-snapshot <uri>`.
+- If `discover` returns no apps, make sure the Flutter app is running in
+  debug or profile mode (release mode disables the VM service).
 - If locations are too compact, add `--full-locations`.
 - If an agent needs complete data, set limits to `0`, such as
   `--tree-depth 0`, `--tree-children 0`, `--method-limit 0`,

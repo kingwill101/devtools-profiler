@@ -139,6 +139,56 @@ whole-session VM service view for the requested duration, and does not stop the
 target process. Explicit region markers normally require `run` mode because the
 target must be launched with the profiler's DTD/session configuration.
 
+## Live Flutter Analysis
+
+The CLI includes commands that connect directly to a running Flutter or Dart
+application via its VM service URI. Use `discover` to find available URIs on
+this machine, then run the live-analysis commands.
+
+Discover running apps:
+
+```bash
+devtools-profiler discover
+```
+
+This scans OS processes for Flutter/Dart development services and lists their
+VM service WebSocket URIs. Pass `--json` for machine-readable output.
+
+Profile frame timing and detect jank:
+
+```bash
+devtools-profiler frame-profile \
+  --duration 5 \
+  ws://127.0.0.1:8181/abc123/ws
+```
+
+Returns frame timing metrics including total/janky frame counts, average, P90,
+P99, and max frame times, plus a breakdown of build, layout, and paint phases.
+
+Capture a memory snapshot:
+
+```bash
+devtools-profiler memory-snapshot \
+  --name before-optimization \
+  --no-gc \
+  ws://127.0.0.1:8181/abc123/ws
+```
+
+Returns top allocation classes sorted by current heap size. Omit `--no-gc` to
+force garbage collection before the capture.
+
+Capture the widget tree:
+
+```bash
+devtools-profiler widget-tree \
+  --depth 15 \
+  --summary \
+  ws://127.0.0.1:8181/abc123/ws
+```
+
+Use `--summary` for a condensed Flutter-only view. Use `--project-only` to
+filter framework widgets and show only project code.
+
 ## What You Get Back
 
 Each `run` or `attach` writes a session directory:
@@ -164,6 +214,22 @@ JSON responses include a `cliCommand` field for the command that can reproduce
 the same analysis selection.
 
 ## Read Existing Artifacts
+
+List stored profiling sessions:
+
+```bash
+devtools-profiler profiles
+```
+
+By default this shows a compact listing of session id, modified time, and
+command. Use `--extended` for the full table with working directory, exit
+code, region count, and warnings. Use `--limit` to control how many sessions
+are shown; `--limit 0` shows all stored sessions.
+
+Almost every analysis command below works without a path when at least one
+stored session exists — it falls back to the latest session automatically.
+Use `--session-id latest`, `--session-id previous`, or `--session-id <id>`
+to pick a different stored session explicitly.
 
 Summarize a session:
 
@@ -253,6 +319,9 @@ devtools-profiler trends \
   `--method-limit 0` disable the corresponding output limits.
 - `--duration <duration>` stops long-running targets after profiling for that
   duration. Examples: `15s`, `2m`, `500ms`.
+- `--warm-up <duration>` waits this long after VM service connection before
+  starting the profiling timer. Useful for Flutter apps to skip startup and
+  first-frame rendering. Examples: `5s`, `30s`.
 - `--vm-service-timeout <duration>` controls startup wait time before the VM
   service is available. Examples: `3m`, `300s`.
 - `--terminal` gives the launched process direct terminal access for TUI and
@@ -265,6 +334,19 @@ devtools-profiler trends \
 Commands that operate on one profile use `--profile-id overall` for the
 whole-session profile or a generated region id for a marked region. Region names
 are labels; region ids are printed in session summaries and exposed by MCP.
+
+Use `--session-id latest`, `--session-id previous`, or `--session-id <id>`
+instead of a path to reference stored sessions directly. The `profiles` command
+lists available session ids.
+
+The `profiles` command accepts `--extended`, `--limit`, and `--json`:
+
+```bash
+devtools-profiler profiles               # compact list (default limit 12)
+devtools-profiler profiles --extended     # full table
+devtools-profiler profiles --limit 0      # all stored sessions
+devtools-profiler profiles --json         # machine-readable output
+```
 
 ## MCP Server
 
@@ -298,6 +380,10 @@ Agent-facing tools include:
 - `profile_search_methods`
 - `profile_inspect_method`
 - `profile_inspect_classes`
+- `profile_discover_apps`
+- `profile_frame_profile`
+- `profile_memory_snapshot`
+- `profile_widget_tree`
 - `profile_compare`
 - `profile_compare_method`
 - `profile_find_regressions`
