@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:devtools_profiler_core/devtools_profiler_core.dart';
+import 'package:path/path.dart' as path;
 import 'package:vm_service/vm_service.dart';
 import 'package:vm_service/vm_service_io.dart';
 import 'vm_service_discovery.dart';
@@ -57,7 +58,11 @@ class FrameProfileCommand extends ProfilerCommand with VmServiceDiscovery {
       final vm = await vmService.getVM();
       final isolates = vm.isolates ?? [];
       final active = isolates.where((i) => i.isSystemIsolate != true).toList();
-      final isolateId = (active.isNotEmpty ? active.first : isolates.first).id;
+      if (active.isEmpty) {
+        error('No active application isolates found.');
+        return softwareExitCode;
+      }
+      final isolateId = active.first.id!;
 
       final analyzer = FrameAnalyzer(vmService: vmService);
       final result = await analyzer.profileFrames(
@@ -171,8 +176,9 @@ class MemorySnapshotCommand extends ProfilerCommand with VmServiceDiscovery {
   @override
   Future<int> run() async {
     final vmServiceUri = await resolveVmServiceUri();
-    final name = argResults!['name'] as String?;
+    final requestedName = argResults!['name'] as String?;
     final forceGc = !(argResults!['no-gc'] as bool? ?? false);
+    final save = argResults!['save'] as bool? ?? false;
 
     final wsUri = vmServiceUri
         .replaceFirst('http://', 'ws://')
@@ -206,7 +212,20 @@ class MemorySnapshotCommand extends ProfilerCommand with VmServiceDiscovery {
             ..sort((a, b) => b.sizeCurrent.compareTo(a.sizeCurrent));
 
       final snapshotName =
-          name ?? 'cli-snapshot-${DateTime.now().millisecondsSinceEpoch}';
+          requestedName ??
+          'cli-snapshot-${DateTime.now().millisecondsSinceEpoch}';
+
+      if (save) {
+        await _saveSnapshot(
+          vmServiceUri: vmServiceUri,
+          requestedName: requestedName,
+          isolateId: isolateId,
+          memoryUsage: profile.memoryUsage,
+          members: members,
+          profile: profile,
+          save: save,
+        );
+      }
 
       if (printJson) {
         line(
@@ -253,6 +272,98 @@ class MemorySnapshotCommand extends ProfilerCommand with VmServiceDiscovery {
     }
 
     return successExitCode;
+  }
+
+  Future<void> _saveSnapshot({
+    required String vmServiceUri,
+    required String? requestedName,
+    required String isolateId,
+    required MemoryUsage? memoryUsage,
+    required List<ClassHeapStats> members,
+    required AllocationProfile profile,
+    required bool save,
+  }) async {
+    final timestampMicros = DateTime.now().toUtc().microsecondsSinceEpoch;
+    final heapSample = heapSampleFromMemoryUsage(
+      memoryUsage: memoryUsage,
+      timestampMicros: timestampMicros,
+    );
+    final memory = summarizeMemoryProfile(
+      start: heapSample,
+      end: heapSample,
+      startClasses: members,
+      endClasses: members,
+      rawProfilePath: '',
+      topClassCount: 50,
+    );
+    final rawMemoryPayload = _buildRawMemoryPayload(
+      timestampMicros: timestampMicros,
+      memoryUsage: memoryUsage,
+      isolateId: isolateId,
+      profile: profile,
+    );
+    final sessionId = _generateSessionId();
+    final sessionDirectory = Directory(
+      path.join(
+        Directory.current.path,
+        '.dart_tool',
+        'devtools_profiler',
+        'sessions',
+        sessionId,
+      ),
+    );
+    final artifactStore = ProfileArtifactStore(sessionDirectory);
+    await artifactStore.create();
+    final overallProfile = await artifactStore.writeOverallSuccess(
+      isolateId: isolateId,
+      isolateIds: [isolateId],
+      memory: memory,
+      rawMemoryPayload: rawMemoryPayload,
+    );
+    final sessionResult = ProfileRunResult(
+      sessionId: sessionId,
+      command: [
+        'flutter:memory-snapshot',
+        if (save) '--save',
+        if (requestedName != null) ...['--name', requestedName],
+        vmServiceUri,
+      ],
+      workingDirectory: Directory.current.path,
+      exitCode: 0,
+      artifactDirectory: sessionDirectory.path,
+      regions: const [],
+      warnings: const [],
+      overallProfile: overallProfile,
+      vmServiceUri: vmServiceUri,
+    );
+    await artifactStore.writeSession(sessionResult);
+  }
+
+  Map<String, Object?> _buildRawMemoryPayload({
+    required int timestampMicros,
+    required MemoryUsage? memoryUsage,
+    required String isolateId,
+    required AllocationProfile profile,
+  }) {
+    final start = {
+      'heapSample': heapSampleFromMemoryUsage(
+        memoryUsage: memoryUsage,
+        timestampMicros: timestampMicros,
+      ).toJson(),
+      'profiles': [
+        {'isolateId': isolateId, 'allocationProfile': profile.toJson()},
+      ],
+    };
+    return {
+      'type': 'ProfileMemoryArtifact',
+      'isolateIds': [isolateId],
+      'start': start,
+      'end': start,
+    };
+  }
+
+  String _generateSessionId() {
+    return 'memory-${DateTime.now().toUtc().microsecondsSinceEpoch}';
   }
 }
 
@@ -329,6 +440,7 @@ class WidgetTreeCommand extends ProfilerCommand with VmServiceDiscovery {
           ? await captureService.captureSummaryWidgetTree(
               isolateId: isolateId,
               maxDepth: maxDepth,
+              projectOnly: projectOnly,
             )
           : await captureService.captureWidgetTree(
               isolateId: isolateId,
@@ -440,10 +552,10 @@ class RouteStackCommand extends ProfilerCommand with VmServiceDiscovery {
   String _findMainIsolate(VM vm) {
     final isolates = vm.isolates ?? [];
     final active = isolates.where((i) => i.isSystemIsolate != true).toList();
-    if (active.isEmpty && isolates.isEmpty) {
-      throw StateError('No isolates found in the target VM.');
+    if (active.isEmpty) {
+      throw StateError('No active application isolates found.');
     }
-    return (active.isNotEmpty ? active.first : isolates.first).id!;
+    return active.first.id!;
   }
 }
 
@@ -516,10 +628,10 @@ class ScreenshotCommand extends ProfilerCommand with VmServiceDiscovery {
   String _resolveMainIsolate(VM vm) {
     final isolates = vm.isolates ?? [];
     final active = isolates.where((i) => i.isSystemIsolate != true).toList();
-    if (active.isEmpty && isolates.isEmpty) {
-      throw StateError('No isolates found in the target VM.');
+    if (active.isEmpty) {
+      throw StateError('No active application isolates found.');
     }
-    return (active.isNotEmpty ? active.first : isolates.first).id!;
+    return active.first.id!;
   }
 }
 
@@ -590,10 +702,10 @@ class DebugDumpCommand extends ProfilerCommand with VmServiceDiscovery {
   String _resolveMainIsolate(VM vm) {
     final isolates = vm.isolates ?? [];
     final active = isolates.where((i) => i.isSystemIsolate != true).toList();
-    if (active.isEmpty && isolates.isEmpty) {
-      throw StateError('No isolates found in the target VM.');
+    if (active.isEmpty) {
+      throw StateError('No active application isolates found.');
     }
-    return (active.isNotEmpty ? active.first : isolates.first).id!;
+    return active.first.id!;
   }
 }
 

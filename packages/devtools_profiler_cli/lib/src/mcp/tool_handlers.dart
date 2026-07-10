@@ -779,6 +779,7 @@ class McpToolHandlers {
               ? await captureService.captureSummaryWidgetTree(
                   isolateId: activeIsolate,
                   maxDepth: maxDepth,
+                  projectOnly: projectOnly,
                 )
               : await captureService.captureWidgetTree(
                   isolateId: activeIsolate,

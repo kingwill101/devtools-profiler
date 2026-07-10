@@ -108,6 +108,7 @@ class WidgetTreeCaptureService {
   Future<WidgetTreeCapture> captureSummaryWidgetTree({
     required String isolateId,
     int maxDepth = 15,
+    bool projectOnly = false,
   }) async {
     final response = await _vmService.callServiceExtension(
       'ext.flutter.inspector.getRootWidgetSummaryTree',
@@ -119,7 +120,7 @@ class WidgetTreeCaptureService {
         response.json?['result'] as Map<String, Object?>? ??
         response.json as Map<String, Object?>;
 
-    final root = _parseNode(treeJson);
+    final root = _parseNode(treeJson, projectOnly: projectOnly);
     final nodeCount = _countNodes(root);
     final treeDepth = _maxDepth(root);
 
@@ -151,8 +152,11 @@ class WidgetTreeCaptureService {
       for (final child in childrenJson) {
         if (child is Map<String, Object?>) {
           final childNode = _parseNode(child, projectOnly: projectOnly);
-          if (projectOnly && _isFrameworkWidget(childNode.name)) continue;
-          children.add(childNode);
+          if (projectOnly && _isFrameworkWidget(childNode.name)) {
+            children.addAll(childNode.children);
+          } else {
+            children.add(childNode);
+          }
         }
       }
     }
@@ -161,7 +165,9 @@ class WidgetTreeCaptureService {
     final singleChild = node['child'] as Map<String, Object?>?;
     if (singleChild != null) {
       final childNode = _parseNode(singleChild, projectOnly: projectOnly);
-      if (!projectOnly || !_isFrameworkWidget(childNode.name)) {
+      if (projectOnly && _isFrameworkWidget(childNode.name)) {
+        children.addAll(childNode.children);
+      } else {
         children.add(childNode);
       }
     }
