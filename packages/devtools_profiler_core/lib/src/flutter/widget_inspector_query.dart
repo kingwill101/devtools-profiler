@@ -36,7 +36,15 @@ final class WidgetInspectorQueryService {
 
   final VmService _vmService;
 
-  /// Calls a Flutter widget inspector service extension.
+  /// Calls a Flutter widget inspector service extension and returns the
+  /// decoded result.
+  ///
+  /// [isolateId] identifies the target isolate. [method] is the service
+  /// extension name such as `getSelectedWidget` or `getProperties`.
+  /// [args] are passed as the extension's arguments.
+  ///
+  /// Throws [StateError] when the isolate does not expose the requested
+  /// extension.
   Future<WidgetInspectorQueryResult> query({
     required String isolateId,
     required String method,
@@ -61,6 +69,9 @@ final class WidgetInspectorQueryService {
     );
   }
 
+  /// Decodes a VM-service inspector response that may be a JSON-encoded
+  /// string or an already-decoded raw value. Preserves raw values when
+  /// decoding is unnecessary or fails.
   Object? _decodeResult(Object? raw) {
     if (raw is! String) {
       return raw;

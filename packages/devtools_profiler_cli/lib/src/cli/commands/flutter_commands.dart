@@ -52,22 +52,12 @@ abstract class _FrameTimingCommand extends ProfilerCommand
     final duration =
         int.tryParse(argResults!['duration'] as String? ?? '5') ?? 5;
 
-    final wsUri = vmServiceUri
-        .replaceFirst('http://', 'ws://')
-        .replaceFirst('https://', 'wss://');
-    final cleanWs = wsUri.endsWith('/ws') ? wsUri : '$wsUri/ws';
+    final cleanWs = normalizeWsUri(vmServiceUri);
 
     final vmService = await vmServiceConnectUri(cleanWs);
     try {
-      // Resolve the main isolate for FPS detection
       final vm = await vmService.getVM();
-      final isolates = vm.isolates ?? [];
-      final active = isolates.where((i) => i.isSystemIsolate != true).toList();
-      if (active.isEmpty) {
-        error('No active application isolates found.');
-        return softwareExitCode;
-      }
-      final isolateId = active.first.id!;
+      final isolateId = resolveMainIsolate(vm);
 
       final analyzer = FrameAnalyzer(vmService: vmService);
       final result = await analyzer.profileFrames(
@@ -241,23 +231,12 @@ class MemorySnapshotCommand extends ProfilerCommand with VmServiceDiscovery {
     final forceGc = !(argResults!['no-gc'] as bool? ?? false);
     final save = argResults!['save'] as bool? ?? false;
 
-    final wsUri = vmServiceUri
-        .replaceFirst('http://', 'ws://')
-        .replaceFirst('https://', 'wss://');
-    final cleanWs = wsUri.endsWith('/ws') ? wsUri : '$wsUri/ws';
+    final cleanWs = normalizeWsUri(vmServiceUri);
 
     final vmService = await vmServiceConnectUri(cleanWs);
     try {
       final vm = await vmService.getVM();
-      final isolates = vm.isolates ?? [];
-      final activeIsolates = isolates
-          .where((i) => i.isSystemIsolate != true)
-          .toList();
-      if (activeIsolates.isEmpty) {
-        error('No active application isolates found.');
-        return softwareExitCode;
-      }
-      final isolateId = activeIsolates.first.id!;
+      final isolateId = resolveMainIsolate(vm);
 
       final profile = await vmService.getAllocationProfile(
         isolateId,
@@ -478,23 +457,12 @@ class WidgetTreeCommand extends ProfilerCommand with VmServiceDiscovery {
     final useSummary = argResults!['summary'] as bool? ?? false;
     final projectOnly = argResults!['project-only'] as bool? ?? false;
 
-    final wsUri = vmServiceUri
-        .replaceFirst('http://', 'ws://')
-        .replaceFirst('https://', 'wss://');
-    final cleanWs = wsUri.endsWith('/ws') ? wsUri : '$wsUri/ws';
+    final cleanWs = normalizeWsUri(vmServiceUri);
 
     final vmService = await vmServiceConnectUri(cleanWs);
     try {
       final vm = await vmService.getVM();
-      final isolates = vm.isolates ?? [];
-      final activeIsolates = isolates
-          .where((i) => i.isSystemIsolate != true)
-          .toList();
-      if (activeIsolates.isEmpty) {
-        error('No active application isolates found.');
-        return softwareExitCode;
-      }
-      final isolateId = activeIsolates.first.id!;
+      final isolateId = resolveMainIsolate(vm);
 
       final captureService = WidgetTreeCaptureService(vmService: vmService);
       final tree = useSummary
@@ -608,15 +576,12 @@ class InspectorQueryCommand extends ProfilerCommand with VmServiceDiscovery {
       args['subtreeDepth'] = subtreeDepth.toString();
     }
 
-    final wsUri = vmServiceUri
-        .replaceFirst('http://', 'ws://')
-        .replaceFirst('https://', 'wss://');
-    final cleanWs = wsUri.endsWith('/ws') ? wsUri : '$wsUri/ws';
+    final cleanWs = normalizeWsUri(vmServiceUri);
 
     final vmService = await vmServiceConnectUri(cleanWs);
     try {
       final vm = await vmService.getVM();
-      final isolateId = _resolveMainIsolate(vm);
+      final isolateId = resolveMainIsolate(vm);
       final service = WidgetInspectorQueryService(vmService: vmService);
       final result = await service.query(
         isolateId: isolateId,
@@ -651,15 +616,6 @@ class InspectorQueryCommand extends ProfilerCommand with VmServiceDiscovery {
       return 'ext.flutter.inspector.$method';
     }
     return method;
-  }
-
-  String _resolveMainIsolate(VM vm) {
-    final isolates = vm.isolates ?? [];
-    final active = isolates.where((i) => i.isSystemIsolate != true).toList();
-    if (active.isEmpty) {
-      throw StateError('No active application isolates found.');
-    }
-    return active.first.id!;
   }
 }
 
@@ -705,15 +661,12 @@ class ScreenshotCommand extends ProfilerCommand with VmServiceDiscovery {
     final height =
         int.tryParse(argResults!['height'] as String? ?? '600') ?? 600;
 
-    final wsUri = vmServiceUri
-        .replaceFirst('http://', 'ws://')
-        .replaceFirst('https://', 'wss://');
-    final cleanWs = wsUri.endsWith('/ws') ? wsUri : '$wsUri/ws';
+    final cleanWs = normalizeWsUri(vmServiceUri);
 
     final vmService = await vmServiceConnectUri(cleanWs);
     try {
       final vm = await vmService.getVM();
-      final isolateId = _resolveMainIsolate(vm);
+      final isolateId = resolveMainIsolate(vm);
       final service = ScreenshotCaptureService(vmService: vmService);
       final file = await service.captureScreenshotToFile(
         isolateId: isolateId,
@@ -727,15 +680,6 @@ class ScreenshotCommand extends ProfilerCommand with VmServiceDiscovery {
     }
 
     return successExitCode;
-  }
-
-  String _resolveMainIsolate(VM vm) {
-    final isolates = vm.isolates ?? [];
-    final active = isolates.where((i) => i.isSystemIsolate != true).toList();
-    if (active.isEmpty) {
-      throw StateError('No active application isolates found.');
-    }
-    return active.first.id!;
   }
 }
 
@@ -777,15 +721,12 @@ class DebugDumpCommand extends ProfilerCommand with VmServiceDiscovery {
     final vmServiceUri = await resolveVmServiceUri();
     final kind = argResults!['kind'] as String? ?? 'app';
 
-    final wsUri = vmServiceUri
-        .replaceFirst('http://', 'ws://')
-        .replaceFirst('https://', 'wss://');
-    final cleanWs = wsUri.endsWith('/ws') ? wsUri : '$wsUri/ws';
+    final cleanWs = normalizeWsUri(vmServiceUri);
 
     final vmService = await vmServiceConnectUri(cleanWs);
     try {
       final vm = await vmService.getVM();
-      final isolateId = _resolveMainIsolate(vm);
+      final isolateId = resolveMainIsolate(vm);
       final service = DebugDumpService(vmService: vmService);
 
       if (printJson) {
@@ -801,15 +742,6 @@ class DebugDumpCommand extends ProfilerCommand with VmServiceDiscovery {
     }
 
     return successExitCode;
-  }
-
-  String _resolveMainIsolate(VM vm) {
-    final isolates = vm.isolates ?? [];
-    final active = isolates.where((i) => i.isSystemIsolate != true).toList();
-    if (active.isEmpty) {
-      throw StateError('No active application isolates found.');
-    }
-    return active.first.id!;
   }
 }
 
@@ -863,10 +795,7 @@ class LogsCommand extends ProfilerCommand with VmServiceDiscovery {
     final outputPath = argResults!['output'] as String?;
     final follow = argResults!['follow'] as bool;
 
-    final wsUri = vmServiceUri
-        .replaceFirst('http://', 'ws://')
-        .replaceFirst('https://', 'wss://');
-    final cleanWs = wsUri.endsWith('/ws') ? wsUri : '$wsUri/ws';
+    final cleanWs = normalizeWsUri(vmServiceUri);
 
     final vmService = await vmServiceConnectUri(cleanWs);
     try {

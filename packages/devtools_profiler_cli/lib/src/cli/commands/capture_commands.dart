@@ -199,10 +199,10 @@ class AttachCommand extends ProfilerCommand with VmServiceDiscovery {
       ..addFlag(
         'skip-dtd',
         defaultsTo: true,
-        negatable: false,
         help:
-            'Attach sessions do not use the Dart Tooling Daemon by default. '
-            'This flag is retained for compatibility with older guidance.',
+            'Skip the Dart Tooling Daemon for this attach session. '
+            'Explicit region markers will be unavailable. Pass '
+            '--no-skip-dtd to opt into DTD.',
       )
       ..addFlag(
         'flutter',

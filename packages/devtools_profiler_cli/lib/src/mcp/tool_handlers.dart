@@ -963,6 +963,18 @@ class McpToolHandlers {
     return target.id!;
   }
 
+  /// Maps a user-facing inspector method name to a VM-service extension RPC.
+  ///
+  /// Supported name patterns:
+  /// - `get*` / `set*` → `ext.flutter.inspector.$method`
+  /// - `profile*` / `debug*` → `ext.flutter.$method`
+  /// - `ext.flutter.*` → passed through unchanged
+  /// - Anything else → returned as-is
+  ///
+  /// This covers methods such as `getSelectedWidget`, `getProperties`,
+  /// `getChildren`, `getParentChain`, `getDetailsSubtree`,
+  /// `getLayoutExplorerNode`, `isWidgetTreeReady`, and
+  /// `structuredErrors`.
   String _toInspectorRpc(String method) {
     if (method.startsWith('ext.flutter.')) {
       return method;

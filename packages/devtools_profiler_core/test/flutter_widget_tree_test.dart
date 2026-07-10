@@ -132,6 +132,9 @@ Directory _fixtureDirectory() {
   );
 }
 
+/// Fakes the VM service for the root widget tree extension and validates
+/// that the caller invokes the expected `ext.flutter.inspector.getRootWidgetTree`
+/// RPC.
 final class _FakeWidgetTreeVmService extends VmService {
   _FakeWidgetTreeVmService(this.responseJson) : super(Stream.empty(), (_) {});
 

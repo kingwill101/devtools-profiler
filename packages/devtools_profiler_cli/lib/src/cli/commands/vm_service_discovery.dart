@@ -1,4 +1,5 @@
 import 'package:devtools_profiler_core/devtools_profiler_core.dart';
+import 'package:vm_service/vm_service.dart';
 
 import 'profiler_command.dart';
 
@@ -42,6 +43,28 @@ mixin VmServiceDiscovery on ProfilerCommand {
       '${apps.map((a) => '  ${a.projectName}: ${a.vmServiceUri}').join('\n')}\n'
       'Use ${runner!.executableName} $commandName <uri> to select one.',
     );
+  }
+
+  /// Normalizes an HTTP/HTTPS VM service URI to a WebSocket URI suitable
+  /// for [vmServiceConnectUri]. Replaces `http://` with `ws://` and
+  /// `https://` with `wss://`, then ensures the result ends with `/ws`.
+  String normalizeWsUri(String uri) {
+    final wsUri = uri
+        .replaceFirst('http://', 'ws://')
+        .replaceFirst('https://', 'wss://');
+    return wsUri.endsWith('/ws') ? wsUri : '$wsUri/ws';
+  }
+
+  /// Returns the ID of the first non-system isolate in [vm].
+  ///
+  /// Throws [StateError] when no isolates are found.
+  String resolveMainIsolate(VM vm) {
+    final isolates = vm.isolates ?? [];
+    final active = isolates.where((i) => i.isSystemIsolate != true).toList();
+    if (active.isEmpty && isolates.isEmpty) {
+      throw StateError('No isolates found in the target VM.');
+    }
+    return (active.isNotEmpty ? active.first : isolates.first).id!;
   }
 
   /// The full command name including namespace prefix.

@@ -23,7 +23,8 @@ Start by identifying the user's target:
   `flutter test`.
 - Already-running VM service: use `attach`.
 - Already-running Flutter app with live analysis: use `discover` then
-  `timeline` (or `frame-profile`), `memory-snapshot`, or `widget-tree`.
+  `timeline` (or `flutter:frame-profile`), `memory-snapshot`, or
+  `widget-tree`.
 - Application code can be edited: offer region markers.
 - Agent automation: offer the stdio MCP server.
 
@@ -273,10 +274,10 @@ devtools-profiler flutter:widget-tree \
 Use `--summary` for a condensed Flutter-only tree. Use `--project-only` to
 hide framework widgets in either tree shape.
 
-Inspect the navigation stack:
+Query the widget inspector:
 
 ```bash
-devtools-profiler flutter:route-stack \
+devtools-profiler flutter:inspector --method getSelectedWidget \
   ws://127.0.0.1:8181/abc123/ws
 ```
 
@@ -417,7 +418,7 @@ sessions when comparing region-scoped runs.
 - If a TUI app does not render, add `--terminal` so the target receives direct
   terminal IO instead of profiler-managed pipes.
 - If the user wants live frame timing analysis, use `discover` to find the
-  VM service URI, then `frame-profile <uri>`.
+  VM service URI, then `flutter:frame-profile <uri>` or `timeline <uri>`.
 - If the user wants to inspect the widget tree of a running Flutter app, use
   `widget-tree <uri>`.
 - If the user wants to check memory allocations without a full session, use
