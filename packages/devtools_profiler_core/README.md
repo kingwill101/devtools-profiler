@@ -222,6 +222,7 @@ It intentionally does not depend on `packages/devtools_app`,
 - Flutter release mode, browser/web targets, and AOT targets are not supported.
 - CPU and memory capture are implemented.
 - Timeline capture is represented in the shared protocol enum but is not
-  implemented by this backend.
+  implemented as a region capture mode by this backend. Live frame timing
+  analysis is provided by the CLI's `flutter:frame-profile` command.
 - Most users should prefer the globally installed CLI. Use this package
   directly when building custom profiler integrations.

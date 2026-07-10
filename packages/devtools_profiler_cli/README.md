@@ -154,15 +154,6 @@ devtools-profiler discover
 This scans OS processes for Flutter/Dart development services and lists their
 VM service WebSocket URIs. Pass `--json` for machine-readable output.
 
-Discover running apps:
-
-```bash
-devtools-profiler discover
-```
-
-This scans OS processes for Flutter/Dart development services and lists their
-VM service WebSocket URIs. Pass `--json` for machine-readable output.
-
 All flutter commands below auto-discover the VM service URI when omitted.
 Just run them while your app is running and they connect automatically:
 
@@ -191,12 +182,14 @@ Capture a memory snapshot:
 ```bash
 devtools-profiler flutter:memory-snapshot \
   --name before-optimization \
+  --save \
   --no-gc \
   ws://127.0.0.1:8181/abc123/ws
 ```
 
 Returns top allocation classes sorted by current heap size. Omit `--no-gc` to
-force garbage collection before the capture.
+force garbage collection before the capture. Use `--save` to persist the
+snapshot under `.dart_tool/devtools_profiler/sessions` for later comparison.
 
 Capture the widget tree:
 
@@ -208,7 +201,7 @@ devtools-profiler flutter:widget-tree \
 ```
 
 Use `--summary` for a condensed Flutter-only view. Use `--project-only` to
-filter framework widgets and show only project code.
+filter framework widgets and show only project code in either tree shape.
 
 Inspect the navigation stack:
 
