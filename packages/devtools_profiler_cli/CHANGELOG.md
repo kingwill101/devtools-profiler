@@ -29,6 +29,8 @@
   `profile_navigation_stack`, `profile_screenshot`,
   `profile_debug_dump`, `profile_stream_logs`.
 - Flutter fixture app for manual profiling and testing.
+- Flutter commands now auto-discover the VM service URI when none is
+  provided — works with a single running app without typing the URI.
 
 ## 0.3.0
 

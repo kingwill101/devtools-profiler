@@ -163,6 +163,17 @@ devtools-profiler discover
 This scans OS processes for Flutter/Dart development services and lists their
 VM service WebSocket URIs. Pass `--json` for machine-readable output.
 
+All flutter commands below auto-discover the VM service URI when omitted.
+Just run them while your app is running and they connect automatically:
+
+```bash
+devtools-profiler flutter:frame-profile     # auto-discovers URI
+devtools-profiler flutter:screenshot        # same
+```
+
+When multiple apps are running, the command lists them and asks you to pick
+one by passing the URI explicitly.
+
 Profile frame timing and detect jank:
 
 ```bash

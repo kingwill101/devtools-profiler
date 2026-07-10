@@ -231,6 +231,17 @@ devtools-profiler discover
 This scans OS processes for DDS-powered applications and prints their VM
 service WebSocket URIs.
 
+All flutter commands auto-discover the VM service when no URI is given.
+When exactly one Flutter app is running, the URI is resolved automatically:
+
+```bash
+devtools-profiler flutter:frame-profile  # no URI needed
+devtools-profiler flutter:widget-tree    # same
+```
+
+When multiple apps are running, the command lists them and asks you to
+pick one by passing the URI.
+
 Profile frame timing and detect rendering jank:
 
 ```bash
