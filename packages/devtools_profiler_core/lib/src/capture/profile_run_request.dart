@@ -33,6 +33,7 @@ class ProfileRunRequest {
     this.processIoMode = ProfileProcessIoMode.pipe,
     this.handleInterruptSignals = false,
     this.runDuration,
+    this.warmUpDuration,
     this.vmServiceTimeout,
   });
 
@@ -70,6 +71,17 @@ class ProfileRunRequest {
   /// This is useful for long-running apps such as `flutter run`, where the
   /// process would otherwise keep running until a user stops it manually.
   final Duration? runDuration;
+
+  /// Optional warm-up period before the profiling timer starts.
+  ///
+  /// When set, the profiler connects to the VM service and lets the target
+  /// run for [warmUpDuration] before starting the [runDuration] timer. This
+  /// is useful for Flutter apps where you want to skip the initial engine
+  /// initialization and first-frame rendering, and only profile the
+  /// steady-state behavior.
+  ///
+  /// Ignored when [runDuration] is null.
+  final Duration? warmUpDuration;
 
   /// Optional timeout for waiting for the launched process to expose a VM
   /// service URI.

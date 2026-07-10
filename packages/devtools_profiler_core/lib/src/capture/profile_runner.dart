@@ -126,6 +126,19 @@ class ProfileRunner {
       );
 
       final runDuration = request.runDuration;
+      final warmUpDuration = request.warmUpDuration;
+
+      if (warmUpDuration != null && runDuration != null) {
+        // Wait for Flutter to finish initializing before starting the
+        // profiling timer. We poll the main isolate for Flutter service
+        // extensions. When ext.flutter.* extensions are registered, Flutter
+        // has completed startup and rendered its first frame.
+        await _waitForFlutterExtensions(
+          sessionController,
+          timeout: warmUpDuration,
+        );
+      }
+
       if (runDuration != null) {
         runDurationTimer = Timer(runDuration, () {
           terminatedByProfiler = true;
@@ -506,6 +519,65 @@ Future<_ProcessCompletion> _waitForDartProcessCompletion(
     }
     pollDelay = _nextExitPausePollDelay(pollDelay);
   }
+}
+
+/// Polls the main isolate for Flutter service extensions.
+///
+/// Returns as soon as at least one `ext.flutter.*` extension is registered,
+/// or when [timeout] elapses. This avoids starting the profiling timer while
+/// Flutter is still initializing.
+Future<void> _waitForFlutterExtensions(
+  ProfileSessionController controller, {
+  required Duration timeout,
+}) async {
+  final deadline = DateTime.now().add(timeout);
+  final vmService = controller.context.vmService;
+
+  if (vmService == null) {
+    // No VM service yet — fall back to the full delay.
+    await Future<void>.delayed(timeout);
+    return;
+  }
+
+  // Resolve the main isolate ID from the VM.
+  String? mainIsolateId;
+  try {
+    final vm = await vmService.getVM();
+    final isolates = vm.isolates ?? [];
+    final active =
+        isolates.where((i) => i.isSystemIsolate != true).toList();
+    mainIsolateId = active.isNotEmpty ? active.first.id : null;
+    mainIsolateId ??= isolates.isNotEmpty ? isolates.first.id : null;
+  } catch (_) {}
+
+  if (mainIsolateId == null) {
+    // Can't resolve an isolate — fall back to the full delay.
+    await Future<void>.delayed(timeout);
+    return;
+  }
+
+  controller.addWarning(
+    'Waiting for Flutter framework to initialize (max ${timeout.inMilliseconds}ms)...',
+  );
+
+  while (DateTime.now().isBefore(deadline)) {
+    try {
+      final isolate = await vmService.getIsolate(mainIsolateId);
+      final extensions = isolate.extensionRPCs ?? [];
+      if (extensions.any((ext) => ext.startsWith('ext.flutter.'))) {
+        controller.addWarning('Flutter initialization complete.');
+        return;
+      }
+    } catch (_) {
+      // Isolate might not be ready yet — keep polling.
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+  }
+
+  controller.addWarning(
+    'Flutter framework did not register extensions within ${timeout.inMilliseconds}ms; '
+    'starting profiling timer anyway.',
+  );
 }
 
 Duration _nextExitPausePollDelay(Duration currentDelay) {
