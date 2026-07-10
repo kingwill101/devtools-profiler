@@ -219,9 +219,10 @@ final Tool profileNavigationStackTool = Tool(
   name: 'profile_navigation_stack',
   title: 'Profile Navigation Stack',
   description:
-      'Inspect the Flutter navigation route stack from a running application. '
-      'Returns the ordered list of routes with their types, settings names, '
-      'and which route is currently displayed.',
+      'Inspect the Flutter navigation route stack from a running application '
+      'when the runtime exposes the route-stack inspector extension. Returns '
+      'the ordered list of routes with their types, settings names, and '
+      'which route is currently displayed.',
   inputSchema: Schema.object(
     properties: {
       'vmServiceUri': Schema.string(

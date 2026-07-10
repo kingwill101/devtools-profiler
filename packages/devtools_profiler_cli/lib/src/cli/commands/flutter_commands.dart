@@ -554,7 +554,8 @@ class RouteStackCommand extends ProfilerCommand with VmServiceDiscovery {
   @override
   String get description =>
       'Inspect the navigation stack from a running Flutter app '
-      'via its VM service URI.';
+      'via its VM service URI when the runtime exposes the route-stack '
+      'inspector extension.';
 
   @override
   String get invocation =>
@@ -581,7 +582,12 @@ class RouteStackCommand extends ProfilerCommand with VmServiceDiscovery {
       final vm = await vmService.getVM();
       final isolateId = _findMainIsolate(vm);
       final service = NavigationStackService(vmService: vmService);
-      final stack = await service.getNavigationStack(isolateId: isolateId);
+      late final NavigationStack stack;
+      try {
+        stack = await service.getNavigationStack(isolateId: isolateId);
+      } on StateError catch (error) {
+        usageException(error.message);
+      }
 
       if (printJson) {
         line(jsonEncoder.convert(stack.toJson()));

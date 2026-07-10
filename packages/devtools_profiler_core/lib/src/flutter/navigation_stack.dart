@@ -67,8 +67,17 @@ class NavigationStackService {
   Future<NavigationStack> getNavigationStack({
     required String isolateId,
   }) async {
+    final isolate = await _vmService.getIsolate(isolateId);
+    if (!(isolate.extensionRPCs?.contains(_routeStackExtensionName) ?? false)) {
+      throw StateError(
+        'This Flutter runtime does not expose '
+        '$_routeStackExtensionName. Route stack inspection is unavailable on '
+        'this SDK.',
+      );
+    }
+
     final response = await _vmService.callServiceExtension(
-      'ext.flutter.inspector.getRouteStack',
+      _routeStackExtensionName,
       isolateId: isolateId,
       args: {'objectGroup': 'inspector'},
     );
@@ -110,3 +119,5 @@ class NavigationStackService {
     return NavigationStack(routes: routes, currentRoute: currentRoute);
   }
 }
+
+const _routeStackExtensionName = 'ext.flutter.inspector.getRouteStack';

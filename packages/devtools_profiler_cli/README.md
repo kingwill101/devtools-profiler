@@ -214,7 +214,8 @@ devtools-profiler flutter:route-stack \
   ws://127.0.0.1:8181/abc123/ws
 ```
 
-Returns the ordered list of routes with their types and which is current.
+Returns the ordered list of routes with their types and which is current when
+the target Flutter runtime exposes `ext.flutter.inspector.getRouteStack`.
 
 Capture a screenshot:
 
