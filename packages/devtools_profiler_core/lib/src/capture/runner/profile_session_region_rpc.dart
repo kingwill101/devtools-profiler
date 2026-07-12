@@ -103,6 +103,8 @@ final class ProfileSessionRegionRpcHandler {
       parentRegionId: parentRegionId,
       regionId: regionId,
       startTimestampMicros: startTimestampMicros,
+      extra:
+          params['extra'].valueOr(<String, Object?>{}) as Map<String, Object?>,
     );
 
     context.activeRegions[region.regionId] = region;
@@ -175,6 +177,7 @@ final class ProfileSessionRegionRpcHandler {
         cpuSamples: snapshot.cpuSamples,
         memory: snapshot.memory,
         rawMemoryPayload: snapshot.rawMemoryPayload,
+        extra: region.extra,
       );
       context.regions.add(result);
       return {
@@ -199,6 +202,7 @@ final class ProfileSessionRegionRpcHandler {
         startTimestampMicros: region.startTimestampMicros,
         endTimestampMicros: stopTimestampMicros,
         error: error.toString(),
+        extra: region.extra,
       );
       context.regions.add(failure);
       await postRegionErrorEvent(region: region, error: error.toString());
@@ -257,6 +261,7 @@ final class ProfileSessionRegionRpcHandler {
         startTimestampMicros: region.startTimestampMicros,
         endTimestampMicros: region.startTimestampMicros,
         error: errorForRegion(region),
+        extra: region.extra,
       );
       context.regions.add(failure);
     }

@@ -77,6 +77,57 @@ Future<T> profileRegion<T>(
   }, zoneValues: {_activeRegionStackZoneKey: regionStack});
 }
 
+/// Runs a synchronous [body] while reporting a named profiling region.
+///
+/// Unlike [profileRegion], this does not wrap the callback in a Future.
+/// DTD start/stop events are sent asynchronously (fire-and-forget) so the
+/// caller's synchronous execution is not blocked by profiler transport.
+/// Timestamps are captured at the call site, so region timing remains
+/// accurate even if the DTD messages arrive slightly late.
+///
+/// Nested calls inherit the current region parent automatically.
+///
+/// Throws a [ProfileRegionConfigurationException] when this process was not
+/// started by the profiler CLI in a session that can receive region events.
+T profileRegionSync<T>(
+  String name,
+  T Function() body, {
+  Map<String, String> attributes = const {},
+  ProfileRegionOptions options = const ProfileRegionOptions(),
+}) {
+  final inheritedOptions = options.parentRegionId == null
+      ? options.copyWith(parentRegionId: _currentRegionId())
+      : options;
+  final handle = startProfileRegionSync(
+    name,
+    attributes: attributes,
+    options: inheritedOptions,
+  );
+  final regionStack = [..._currentRegionStack(), handle.regionId];
+
+  return runZoned(() {
+    T? result;
+    Object? pendingError;
+    StackTrace? pendingStackTrace;
+
+    try {
+      result = body();
+    } catch (error, stackTrace) {
+      pendingError = error;
+      pendingStackTrace = stackTrace;
+    }
+
+    // Fire-and-forget the stop — DTD events are sent asynchronously.
+    handle.stop().ignore();
+
+    if (pendingError != null) {
+      Error.throwWithStackTrace(pendingError, pendingStackTrace!);
+    }
+
+    return result as T;
+  }, zoneValues: {_activeRegionStackZoneKey: regionStack});
+}
+
 /// Starts a profiling region and returns a handle that can stop it later.
 ///
 /// Use this when the measured work spans multiple control-flow paths or cannot
@@ -102,6 +153,81 @@ Future<ProfileRegionHandle> startProfileRegion(
     name: name,
     attributes: attributes,
     options: inheritedOptions,
+  );
+}
+
+/// Starts a profiling region synchronously, firing DTD events in the
+/// background.
+///
+/// Use this when you need to profile synchronous code without adding a
+/// `Future` wrapper. The returned handle's [ProfileRegionHandle.stop] is
+/// fire-and-forget — DTD messages are sent asynchronously.
+///
+/// Throws a [ProfileRegionConfigurationException] when this process was not
+/// started by the profiler CLI in a session that can receive region events.
+ProfileRegionHandle startProfileRegionSync(
+  String name, {
+  Map<String, String> attributes = const {},
+  ProfileRegionOptions options = const ProfileRegionOptions(),
+}) {
+  final isolateId = developer.Service.getIsolateId(Isolate.current);
+  if (isolateId == null) {
+    throw const ProfileRegionConfigurationException(
+      'The current Dart runtime does not expose a service protocol isolate ID.',
+    );
+  }
+
+  final inheritedOptions = options.parentRegionId == null
+      ? options.copyWith(parentRegionId: _currentRegionId())
+      : options;
+
+  final controlClient = _ProfilerControlClient.fromEnvironment();
+  final regionId = _generateRegionId();
+  final startTimestampMicros = developer.Timeline.now;
+
+  // Fire DTD start asynchronously — timestamps are already captured.
+  _startRegionAsync(
+    controlClient,
+    dtdParams: {
+      'attributes': attributes,
+      'captureKinds': [
+        for (final kind in inheritedOptions.captureKinds) kind.name,
+      ],
+      'isolateId': isolateId,
+      'isolateScope': inheritedOptions.isolateScope.name,
+      'name': name,
+      if (inheritedOptions.parentRegionId != null)
+        'parentRegionId': inheritedOptions.parentRegionId,
+      'regionId': regionId,
+      'sessionId': controlClient.sessionId,
+      'timestampMicros': startTimestampMicros,
+      if (inheritedOptions.extra.isNotEmpty) 'extra': inheritedOptions.extra,
+    },
+  );
+
+  return ProfileRegionHandle._(
+    attributes: attributes,
+    name: name,
+    regionId: regionId,
+    stopImpl: () async {
+      await controlClient.stopRegionAsynchronously(
+        isolateId: isolateId,
+        regionId: regionId,
+        timestampMicros: developer.Timeline.now,
+      );
+    },
+  );
+}
+
+/// Fires a DTD startRegion call in the background without awaiting.
+void _startRegionAsync(
+  _ProfilerControlClient client, {
+  required Map<String, Object?> dtdParams,
+}) {
+  unawaited(
+    client
+        .callService(_profilerControlService, _startRegionMethod, dtdParams)
+        .catchError((_) {}),
   );
 }
 
@@ -167,6 +293,9 @@ class _ProfilerControlClient {
   final Uri _dtdUri;
   final String _sessionId;
 
+  /// The configured profiler session identifier.
+  String get sessionId => _sessionId;
+
   /// Creates a control client from profiler-provided environment values.
   ///
   /// The CLI injects these values through process environment variables for
@@ -215,6 +344,7 @@ class _ProfilerControlClient {
           'regionId': regionId,
           'sessionId': _sessionId,
           'timestampMicros': developer.Timeline.now,
+          if (options.extra.isNotEmpty) 'extra': options.extra,
         },
       );
     });
@@ -265,6 +395,36 @@ class _ProfilerControlClient {
     } finally {
       await dtd.close();
     }
+  }
+
+  /// Calls a DTD service method without session validation.
+  ///
+  /// Used by fire-and-forget region start/stop to avoid blocking the caller.
+  Future<void> callService(
+    String service,
+    String method,
+    Map<String, Object?> params,
+  ) async {
+    final dtd = await DartToolingDaemon.connect(_dtdUri);
+    try {
+      await dtd.call(service, method, params: params);
+    } finally {
+      await dtd.close();
+    }
+  }
+
+  /// Stops a region by sending a fire-and-forget DTD message.
+  Future<void> stopRegionAsynchronously({
+    required String isolateId,
+    required String regionId,
+    required int timestampMicros,
+  }) async {
+    await callService(_profilerControlService, _stopRegionMethod, {
+      'isolateId': isolateId,
+      'regionId': regionId,
+      'sessionId': _sessionId,
+      'timestampMicros': timestampMicros,
+    });
   }
 }
 

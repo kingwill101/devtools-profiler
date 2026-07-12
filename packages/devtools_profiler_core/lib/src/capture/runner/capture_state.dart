@@ -17,6 +17,7 @@ final class ActiveProfileRegion {
     required this.parentRegionId,
     required this.regionId,
     required this.startTimestampMicros,
+    this.extra = const {},
   });
 
   final Map<String, String> attributes;
@@ -27,6 +28,12 @@ final class ActiveProfileRegion {
   final String? parentRegionId;
   final String regionId;
   final int startTimestampMicros;
+
+  /// Extra tool-specific metadata attached at region start.
+  ///
+  /// Tools like `lualike` can attach arbitrary key-value data here (e.g.
+  /// `{'luaFile': 'calls.lua', 'luaFunction': 'runBenchmark'}`).
+  final Map<String, Object?> extra;
 }
 
 /// Aggregated CPU and memory snapshot data for one capture window.

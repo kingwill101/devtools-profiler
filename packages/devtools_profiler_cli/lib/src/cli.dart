@@ -5,7 +5,9 @@ import 'package:artisanal/args.dart';
 import 'package:devtools_profiler_core/devtools_profiler_core.dart';
 
 import 'cli/commands/analysis_commands.dart';
+import 'cli/commands/annotate_command.dart';
 import 'cli/commands/artifact_commands.dart';
+import 'cli/commands/replay_command.dart';
 import 'cli/commands/capture_commands.dart';
 import 'cli/commands/discover_command.dart';
 import 'cli/commands/flutter_commands.dart';
@@ -41,6 +43,7 @@ Future<int> runCli(
         ..addCommand(SummarizeCommand(profiler))
         ..addCommand(ExplainCommand(profiler))
         ..addCommand(CompareCommand(profiler))
+        ..addCommand(RegressCommand(profiler))
         ..addCommand(TrendsCommand(profiler))
         ..addCommand(InspectCommand(profiler))
         ..addCommand(CompareMethodCommand(profiler))
@@ -57,6 +60,8 @@ Future<int> runCli(
         ..addCommand(ScreenshotCommand(profiler))
         ..addCommand(DebugDumpCommand(profiler))
         ..addCommand(LogsCommand(profiler))
+        ..addCommand(AnnotateCommand(profiler))
+        ..addCommand(ReplayCommand(profiler))
         ..addCommand(McpCommand(profiler));
 
   try {
@@ -66,7 +71,15 @@ Future<int> runCli(
     stderrSink.writeln(error.message);
     return usageExitCode;
   } catch (error) {
-    stderrSink.writeln(error);
+    stderrSink.writeln(error.toString());
+    final message = error.toString();
+    if (message.contains('Artifact not found') ||
+        message.contains('No profiler artifact')) {
+      stderrSink.writeln(
+        'Tip: Use "devtools-profiler profiles" to list available stored '
+        'sessions, or pass a session id as a positional argument.',
+      );
+    }
     return softwareExitCode;
   }
 }

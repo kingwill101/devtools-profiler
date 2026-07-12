@@ -22,6 +22,9 @@ abstract class ProfilerCommand extends Command<int> {
   /// Whether to print output as JSON.
   bool get printJson => argResults!['json'] as bool? ?? false;
 
+  /// Whether to print output as compact CSV.
+  bool get printCsv => argResults!['csv'] as bool? ?? false;
+
   /// Writes [value] as indented JSON to the command output.
   void writeJson(Object? value) {
     line(jsonEncoder.convert(value));

@@ -49,6 +49,11 @@ final Tool profileExplainHotspotsTool = Tool(
       'hideRuntimeHelpers': Schema.bool(
         description: 'Whether to hide common profiler/runtime helper packages.',
       ),
+      'collapseAsync': Schema.bool(
+        description:
+            'Whether to collapse dart:async frames into a single "async overhead" '
+            'entry in summary tables.',
+      ),
       'includePackages': Schema.list(
         description:
             'Optional package prefixes to keep. Frames outside these packages are hidden.',
@@ -135,6 +140,11 @@ final Tool profileInspectMethodTool = Tool(
       'hideRuntimeHelpers': Schema.bool(
         description: 'Whether to hide common profiler/runtime helper packages.',
       ),
+      'collapseAsync': Schema.bool(
+        description:
+            'Whether to collapse dart:async frames into a single "async overhead" '
+            'entry in summary tables.',
+      ),
       'includePackages': Schema.list(
         description:
             'Optional package prefixes to keep. Frames outside these packages are hidden.',
@@ -216,6 +226,11 @@ final Tool profileSearchMethodsTool = Tool(
       ),
       'hideRuntimeHelpers': Schema.bool(
         description: 'Whether to hide common profiler/runtime helper packages.',
+      ),
+      'collapseAsync': Schema.bool(
+        description:
+            'Whether to collapse dart:async frames into a single "async overhead" '
+            'entry in summary tables.',
       ),
       'includePackages': Schema.list(
         description:
@@ -303,6 +318,11 @@ final Tool profileCompareMethodTool = Tool(
       ),
       'hideRuntimeHelpers': Schema.bool(
         description: 'Whether to hide common profiler/runtime helper packages.',
+      ),
+      'collapseAsync': Schema.bool(
+        description:
+            'Whether to collapse dart:async frames into a single "async overhead" '
+            'entry in summary tables.',
       ),
       'includePackages': Schema.list(
         description:
@@ -395,6 +415,11 @@ final Tool profileCompareTool = Tool(
       'hideRuntimeHelpers': Schema.bool(
         description: 'Whether to hide common profiler/runtime helper packages.',
       ),
+      'collapseAsync': Schema.bool(
+        description:
+            'Whether to collapse dart:async frames into a single "async overhead" '
+            'entry in summary tables.',
+      ),
       'includePackages': Schema.list(
         description:
             'Optional package prefixes to keep. Frames outside these packages are hidden.',
@@ -485,6 +510,11 @@ final Tool profileAnalyzeTrendsTool = Tool(
       'hideRuntimeHelpers': Schema.bool(
         description: 'Whether to hide common profiler/runtime helper packages.',
       ),
+      'collapseAsync': Schema.bool(
+        description:
+            'Whether to collapse dart:async frames into a single "async overhead" '
+            'entry in summary tables.',
+      ),
       'includePackages': Schema.list(
         description:
             'Optional package prefixes to keep. Frames outside these packages are hidden.',
@@ -563,6 +593,11 @@ final Tool profileFindRegressionsTool = Tool(
       ),
       'hideRuntimeHelpers': Schema.bool(
         description: 'Whether to hide common profiler/runtime helper packages.',
+      ),
+      'collapseAsync': Schema.bool(
+        description:
+            'Whether to collapse dart:async frames into a single "async overhead" '
+            'entry in summary tables.',
       ),
       'includePackages': Schema.list(
         description:
@@ -645,5 +680,117 @@ final Tool profileInspectClassesTool = Tool(
     openWorldHint: false,
     readOnlyHint: true,
     title: 'Profile Inspect Classes',
+  ),
+);
+
+final Tool profileRegressTool = Tool(
+  name: 'profile_regress',
+  title: 'Profile Regress',
+  description:
+      'Compare the current profile against a known-good baseline and report '
+      'regressions. Exits with code 1 when regressions are found. Use in CI '
+      'workflows to detect performance regressions.',
+  inputSchema: Schema.object(
+    properties: {
+      'baselinePath': Schema.string(
+        description: 'Baseline session directory or profile artifact path.',
+      ),
+      'currentPath': Schema.string(
+        description:
+            'Current session directory or profile artifact path. '
+            'Defaults to the latest stored session.',
+      ),
+      'rootDirectory': Schema.string(
+        description:
+            'Project root containing .dart_tool/devtools_profiler/sessions.',
+      ),
+      'sessionsDirectory': Schema.string(
+        description: 'A direct path to a devtools_profiler sessions directory.',
+      ),
+      'baselineSessionId': Schema.string(
+        description:
+            'Optional baseline session id. Also accepts "latest" or "previous".',
+      ),
+      'currentSessionId': Schema.string(
+        description:
+            'Optional current session id. Also accepts "latest" or "previous".',
+      ),
+      'baselineProfileId': Schema.string(
+        description:
+            'Optional profile id to select from the baseline session. '
+            'Use "overall" for the whole-session profile.',
+      ),
+      'currentProfileId': Schema.string(
+        description:
+            'Optional profile id to select from the current session. '
+            'Use "overall" for the whole-session profile.',
+      ),
+      'includeCallTree': Schema.bool(
+        description: 'Whether to attach top-down trees for both sides.',
+      ),
+      'includeBottomUpTree': Schema.bool(
+        description: 'Whether to attach bottom-up trees for both sides.',
+      ),
+      'includeMethodTable': Schema.bool(
+        description:
+            'Whether to attach method tables and include method deltas.',
+      ),
+      'hideSdk': Schema.bool(
+        description: 'Whether to hide Dart and Flutter SDK frames.',
+      ),
+      'hideRuntimeHelpers': Schema.bool(
+        description: 'Whether to hide common profiler/runtime helper packages.',
+      ),
+      'collapseAsync': Schema.bool(
+        description:
+            'Collapse dart:async frames into categorized async overhead entries.',
+      ),
+      'includePackages': Schema.list(
+        description:
+            'Optional package prefixes to keep. Frames outside these packages '
+            'are hidden.',
+        items: Schema.string(),
+      ),
+      'excludePackages': Schema.list(
+        description: 'Optional package prefixes to exclude.',
+        items: Schema.string(),
+      ),
+      'warnOnly': Schema.bool(
+        description:
+            'Return warnings instead of exiting with code 1 when regressions '
+            'are found.',
+      ),
+      'frameLimit': Schema.int(
+        description:
+            'Maximum rows per self / total comparison table. Use 0 for unlimited.',
+      ),
+      'methodLimit': Schema.int(
+        description:
+            'Maximum methods to include in the method comparison. '
+            'Use 0 for unlimited.',
+      ),
+      'treeDepth': Schema.int(
+        description:
+            'Maximum call tree depth when trees are included. Use 0 for unlimited.',
+      ),
+      'treeChildren': Schema.int(
+        description:
+            'Maximum children per call tree node when trees are included. '
+            'Use 0 for unlimited.',
+      ),
+    },
+    additionalProperties: false,
+  ),
+  outputSchema: Schema.object(
+    description:
+        'Prepared baseline/current comparison with regression insights.',
+    additionalProperties: true,
+  ),
+  annotations: ToolAnnotations(
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: false,
+    readOnlyHint: true,
+    title: 'Profile Regress',
   ),
 );

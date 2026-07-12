@@ -1733,6 +1733,130 @@ void main() {
       },
     );
   });
+
+  // ---------------------------------------------------------------------------
+  // New feature tests
+  // ---------------------------------------------------------------------------
+
+  test('summarize --csv outputs compact frame tables', () async {
+    final result = await _runCliCommand(const [
+      'summarize',
+      '--csv',
+      '/tmp/helper_profile.json',
+    ]);
+    expect(result.exitCode, 0);
+    expect(result.stdout, contains('Top Self Frames'));
+    expect(result.stdout, contains('method,self_samples'));
+    expect(result.stderr, isEmpty);
+  });
+
+  test('compare --csv outputs compact delta tables', () async {
+    final result = await _runCliCommand(const [
+      'compare',
+      '--csv',
+      '/tmp/artifacts/session-1',
+      '/tmp/artifacts/session-2',
+    ]);
+    expect(result.exitCode, 0);
+    expect(result.stdout, contains('Top Self Frame Deltas'));
+    expect(result.stdout, contains('method,base_self,current_self'));
+    expect(result.stderr, isEmpty);
+  });
+
+  test('trends --csv outputs compact series table', () async {
+    final result = await _runCliCommand(const [
+      'trends',
+      '--csv',
+      '/tmp/artifacts/session-1',
+      '/tmp/artifacts/session-2',
+      '/tmp/artifacts/session-3',
+    ], runner: _FakeProfileRunnerWithSharedTrendRegion());
+    expect(result.exitCode, 0);
+    expect(result.stdout, contains('# Series'));
+    expect(result.stdout, contains('target,duration_micros'));
+    expect(result.stderr, isEmpty);
+  });
+
+  test(
+    'summarize --collapse-async shows single async overhead entry',
+    () async {
+      final json = await _runJsonCommand(const [
+        'summarize',
+        '--json',
+        '--collapse-async',
+        '/tmp/regions/cpu-burn/summary.json',
+      ], runner: _FakeRunnerWithFrames());
+      final topSelf = json['topSelfFrames'] as List<Object?>;
+      // Should have a single "async overhead" entry.
+      expect(
+        topSelf.any(
+          (f) => (f as Map<String, Object?>)['name'] == 'async overhead',
+        ),
+        isTrue,
+      );
+      // And a breakdown warning with category details.
+      final warnings =
+          json['preparationWarnings'] as List<Object?>? ?? const [];
+      expect(warnings.isNotEmpty, isTrue);
+      final warningText = warnings.first as String;
+      expect(warningText, contains('Async overhead breakdown'));
+      expect(warningText, contains('normal completions'));
+    },
+  );
+
+  test('regress detects regressions and exits non-zero', () async {
+    final result = await _runCliCommand(const [
+      'regress',
+      '--json',
+      '/tmp/artifacts/session-1',
+      '/tmp/artifacts/session-2',
+    ]);
+    expect(result.exitCode, 1);
+    final json = jsonDecode(result.stdout) as Map<String, Object?>;
+    expect(json['regressionExitCode'], 1);
+    expect(result.stderr, isEmpty);
+  });
+
+  test('regress --warn-only exits 0 with regressions', () async {
+    final result = await _runCliCommand(const [
+      'regress',
+      '--json',
+      '--warn-only',
+      '/tmp/artifacts/session-1',
+      '/tmp/artifacts/session-2',
+    ]);
+    expect(result.exitCode, 0);
+    final json = jsonDecode(result.stdout) as Map<String, Object?>;
+    expect(json.containsKey('regressionExitCode'), isFalse);
+    expect(result.stderr, isEmpty);
+  });
+
+  test('compare with 3+ args prints multi-compare table', () async {
+    final result = await _runCliCommand(const [
+      'compare',
+      '/tmp/sessions/base',
+      '/tmp/sessions/mid',
+      '/tmp/sessions/current',
+    ], runner: _FakeRunnerWithFrames());
+    expect(result.exitCode, 0);
+    expect(result.stdout, contains('Multi-Session Comparison'));
+    expect(result.stderr, isEmpty);
+  });
+
+  test('compare with 3+ args --csv outputs multi-compare csv', () async {
+    final result = await _runCliCommand(const [
+      'compare',
+      '--csv',
+      '/tmp/sessions/base',
+      '/tmp/sessions/mid',
+      '/tmp/sessions/current',
+    ], runner: _FakeRunnerWithFrames());
+    expect(result.exitCode, 0);
+    expect(result.stdout, contains('method'));
+    expect(result.stdout, contains('base'));
+    expect(result.stdout, contains('current'));
+    expect(result.stderr, isEmpty);
+  });
 }
 
 Future<Map<String, Object?>> _runJsonCommand(
@@ -2444,6 +2568,252 @@ class _FakeRunnerWithZeroSamples extends _FakeProfileRunner {
       regions: [_zeroRegion],
       warnings: const [],
     );
+  }
+}
+
+/// A fake runner that returns session/region JSON with non-empty top frames
+/// for testing --collapse-async and multi-compare features.
+class _FakeRunnerWithFrames extends _FakeProfileRunner {
+  static final _frameHot = ProfileFrameSummary(
+    name: 'hotLeaf',
+    kind: 'Dart',
+    location: 'dart:async/zone.dart',
+    selfSamples: 42,
+    totalSamples: 100,
+    selfPercent: 0.42,
+    totalPercent: 1.0,
+  );
+
+  static final _frameOther = ProfileFrameSummary(
+    name: 'run',
+    kind: 'Dart',
+    location: 'package:fixture/run.dart',
+    selfSamples: 10,
+    totalSamples: 50,
+    selfPercent: 0.10,
+    totalPercent: 0.50,
+  );
+
+  static final _frameAsync = ProfileFrameSummary(
+    name: '_completeWithValue',
+    kind: 'Dart',
+    location: 'org-dartlang-sdk:///sdk/lib/async/future_impl.dart',
+    selfSamples: 30,
+    totalSamples: 80,
+    selfPercent: 0.30,
+    totalPercent: 0.80,
+  );
+
+  static final _frames = [_frameHot, _frameOther, _frameAsync];
+
+  static final _frameRegion = ProfileRegionResult(
+    regionId: 'cpu-burn',
+    name: 'cpu-burn',
+    attributes: const {'phase': 'fixture'},
+    isolateId: 'isolates/123',
+    captureKinds: const [ProfileCaptureKind.cpu],
+    startTimestampMicros: 100,
+    endTimestampMicros: 2_200,
+    durationMicros: 2_100,
+    sampleCount: 11,
+    samplePeriodMicros: 50,
+    topSelfFrames: _frames,
+    topTotalFrames: _frames,
+    summaryPath: '/tmp/regions/cpu-burn/summary.json',
+    rawProfilePath: '/tmp/regions/cpu-burn/cpu_profile.json',
+  );
+
+  static final _sessionBase = ProfileRunResult(
+    sessionId: 'base',
+    command: ['dart', 'run', 'bin/main.dart'],
+    workingDirectory: '/workspace',
+    exitCode: 0,
+    artifactDirectory: '/tmp/sessions/base',
+    overallProfile: ProfileRegionResult(
+      regionId: 'overall',
+      name: 'whole-session',
+      attributes: const {'scope': 'session'},
+      isolateId: 'isolates/123',
+      captureKinds: const [ProfileCaptureKind.cpu],
+      startTimestampMicros: 0,
+      endTimestampMicros: 2_000,
+      durationMicros: 2_000,
+      sampleCount: 10,
+      samplePeriodMicros: 50,
+      topSelfFrames: _frames,
+      topTotalFrames: _frames,
+      summaryPath: '/tmp/sessions/base/overall/summary.json',
+      rawProfilePath: '/tmp/sessions/base/overall/cpu_profile.json',
+    ),
+    regions: const [],
+    warnings: const [],
+  );
+
+  static final _sessionMid = ProfileRunResult(
+    sessionId: 'mid',
+    command: ['dart', 'run', 'bin/main.dart'],
+    workingDirectory: '/workspace',
+    exitCode: 0,
+    artifactDirectory: '/tmp/sessions/mid',
+    overallProfile: ProfileRegionResult(
+      regionId: 'overall',
+      name: 'whole-session',
+      attributes: const {'scope': 'session'},
+      isolateId: 'isolates/123',
+      captureKinds: const [ProfileCaptureKind.cpu],
+      startTimestampMicros: 0,
+      endTimestampMicros: 2_500,
+      durationMicros: 2_500,
+      sampleCount: 14,
+      samplePeriodMicros: 50,
+      topSelfFrames: _frames,
+      topTotalFrames: _frames,
+      summaryPath: '/tmp/sessions/mid/overall/summary.json',
+      rawProfilePath: '/tmp/sessions/mid/overall/cpu_profile.json',
+    ),
+    regions: const [],
+    warnings: const [],
+  );
+
+  static final _sessionCurrent = ProfileRunResult(
+    sessionId: 'current',
+    command: ['dart', 'run', 'bin/main.dart'],
+    workingDirectory: '/workspace',
+    exitCode: 0,
+    artifactDirectory: '/tmp/sessions/current',
+    overallProfile: ProfileRegionResult(
+      regionId: 'overall',
+      name: 'whole-session',
+      attributes: const {'scope': 'session'},
+      isolateId: 'isolates/123',
+      captureKinds: const [ProfileCaptureKind.cpu],
+      startTimestampMicros: 0,
+      endTimestampMicros: 2_800,
+      durationMicros: 2_800,
+      sampleCount: 16,
+      samplePeriodMicros: 50,
+      topSelfFrames: _frames,
+      topTotalFrames: _frames,
+      summaryPath: '/tmp/sessions/current/overall/summary.json',
+      rawProfilePath: '/tmp/sessions/current/overall/cpu_profile.json',
+    ),
+    regions: const [],
+    warnings: const [],
+  );
+
+  /// CPU samples where async frames appear as self frames with known callers.
+  /// The stack format is [self, caller1, caller2] where index 0 is top.
+  static final _cpuSamplesWithAsyncSelf = CpuSamples(
+    sampleCount: 3,
+    samplePeriod: 50,
+    timeOriginMicros: 100,
+    timeExtentMicros: 150,
+    functions: [
+      // 0 — async self frame
+      ProfileFunction(
+        kind: 'Dart',
+        function: FuncRef(
+          id: 'functions/complete_error',
+          name: '_Future._completeErrorObject',
+          owner: ClassRef(id: 'classes/future', name: '_Future'),
+        ),
+        resolvedUrl: 'org-dartlang-sdk:///sdk/lib/async/future_impl.dart',
+      ),
+      // 1 — caller 1
+      ProfileFunction(
+        kind: 'Dart',
+        function: FuncRef(
+          id: 'functions/caller_one',
+          name: 'hotFunction',
+          owner: ClassRef(id: 'classes/vm', name: 'LuaBytecodeVm'),
+        ),
+        resolvedUrl: 'package:lualike/src/lua_bytecode/vm.dart',
+      ),
+      // 2 — caller 2 (deeper in stack)
+      ProfileFunction(
+        kind: 'Dart',
+        function: FuncRef(
+          id: 'functions/caller_two',
+          name: 'run',
+          owner: ClassRef(id: 'classes/vm', name: 'LuaBytecodeVm'),
+        ),
+        resolvedUrl: 'package:lualike/src/lua_bytecode/vm.dart',
+      ),
+      // 3 — async normal completion
+      ProfileFunction(
+        kind: 'Dart',
+        function: FuncRef(
+          id: 'functions/complete_with',
+          name: '_completeWithValue',
+          owner: ClassRef(id: 'classes/future', name: '_Future'),
+        ),
+        resolvedUrl: 'org-dartlang-sdk:///sdk/lib/async/future_impl.dart',
+      ),
+      // 4 — caller for normal completion
+      ProfileFunction(
+        kind: 'Dart',
+        function: FuncRef(
+          id: 'functions/caller_three',
+          name: 'tableLookup',
+          owner: ClassRef(id: 'classes/vm', name: 'LuaBytecodeVm'),
+        ),
+        resolvedUrl: 'package:lualike/src/lua_bytecode/vm.dart',
+      ),
+    ],
+    samples: [
+      // Two samples: _Future._completeErrorObject called from hotFunction
+      CpuSample(timestamp: 100, stack: const [0, 1, 2]),
+      CpuSample(timestamp: 101, stack: const [0, 1, 2]),
+      // One sample: _completeWithValue called from tableLookup
+      CpuSample(timestamp: 102, stack: const [3, 4, 2]),
+    ],
+  );
+
+  /// Same samples for current/mid variants (differences mostly in IDs).
+  static final _cpuSamplesWithAsyncSelfMid = CpuSamples(
+    sampleCount: 2,
+    samplePeriod: 50,
+    timeOriginMicros: 100,
+    timeExtentMicros: 100,
+    functions: _cpuSamplesWithAsyncSelf.functions,
+    samples: [
+      CpuSample(timestamp: 100, stack: const [0, 1, 2]),
+      CpuSample(timestamp: 101, stack: const [0, 1, 2]),
+    ],
+  );
+
+  @override
+  Future<Map<String, Object?>> summarizeArtifact(String path) async {
+    if (path == '/tmp/regions/cpu-burn/summary.json') {
+      return _frameRegion.toJson();
+    }
+    if (path == '/tmp/sessions/base') {
+      return _sessionBase.toJson();
+    }
+    if (path == '/tmp/sessions/mid') {
+      return _sessionMid.toJson();
+    }
+    if (path == '/tmp/sessions/current') {
+      return _sessionCurrent.toJson();
+    }
+    return super.summarizeArtifact(path);
+  }
+
+  @override
+  Future<CpuSamples> readCpuSamples(String targetPath) async {
+    if (targetPath.contains('/tmp/regions/')) {
+      return _cpuSamplesWithAsyncSelf;
+    }
+    if (targetPath.contains('/tmp/sessions/base')) {
+      return _cpuSamplesWithAsyncSelf;
+    }
+    if (targetPath.contains('/tmp/sessions/mid')) {
+      return _cpuSamplesWithAsyncSelfMid;
+    }
+    if (targetPath.contains('/tmp/sessions/current')) {
+      return _cpuSamplesWithAsyncSelf;
+    }
+    return super.readCpuSamples(targetPath);
   }
 }
 

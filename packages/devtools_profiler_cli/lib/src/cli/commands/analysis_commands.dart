@@ -1,4 +1,5 @@
 import 'package:devtools_profiler_core/devtools_profiler_core.dart';
+import 'package:path/path.dart' as path;
 
 import '../../presentation.dart';
 import '../../rendering.dart';
@@ -42,7 +43,8 @@ class CompareCommand extends ProfilerCommand with ProfileSessionResolution {
   String get name => 'compare';
 
   @override
-  String get description => 'Compare two session/profile artifacts.';
+  String get description =>
+      'Compare session/profile artifacts pairwise or across multiple sessions.';
 
   @override
   String formatUsage({bool includeDescription = true}) => usageWithExamples(
@@ -51,6 +53,7 @@ class CompareCommand extends ProfilerCommand with ProfileSessionResolution {
       'devtools-profiler compare path/to/baseline path/to/current',
       'devtools-profiler compare --method-table path/to/baseline path/to/current',
       'devtools-profiler compare --min-live-bytes 524288 path/to/baseline path/to/current',
+      'devtools-profiler compare session-a session-b session-c',
     ],
   );
 
@@ -81,45 +84,108 @@ class CompareCommand extends ProfilerCommand with ProfileSessionResolution {
       );
       if (printJson) {
         writeJson(comparisonPresentationJson(comparison));
+      } else if (printCsv) {
+        writeCsvComparisonFrames(line, comparison.comparison);
       } else {
         writeComparisonSummary(io, comparison, options: options);
       }
       return successExitCode;
     }
 
-    if (argResults!.rest.length != 2) {
-      usageException(
-        'Compare requires exactly two targets or no targets to compare the two latest stored sessions.',
+    if (argResults!.rest.length == 2) {
+      final options = presentationOptions;
+
+      final memoryClassLimitStr = argResults!['memory-class-limit'] as String?;
+      final memoryClassLimitSpecified = memoryClassLimitStr != null;
+
+      // Resolve each positional arg as a session id first, then fall back to
+      // a file path. This lets users pass session ids directly.
+      final baselinePath = await resolveSessionOrPath(argResults!.rest.first);
+      final currentPath = await resolveSessionOrPath(argResults!.rest.last);
+
+      final comparison = await prepareProfileComparison(
+        profileRunner,
+        baselinePath: baselinePath,
+        currentPath: currentPath,
+        baselineProfileId: argResults!['baseline-profile-id'] as String?,
+        currentProfileId: argResults!['current-profile-id'] as String?,
+        minLiveBytes: parseNonNegativeInt(
+          argResults!['min-live-bytes'] as String?,
+          optionName: 'min-live-bytes',
+        ),
+        memoryClassLimit: parseLimit(
+          memoryClassLimitStr,
+          optionName: 'memory-class-limit',
+        ),
+        memoryClassLimitSpecified: memoryClassLimitSpecified,
+        options: options,
       );
+
+      if (printJson) {
+        writeJson(comparisonPresentationJson(comparison));
+      } else if (printCsv) {
+        writeCsvComparisonFrames(line, comparison.comparison);
+      } else {
+        writeComparisonSummary(io, comparison, options: options);
+      }
+
+      return successExitCode;
     }
 
-    final options = presentationOptions;
+    // 3+ args: multi-compare mode
+    final columns = <MultiCompareColumn>[];
+    for (final arg in argResults!.rest) {
+      final resolvedPath = await resolveSessionOrPath(arg);
+      final summary = await profileRunner.summarizeArtifact(resolvedPath);
 
-    final memoryClassLimitStr = argResults!['memory-class-limit'] as String?;
-    final memoryClassLimitSpecified = memoryClassLimitStr != null;
+      String label;
+      List<ProfileFrameSummary> frames;
 
-    final comparison = await prepareProfileComparison(
-      profileRunner,
-      baselinePath: argResults!.rest.first,
-      currentPath: argResults!.rest.last,
-      baselineProfileId: argResults!['baseline-profile-id'] as String?,
-      currentProfileId: argResults!['current-profile-id'] as String?,
-      minLiveBytes: parseNonNegativeInt(
-        argResults!['min-live-bytes'] as String?,
-        optionName: 'min-live-bytes',
-      ),
-      memoryClassLimit: parseLimit(
-        memoryClassLimitStr,
-        optionName: 'memory-class-limit',
-      ),
-      memoryClassLimitSpecified: memoryClassLimitSpecified,
-      options: options,
-    );
+      if (summary case {'regions': final Object? _}) {
+        final session = ProfileRunResult.fromJson(summary);
+        final profile =
+            session.overallProfile ??
+            (session.regions.isNotEmpty ? session.regions.first : null);
+        if (profile == null) {
+          throw ArgumentError(
+            'No profile data found in session at "$resolvedPath".',
+          );
+        }
+        frames = profile.topSelfFrames;
+        label = session.sessionId.isNotEmpty
+            ? session.sessionId
+            : path.basename(resolvedPath);
+      } else if (summary case {'topSelfFrames': final Object? _}) {
+        final region = ProfileRegionResult.fromJson(summary);
+        frames = region.topSelfFrames;
+        label = region.name.isNotEmpty
+            ? region.name
+            : path.basename(resolvedPath);
+      } else {
+        throw ArgumentError(
+          'Unsupported comparison target at "$resolvedPath". '
+          'Use a session directory or a profile summary/raw CPU artifact.',
+        );
+      }
+
+      columns.add(MultiCompareColumn(label: label, frames: frames));
+    }
 
     if (printJson) {
-      writeJson(comparisonPresentationJson(comparison));
+      writeJson({
+        'kind': 'multi-compare',
+        'columns': [
+          for (final column in columns)
+            {
+              'label': column.label,
+              'frames': column.frames.map((f) => f.toJson()).toList(),
+            },
+        ],
+      });
+    } else if (printCsv) {
+      writeCsvMultiCompare(line, columns);
     } else {
-      writeComparisonSummary(io, comparison, options: options);
+      writeMultiCompareSummary(io, columns, options: presentationOptions);
     }
 
     return successExitCode;
@@ -142,14 +208,167 @@ class CompareCommand extends ProfilerCommand with ProfileSessionResolution {
   }
 }
 
+/// Exit code returned when regressions are detected by the regress command.
+///
+/// This allows the command to be used in CI pipelines: a non-zero exit
+/// signals that the current profile regressed against the baseline.
+const regressionExitCode = 1;
+
+/// Command that compares the current profile against a known-good baseline
+/// and reports regressions.
+///
+/// Use this in CI or after profiling workflow to quickly check whether a
+/// change slowed down the target. Exits with code [regressionExitCode] when
+/// regressions are found, unless `--warn-only` is set.
+class RegressCommand extends ProfilerCommand with ProfileSessionResolution {
+  /// Creates a regress command.
+  RegressCommand(super.profileRunner) {
+    argParser
+      ..addOption(
+        'baseline-profile-id',
+        help: 'Profile id to select from the baseline session directory.',
+      )
+      ..addOption(
+        'current-profile-id',
+        help: 'Profile id to select from the current session directory.',
+      )
+      ..addFlag(
+        'warn-only',
+        negatable: false,
+        help:
+            'Print regressions as warnings but always exit with code 0. '
+            'Useful for development workflows where regressions are expected.',
+      )
+      ..addOption(
+        'min-live-bytes',
+        help:
+            'Re-read raw memory artifacts and include only classes with at '
+            'least this many live bytes at the end of each capture window.',
+      )
+      ..addOption(
+        'memory-class-limit',
+        help: 'Maximum memory classes to compare. Use 0 for unlimited.',
+      );
+  }
+
+  @override
+  String get name => 'regress';
+
+  @override
+  String get description =>
+      'Compare the current profile against a baseline and report regressions. '
+      'Useful for CI and post-change verification.';
+
+  @override
+  String get invocation =>
+      '${runner!.executableName} regress [options] <baseline> [current]';
+
+  @override
+  String formatUsage({bool includeDescription = true}) => usageWithExamples(
+    super.formatUsage(includeDescription: includeDescription),
+    const [
+      'devtools-profiler regress path/to/baseline',
+      'devtools-profiler regress --warn-only path/to/baseline',
+      'devtools-profiler regress 0712060003-8c410 0711235455-ebfb3',
+      'devtools-profiler regress --min-live-bytes 524288 path/to/baseline',
+    ],
+  );
+
+  @override
+  Future<int> run() async {
+    final options = presentationOptions;
+    final warnOnly = argResults!['warn-only'] as bool? ?? false;
+
+    // Resolve baseline (first positional arg).
+    if (argResults!.rest.isEmpty) {
+      usageException(
+        'The regress command requires at least a baseline target.\n'
+        'Examples:\n'
+        '  ${runner!.executableName} regress path/to/baseline-session\n'
+        '  ${runner!.executableName} regress 0712060003-8c410',
+      );
+    }
+
+    final baselinePath = await resolveSessionOrPath(argResults!.rest.first);
+
+    // Resolve current path: second positional arg or latest stored session.
+    String currentPath;
+    if (argResults!.rest.length >= 2) {
+      currentPath = await resolveSessionOrPath(argResults!.rest[1]);
+    } else {
+      final sessionsDir = defaultSessionsDirectory();
+      final sessions = await discoverSessions(sessionsDir);
+      if (sessions.isEmpty) {
+        throw ArgumentError(
+          'No stored profiling sessions found and no current target was '
+          'provided. Pass a current target path or session id.',
+        );
+      }
+      currentPath = sessions.first.directory.path;
+    }
+
+    final memoryClassLimitStr = argResults!['memory-class-limit'] as String?;
+    final memoryClassLimitSpecified = memoryClassLimitStr != null;
+
+    final comparison = await prepareProfileComparison(
+      profileRunner,
+      baselinePath: baselinePath,
+      currentPath: currentPath,
+      baselineProfileId: argResults!['baseline-profile-id'] as String?,
+      currentProfileId: argResults!['current-profile-id'] as String?,
+      minLiveBytes: parseNonNegativeInt(
+        argResults!['min-live-bytes'] as String?,
+        optionName: 'min-live-bytes',
+      ),
+      memoryClassLimit: parseLimit(
+        memoryClassLimitStr,
+        optionName: 'memory-class-limit',
+      ),
+      memoryClassLimitSpecified: memoryClassLimitSpecified,
+      options: options,
+    );
+
+    final hasRegressions = comparison.regressions.insights.isNotEmpty;
+
+    if (printJson) {
+      final json = comparisonPresentationJson(comparison);
+      if (!warnOnly) {
+        json['regressionExitCode'] = regressionExitCode;
+      }
+      writeJson(json);
+    } else if (printCsv) {
+      writeCsvComparisonFrames(line, comparison.comparison);
+    } else {
+      if (hasRegressions) {
+        line('Regression check: REGRESSIONS DETECTED');
+      } else {
+        line('Regression check: PASSED');
+      }
+      writeComparisonSummary(io, comparison, options: options);
+    }
+
+    if (hasRegressions && !warnOnly) {
+      return regressionExitCode;
+    }
+    return successExitCode;
+  }
+}
+
 /// Command that analyzes profile trends across multiple artifacts.
 class TrendsCommand extends ProfilerCommand with ProfileSessionResolution {
   /// Creates a trends command.
   TrendsCommand(super.profileRunner) {
-    argParser.addOption(
-      'profile-id',
-      help: 'Profile id to select from each session directory.',
-    );
+    argParser
+      ..addOption(
+        'profile-id',
+        help: 'Profile id to select from each session directory.',
+      )
+      ..addOption(
+        'last',
+        help:
+            'Use the N most recent stored sessions. '
+            'Ignored when explicit paths are provided.',
+      );
   }
 
   @override
@@ -168,6 +387,7 @@ class TrendsCommand extends ProfilerCommand with ProfileSessionResolution {
     const [
       'devtools-profiler trends session-a session-b session-c',
       'devtools-profiler trends --json --profile-id overall',
+      'devtools-profiler trends --last 5',
     ],
   );
 
@@ -188,6 +408,8 @@ class TrendsCommand extends ProfilerCommand with ProfileSessionResolution {
 
     if (printJson) {
       writeJson(trendPresentationJson(trends));
+    } else if (printCsv) {
+      writeCsvTrendSeries(line, trends.trends);
     } else {
       writeTrendSummary(io, trends, options: options);
     }
@@ -197,7 +419,9 @@ class TrendsCommand extends ProfilerCommand with ProfileSessionResolution {
 
   Future<List<String>> _resolveTrendTargetPaths() async {
     if (argResults!.rest.isNotEmpty) {
-      return argResults!.rest.toList();
+      return [
+        for (final arg in argResults!.rest) await resolveSessionOrPath(arg),
+      ];
     }
 
     final sessionsDirectory = defaultSessionsDirectory();
@@ -208,7 +432,20 @@ class TrendsCommand extends ProfilerCommand with ProfileSessionResolution {
         'sessions were found under "${sessionsDirectory.path}".',
       );
     }
-    return sessions.take(2).map((session) => session.directory.path).toList();
+
+    final lastStr = argResults!['last'] as String?;
+    final requestedCount = int.tryParse(lastStr ?? '');
+    if (requestedCount != null) {
+      if (requestedCount <= 0) {
+        throw ArgumentError('The --last option must be a positive integer.');
+      }
+      final count = requestedCount < sessions.length
+          ? requestedCount
+          : sessions.length;
+      return sessions.take(count).map((s) => s.directory.path).toList();
+    }
+
+    return sessions.take(2).map((s) => s.directory.path).toList();
   }
 }
 
@@ -365,9 +602,10 @@ class CompareMethodCommand extends ProfilerCommand
 
   Future<String> _resolveComparisonTarget(String label) async {
     if (argResults!.rest.length == 2) {
-      return label == 'baseline'
+      final input = label == 'baseline'
           ? argResults!.rest.first
           : argResults!.rest.last;
+      return resolveSessionOrPath(input);
     }
 
     if (argResults!.rest.isNotEmpty) {

@@ -16,6 +16,11 @@ The package exports:
 - `profileRegion()`: wraps one async closure and stops the region
   automatically
 - `startProfileRegion()`: starts a region manually and returns a stop handle
+- `profileRegionSync()`: synchronous variant — DTD events are sent
+  fire-and-forget so synchronous code is not blocked by profiler transport.
+  Use this for tight loops or dispatch functions that don't use `async`/`await`.
+- `startProfileRegionSync()`: synchronous manual start, returns a handle
+  immediately
 - `ProfileRegionHandle`: the active region handle returned by manual starts
 - `ProfileRegionConfigurationException`: thrown when the process is not running
   inside a compatible profiler session
@@ -24,6 +29,9 @@ The package exports:
 
 Use `profileRegion()` by default. Reach for `startProfileRegion()` only when
 the measured work spans multiple branches, callbacks, or lifecycle hooks.
+Use `profileRegionSync()` when the profiled code is synchronous — for example
+a hot instruction dispatch — to avoid wrapping it in unnecessary
+`() async => body()` closures.
 
 ## Add It To A Target App
 
@@ -136,6 +144,72 @@ await profileRegion('request', () async {
 
 Nested regions inherit the active parent automatically unless you pass an
 explicit `parentRegionId`.
+
+## Synchronous Region Profiling
+
+For code that runs synchronously, use `profileRegionSync()` instead of wrapping
+in `() async => syncBody()`. DTD start/stop events are sent asynchronously
+(fire-and-forget), so region timing stays accurate — timestamps are captured at
+the call site, not when the DTD message arrives.
+
+```dart
+import 'package:devtools_region_profiler/devtools_region_profiler.dart';
+
+Object? executeInstruction(Opcode op, Object? arg) {
+  return profileRegionSync(
+    'dispatch-${op.name}',
+    attributes: {'opcode': op.name},
+    () {
+      // synchronous dispatch — no Future wrapper
+      switch (op) {
+        case Opcode.call: return callFunction(arg);
+        case Opcode.return_: return popFrame();
+        case Opcode.add: return addValues(arg);
+      }
+    },
+  );
+}
+```
+
+For manual handle-based synchronous profiling:
+
+```dart
+void hotLoop() {
+  final region = startProfileRegionSync('hot-loop');
+  try {
+    while (hasWork()) {
+      doWork();
+    }
+  } finally {
+    region.stop(); // fire-and-forget
+  }
+}
+```
+
+## Tool-Specific Metadata
+
+Attach extra metadata to regions using the `extra` field on
+`ProfileRegionOptions`. This data is preserved in the session artifact and
+displayed in region summaries, making it searchable across profiling sessions.
+
+```dart
+await profileRegion(
+  'test-runner',
+  options: const ProfileRegionOptions(
+    extra: {
+      'luaFile': 'calls.lua',
+      'luaFunction': 'runBenchmark',
+      'bytecodeVersion': 3,
+    },
+  ),
+  () async {
+    await runTest();
+  },
+);
+```
+
+Tool-specific metadata supports string, numeric, and boolean values, and is
+serialized as JSON in the session artifact.
 
 ## Capture Options
 

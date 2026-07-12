@@ -24,6 +24,11 @@ final Tool profileSummarizeTool = Tool(
       'hideRuntimeHelpers': Schema.bool(
         description: 'Whether to hide common profiler/runtime helper packages.',
       ),
+      'collapseAsync': Schema.bool(
+        description:
+            'Whether to collapse dart:async frames into a single "async overhead" '
+            'entry in summary tables.',
+      ),
       'includePackages': Schema.list(
         description:
             'Optional package prefixes to keep. Frames outside these packages are hidden.',
@@ -190,6 +195,11 @@ final Tool profileLatestSessionTool = Tool(
       'hideRuntimeHelpers': Schema.bool(
         description: 'Whether to hide common profiler/runtime helper packages.',
       ),
+      'collapseAsync': Schema.bool(
+        description:
+            'Whether to collapse dart:async frames into a single "async overhead" '
+            'entry in summary tables.',
+      ),
       'includePackages': Schema.list(
         description:
             'Optional package prefixes to keep. Frames outside these packages are hidden.',
@@ -266,6 +276,11 @@ final Tool profileGetSessionTool = Tool(
       ),
       'hideRuntimeHelpers': Schema.bool(
         description: 'Whether to hide common profiler/runtime helper packages.',
+      ),
+      'collapseAsync': Schema.bool(
+        description:
+            'Whether to collapse dart:async frames into a single "async overhead" '
+            'entry in summary tables.',
       ),
       'includePackages': Schema.list(
         description:
@@ -346,6 +361,11 @@ final Tool profileGetRegionTool = Tool(
       ),
       'hideRuntimeHelpers': Schema.bool(
         description: 'Whether to hide common profiler/runtime helper packages.',
+      ),
+      'collapseAsync': Schema.bool(
+        description:
+            'Whether to collapse dart:async frames into a single "async overhead" '
+            'entry in summary tables.',
       ),
       'includePackages': Schema.list(
         description:

@@ -73,6 +73,19 @@ class ProfileFrame {
     return _packageNameFromFilePath(parsedUri.toFilePath());
   }
 
+  /// Whether the frame belongs to `dart:async` and should be collapsed into
+  /// an "async overhead" entry when [ProfilePresentationOptions.collapseAsync]
+  /// is enabled.
+  bool get isAsyncOverhead {
+    final source = location;
+    if (source == null || source.isEmpty) return false;
+    if (source.startsWith('dart:async')) return true;
+    // org-dartlang-sdk:///sdk/lib/async/...
+    if (source.startsWith('org-dartlang-sdk:///sdk/lib/async/')) return true;
+    if (packageName == 'dart:async') return true;
+    return false;
+  }
+
   /// Whether the frame represents native code.
   bool get isNative {
     final source = location;
@@ -221,4 +234,14 @@ String _simplifyStackFrameName(String? name) {
     return normalized;
   }
   return normalized.split('&').last;
+}
+
+/// Returns the approximate source line number for [function], or `null` if
+/// the line number is unavailable.
+int? lineForFunction(ProfileFunction function) {
+  final object = function.function;
+  if (object case FuncRef(location: final SourceLocation location?)) {
+    return location.line;
+  }
+  return null;
 }

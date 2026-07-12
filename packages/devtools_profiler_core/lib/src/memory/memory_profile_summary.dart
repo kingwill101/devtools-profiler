@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:devtools_shared/devtools_shared.dart';
 import 'package:vm_service/vm_service.dart';
 
+import '../cpu/profile_frames.dart';
 import 'memory_models.dart';
 
 /// Predicate used to retain or hide memory class summaries.
@@ -264,4 +265,103 @@ final class _MutableMemoryClassStats {
   int accumulatedInstances = 0;
   int liveBytes = 0;
   int liveInstances = 0;
+}
+
+/// A single allocation-attribution entry for a memory class, showing
+/// the top call sites that were on the CPU stack during its growth.
+class AllocationAttribution {
+  /// Creates an attribution entry.
+  const AllocationAttribution({
+    required this.className,
+    required this.libraryUri,
+    required this.allocatedBytes,
+    required this.allocatedInstances,
+    required this.callSiteFractions,
+  });
+
+  /// The name of the class being allocated.
+  final String className;
+
+  /// The library URI where the class is defined.
+  final String? libraryUri;
+
+  /// Number of bytes allocated for this class in the capture window.
+  final int allocatedBytes;
+
+  /// Number of instances allocated for this class in the capture window.
+  final int allocatedInstances;
+
+  /// Top call sites and their fraction of CPU samples, sorted descending.
+  /// Each entry is (functionName, fraction) where fraction is 0.0-1.0.
+  final List<(String name, double fraction)> callSiteFractions;
+
+  /// Serializes this attribution entry to JSON.
+  Map<String, Object?> toJson() => {
+    'className': className,
+    'libraryUri': libraryUri,
+    'allocatedBytes': allocatedBytes,
+    'allocatedInstances': allocatedInstances,
+    'callSiteFractions': [
+      for (final (name, fraction) in callSiteFractions)
+        {'function': name, 'fraction': fraction},
+    ],
+  };
+}
+
+/// Cross-references CPU samples with memory class deltas to attribute
+/// allocations to the functions that were on the CPU stack during heap growth.
+///
+/// For each class with positive [allocationBytesDelta], this scans the CPU
+/// samples and finds which non-native Dart functions were on the stack.
+List<AllocationAttribution> attributeAllocationsToCallers(
+  ProfileMemoryResult memory,
+  CpuSamples cpuSamples,
+) {
+  final classes = memory.topClasses
+      .where((c) => c.allocationBytesDelta > 0)
+      .toList();
+  if (classes.isEmpty) return const [];
+
+  final functions = cpuSamples.functions ?? const <ProfileFunction>[];
+  final samples = cpuSamples.samples ?? const <CpuSample>[];
+  if (functions.isEmpty || samples.isEmpty) return const [];
+
+  // Count how many times each function appears as self-frame (top of stack).
+  final functionHits = <String, int>{};
+  for (final sample in samples) {
+    final stack = sample.stack ?? const <int>[];
+    if (stack.isEmpty) continue;
+    final idx = stack.first;
+    if (idx < 0 || idx >= functions.length) continue;
+    final func = functions[idx];
+    final kind = func.kind;
+    if (kind == null || kind.toLowerCase() == 'native') continue;
+    final name = displayNameForFunction(func);
+    if (name.isEmpty || name == 'unknown') continue;
+    functionHits[name] = (functionHits[name] ?? 0) + 1;
+  }
+
+  if (functionHits.isEmpty) return const [];
+
+  final totalHits = functionHits.values.fold<int>(0, (s, v) => s + v);
+  if (totalHits <= 0) return const [];
+
+  // Sort functions by hit count descending.
+  final sortedFunctions = functionHits.entries.toList()
+    ..sort((a, b) => b.value.compareTo(a.value));
+  final topFunctions = sortedFunctions.take(5).toList();
+
+  return [
+    for (final cls in classes.take(8))
+      AllocationAttribution(
+        className: cls.className,
+        libraryUri: cls.libraryUri,
+        allocatedBytes: cls.allocationBytesDelta,
+        allocatedInstances: cls.allocationInstancesDelta,
+        callSiteFractions: [
+          for (final entry in topFunctions)
+            (entry.key, entry.value / totalHits),
+        ],
+      ),
+  ];
 }

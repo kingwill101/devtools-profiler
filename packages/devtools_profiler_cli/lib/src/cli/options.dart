@@ -7,6 +7,13 @@ void addPresentationOptions(ArgParser parser) {
   parser
     ..addFlag('json', negatable: false, help: 'Print the result as JSON.')
     ..addFlag(
+      'csv',
+      negatable: false,
+      help:
+          'Output compact CSV tables instead of formatted terminal output.'
+          ' Combines with --hide-sdk for a focused view.',
+    )
+    ..addFlag(
       'call-tree',
       negatable: false,
       help: 'Include a top-down call tree for each captured region.',
@@ -31,6 +38,13 @@ void addPresentationOptions(ArgParser parser) {
       'hide-runtime-helpers',
       negatable: false,
       help: 'Hide common profiler/runtime helper packages from summaries.',
+    )
+    ..addFlag(
+      'collapse-async',
+      negatable: false,
+      help:
+          'Collapse all dart:async frames into a single "async overhead" entry'
+          ' in summary tables.',
     )
     ..addMultiOption(
       'include-package',
@@ -84,6 +98,7 @@ ProfilePresentationOptions presentationOptionsFrom(ArgResults results) {
     includeMethodTable: results['method-table'] as bool? ?? false,
     hideSdk: results['hide-sdk'] as bool? ?? false,
     hideRuntimeHelpers: results['hide-runtime-helpers'] as bool? ?? false,
+    collapseAsync: results['collapse-async'] as bool? ?? false,
     fullLocations: results['full-locations'] as bool? ?? false,
     includePackages: (results['include-package'] as List<String>? ?? const [])
         .where((value) => value.isNotEmpty)

@@ -32,6 +32,7 @@ class ProfilePresentationOptions {
     this.maxChildren,
     this.hideSdk = false,
     this.hideRuntimeHelpers = false,
+    this.collapseAsync = false,
     this.frameLimit = defaultFrameLimit,
     this.methodLimit = defaultFrameLimit,
     this.fullLocations = false,
@@ -60,6 +61,10 @@ class ProfilePresentationOptions {
   /// Whether common profiler/runtime helper packages should be hidden.
   final bool hideRuntimeHelpers;
 
+  /// Whether `dart:async` frames should be collapsed into a single
+  /// "async overhead" entry in summary tables.
+  final bool collapseAsync;
+
   /// Maximum rows in the self / total tables, or `null` for unlimited.
   final int? frameLimit;
 
@@ -75,10 +80,11 @@ class ProfilePresentationOptions {
   /// Optional package prefixes to exclude.
   final List<String> excludePackages;
 
-  /// Whether any frame-level filters are active.
+  /// Whether any frame-level filters or transformations are active.
   bool get hasActiveFrameFilters =>
       hideSdk ||
       hideRuntimeHelpers ||
+      collapseAsync ||
       includePackages.isNotEmpty ||
       excludePackages.isNotEmpty;
 
@@ -86,6 +92,7 @@ class ProfilePresentationOptions {
   List<String> get activeFrameFilterDescriptions => [
     if (hideSdk) '--hide-sdk',
     if (hideRuntimeHelpers) '--hide-runtime-helpers',
+    if (collapseAsync) '--collapse-async',
     for (final package in includePackages) '--include-package $package',
     for (final package in excludePackages) '--exclude-package $package',
   ];
@@ -133,6 +140,7 @@ class ProfilePresentationOptions {
     int? maxChildren,
     bool? hideSdk,
     bool? hideRuntimeHelpers,
+    bool? collapseAsync,
     int? frameLimit,
     int? methodLimit,
     bool? fullLocations,
@@ -147,6 +155,7 @@ class ProfilePresentationOptions {
       maxChildren: maxChildren ?? this.maxChildren,
       hideSdk: hideSdk ?? this.hideSdk,
       hideRuntimeHelpers: hideRuntimeHelpers ?? this.hideRuntimeHelpers,
+      collapseAsync: collapseAsync ?? this.collapseAsync,
       frameLimit: frameLimit ?? this.frameLimit,
       methodLimit: methodLimit ?? this.methodLimit,
       fullLocations: fullLocations ?? this.fullLocations,

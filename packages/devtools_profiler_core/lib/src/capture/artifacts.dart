@@ -433,6 +433,7 @@ class ProfileArtifactStore {
     CpuSamples? cpuSamples,
     ProfileMemoryResult? memory,
     Map<String, Object?>? rawMemoryPayload,
+    Map<String, Object?> extra = const {},
   }) async {
     return _writeProfileSuccess(
       profileDirectory: _ensureRegionDirectory(regionId),
@@ -449,6 +450,7 @@ class ProfileArtifactStore {
       cpuSamples: cpuSamples,
       memory: memory,
       rawMemoryPayload: rawMemoryPayload,
+      extra: extra,
     );
   }
 
@@ -465,6 +467,7 @@ class ProfileArtifactStore {
     required int startTimestampMicros,
     required int endTimestampMicros,
     required String error,
+    Map<String, Object?> extra = const {},
   }) async {
     return _writeProfileFailure(
       profileDirectory: _ensureRegionDirectory(regionId),
@@ -479,6 +482,7 @@ class ProfileArtifactStore {
       startTimestampMicros: startTimestampMicros,
       endTimestampMicros: endTimestampMicros,
       error: error,
+      extra: extra,
     );
   }
 
@@ -521,6 +525,7 @@ class ProfileArtifactStore {
     CpuSamples? cpuSamples,
     ProfileMemoryResult? memory,
     Map<String, Object?>? rawMemoryPayload,
+    Map<String, Object?> extra = const {},
   }) async {
     if (cpuSamples == null && memory == null) {
       throw ArgumentError(
@@ -573,6 +578,7 @@ class ProfileArtifactStore {
             topSelfFrames: const [],
             topTotalFrames: const [],
             summaryPath: summaryFile.path,
+            extra: extra,
           )
         : summarizeCpuSamples(
             regionId: regionId,
@@ -589,6 +595,7 @@ class ProfileArtifactStore {
             cpuSamples: cpuSamples,
             summaryPath: summaryFile.path,
             rawProfilePath: rawProfilePath,
+            extra: extra,
           );
     await summaryFile.writeAsString(
       const JsonEncoder.withIndent('  ').convert(summary.toJson()),
@@ -609,6 +616,7 @@ class ProfileArtifactStore {
     required int startTimestampMicros,
     required int endTimestampMicros,
     required String error,
+    Map<String, Object?> extra = const {},
   }) async {
     final directory = await profileDirectory;
     final summaryFile = File(path.join(directory.path, _summaryFileName));
@@ -630,6 +638,7 @@ class ProfileArtifactStore {
       topTotalFrames: const [],
       summaryPath: summaryFile.path,
       error: error,
+      extra: extra,
     );
     await summaryFile.writeAsString(
       const JsonEncoder.withIndent('  ').convert(summary.toJson()),

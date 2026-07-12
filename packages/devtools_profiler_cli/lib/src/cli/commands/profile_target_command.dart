@@ -48,12 +48,21 @@ abstract class ProfileTargetCommand extends ProfilerCommand
   /// and returns the path to the selected session (newest by default, or
   /// whatever `--session-id` specifies).
   ///
+  /// When an explicit positional argument is given, [resolveSessionOrPath]
+  /// first tries to match it against stored session ids using the
+  /// `--cwd`-aware sessions directory. Only when no stored session matches
+  /// does it normalize the input as a file path.
+  ///
   /// Throws [ArgumentError] when no stored sessions are found and no
   /// explicit path was provided.
   Future<String> resolveTargetPath() async {
     final explicit = explicitTargetPath;
     if (explicit != null) {
-      return path.normalize(path.absolute(explicit));
+      final sessionsDirectory = _resolveSessionsDirectory();
+      return resolveSessionOrPath(
+        explicit,
+        sessionsDirectory: sessionsDirectory,
+      );
     }
 
     final sessionsDirectory = _resolveSessionsDirectory();

@@ -153,6 +153,7 @@ class RunCommand extends ProfilerCommand {
           prepared.regionTrees,
           prepared.regionBottomUpTrees,
           prepared.regionMethodTables,
+          prepared.overallAllocAttribution,
         ),
       );
     } else {
@@ -278,6 +279,7 @@ class AttachCommand extends ProfilerCommand with VmServiceDiscovery {
           prepared.regionTrees,
           prepared.regionBottomUpTrees,
           prepared.regionMethodTables,
+          prepared.overallAllocAttribution,
         ),
       );
     } else {

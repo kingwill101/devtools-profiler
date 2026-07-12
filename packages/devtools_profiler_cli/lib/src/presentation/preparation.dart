@@ -14,6 +14,7 @@ Future<PreparedSessionPresentation> prepareSessionPresentation(
   ProfileCallTree? overallTree;
   ProfileCallTree? overallBottomUpTree;
   ProfileMethodTable? overallMethodTable;
+  List<AllocationAttribution> overallAllocAttribution = const [];
   final preparationWarnings = <String>[];
   final storedOverall = session.overallProfile;
   if (storedOverall != null) {
@@ -26,6 +27,7 @@ Future<PreparedSessionPresentation> prepareSessionPresentation(
     overallTree = prepared.callTree;
     overallBottomUpTree = prepared.bottomUpTree;
     overallMethodTable = prepared.methodTable;
+    overallAllocAttribution = prepared.allocAttribution;
     preparationWarnings.addAll(prepared.warnings);
   }
 
@@ -75,6 +77,7 @@ Future<PreparedSessionPresentation> prepareSessionPresentation(
     regionTrees: regionTrees,
     regionBottomUpTrees: regionBottomUpTrees,
     regionMethodTables: regionMethodTables,
+    overallAllocAttribution: overallAllocAttribution,
   );
 }
 
@@ -516,9 +519,21 @@ Future<PreparedRegionPresentation> prepareRegionPresentation(
 }) async {
   final rawProfilePath = region.rawProfilePath;
   if (!region.succeeded || rawProfilePath == null || rawProfilePath.isEmpty) {
-    return PreparedRegionPresentation(
-      region: _filterStoredRegion(region, options),
-    );
+    final storedRegion = _filterStoredRegion(region, options);
+    if (options.collapseAsync) {
+      final preCollapseSelfFrames = storedRegion.topSelfFrames;
+      final collapsed = _collapseAsyncFramesInRegion(storedRegion);
+      final breakWarnings = _buildAsyncBreakdownWarnings(
+        preCollapseSelfFrames,
+        null,
+        collapsed.sampleCount,
+      );
+      return PreparedRegionPresentation(
+        region: collapsed,
+        warnings: breakWarnings,
+      );
+    }
+    return PreparedRegionPresentation(region: storedRegion);
   }
 
   final cpuSamples = await runner.readCpuSamples(rawProfilePath);
@@ -570,8 +585,8 @@ Future<PreparedRegionPresentation> prepareRegionPresentation(
       'has finished or increase --vm-service-timeout.',
     );
   }
-  final ProfileRegionResult regionForSummary;
-  if (rebuiltRegion.sampleCount == 0 &&
+  var regionForSummary = rebuiltRegion;
+  if (regionForSummary.sampleCount == 0 &&
       region.sampleCount > 0 &&
       !options.hasActiveFrameFilters) {
     warnings.add(
@@ -582,9 +597,34 @@ Future<PreparedRegionPresentation> prepareRegionPresentation(
       '--method-table to inspect whether the artifact can be parsed.',
     );
     regionForSummary = _filterStoredRegion(region, options);
-  } else {
-    regionForSummary = rebuiltRegion;
   }
+
+  // Collapse dart:async frames and add structured breakdown warnings.
+  if (options.collapseAsync) {
+    // Save pre-collapse self frames for the category breakdown — they
+    // contain individual dart:async entries that _buildAsyncBreakdownWarnings
+    // uses to compute normal vs error completions.
+    final preCollapseSelfFrames = regionForSummary.topSelfFrames;
+
+    regionForSummary = _collapseAsyncFramesInRegion(
+      regionForSummary,
+      cpuSamples: cpuSamples,
+    );
+
+    warnings.addAll(
+      _buildAsyncBreakdownWarnings(
+        preCollapseSelfFrames,
+        cpuSamples,
+        regionForSummary.sampleCount,
+      ),
+    );
+  }
+
+  // Allocation call-site attribution: cross-reference memory classes with
+  // CPU samples to show which functions were allocating.
+  final allocAttribution = memory != null && cpuSamples.samples != null
+      ? attributeAllocationsToCallers(memory, cpuSamples)
+      : const <AllocationAttribution>[];
 
   final callTree = options.includeCallTree
       ? buildCallTree(
@@ -614,6 +654,7 @@ Future<PreparedRegionPresentation> prepareRegionPresentation(
     bottomUpTree: bottomUpTree,
     methodTable: methodTable,
     warnings: warnings,
+    allocAttribution: allocAttribution,
   );
 }
 
@@ -655,6 +696,7 @@ ProfileRegionResult _filterStoredRegion(
     summaryPath: region.summaryPath,
     rawProfilePath: region.rawProfilePath,
     error: region.error,
+    extra: region.extra,
   );
 }
 
@@ -849,4 +891,406 @@ String _trendTargetLabel(PreparedComparisonTarget target, int index) {
     return 'artifact-${index + 1}';
   }
   return 'target-${index + 1}';
+}
+
+/// Names of `dart:async` functions that complete futures normally (no error).
+const _asyncNormalCompletionNames = {
+  '_Future._completeWithValue',
+  '_Future._setPendingComplete',
+  '_Future._complete',
+  '_setPendingComplete',
+  '_completeWithValue',
+};
+
+/// Names of `dart:async` functions that complete futures with an error.
+const _asyncErrorCompletionNames = {
+  '_Future._completeError',
+  '_Future._completeErrorObject',
+  '_completeError',
+  '_completeErrorObject',
+  '_asyncErrorWrapper',
+};
+
+/// Names of `dart:async` functions that dispatch to listeners.
+const _asyncListenerDispatchNames = {
+  '_Future._propagateToListeners',
+  '_FutureListener.handleValue',
+  '_FutureListener.handleError',
+  'handleValueCallback',
+  'handleError',
+  '_propagateToListeners',
+};
+
+/// Names of `dart:async` functions for microtask scheduling.
+const _asyncMicrotaskNames = {
+  '_microtaskLoop',
+  '_startMicrotaskLoop',
+  '_runPendingImmediateCallback',
+};
+
+/// Names of `dart:async` zone overhead functions.
+const _asyncZoneNames = {
+  '_RootZone.run',
+  '_RootZone.runUnary',
+  '_RootZone.runBinary',
+};
+
+/// Returns the async category label for [frame], or `null` if the frame is
+/// not a `dart:async` frame.
+///
+/// Uses substring matching because VM function names may include the owner
+/// class prefix multiple times (e.g. `_Future._Future._completeErrorObject`).
+String? _asyncCategoryLabel(ProfileFrameSummary frame) {
+  final name = frame.name;
+  for (final entry in _asyncNormalCompletionNames) {
+    if (name.contains(entry)) return 'async (normal completions)';
+  }
+  for (final entry in _asyncErrorCompletionNames) {
+    if (name.contains(entry)) return 'async (error completions)';
+  }
+  for (final entry in _asyncListenerDispatchNames) {
+    if (name.contains(entry)) return 'async (listener dispatch)';
+  }
+  for (final entry in _asyncMicrotaskNames) {
+    if (name.contains(entry)) return 'async (microtask scheduling)';
+  }
+  for (final entry in _asyncZoneNames) {
+    if (name.contains(entry)) return 'async (zone overhead)';
+  }
+  return null;
+}
+
+/// Categorizes async frames into explicit groups and replaces the individual
+/// dart:async frame summaries in [region] with categorized entries.
+///
+/// When [cpuSamples] is provided, async samples are also attributed to the
+/// first non-async caller in the stack, producing entries like
+/// "async (await _runFrame)" that show which instruction triggered the async
+/// cost.
+ProfileRegionResult _collapseAsyncFramesInRegion(
+  ProfileRegionResult region, {
+  CpuSamples? cpuSamples,
+}) {
+  return ProfileRegionResult(
+    regionId: region.regionId,
+    name: region.name,
+    attributes: region.attributes,
+    isolateId: region.isolateId,
+    isolateIds: region.isolateIds,
+    captureKinds: region.captureKinds,
+    isolateScope: region.isolateScope,
+    parentRegionId: region.parentRegionId,
+    startTimestampMicros: region.startTimestampMicros,
+    endTimestampMicros: region.endTimestampMicros,
+    durationMicros: region.durationMicros,
+    sampleCount: region.sampleCount,
+    samplePeriodMicros: region.samplePeriodMicros,
+    topSelfFrames: _collapseAsyncFrameList(
+      region.topSelfFrames,
+      region.sampleCount,
+      cpuSamples: cpuSamples,
+    ),
+    topTotalFrames: _collapseAsyncFrameList(
+      region.topTotalFrames,
+      region.sampleCount,
+    ),
+    memory: region.memory,
+    rawProfilePath: region.rawProfilePath,
+    summaryPath: region.summaryPath,
+    error: region.error,
+    extra: region.extra,
+  );
+}
+
+/// Replaces individual `dart:async` frames in [frames] with a single
+/// "async overhead" entry and returns the filtered list.
+///
+/// Detailed category breakdown (normal vs error completions) and call-site
+/// attribution are added to warnings by [_buildAsyncBreakdownWarnings] instead
+/// of cluttering the main table.
+List<ProfileFrameSummary> _collapseAsyncFrameList(
+  List<ProfileFrameSummary> frames,
+  int totalSampleCount, {
+  CpuSamples? cpuSamples,
+}) {
+  final divisor = totalSampleCount == 0 ? 1 : totalSampleCount;
+  var asyncSelfSamples = 0;
+  var asyncTotalSamples = 0;
+  final filtered = <ProfileFrameSummary>[];
+
+  for (final frame in frames) {
+    final profileFrame = ProfileFrame(
+      name: frame.name,
+      kind: frame.kind,
+      location: frame.location,
+    );
+    if (profileFrame.isAsyncOverhead) {
+      asyncSelfSamples += frame.selfSamples;
+      asyncTotalSamples += frame.totalSamples;
+    } else {
+      filtered.add(frame);
+    }
+  }
+
+  if (asyncSelfSamples == 0 && asyncTotalSamples == 0) {
+    return frames;
+  }
+
+  filtered.add(
+    ProfileFrameSummary(
+      name: 'async overhead',
+      kind: 'Dart',
+      location: 'dart:async',
+      selfSamples: asyncSelfSamples,
+      totalSamples: asyncTotalSamples,
+      selfPercent: asyncSelfSamples / divisor,
+      totalPercent: asyncTotalSamples / divisor,
+    ),
+  );
+
+  filtered.sort(_compareSelfDescending);
+  return filtered;
+}
+
+/// Builds structured warnings describing the async overhead breakdown by
+/// category (normal vs error completions, listener dispatch, etc.) and, when
+/// raw [cpuSamples] are available, the top caller sites for error completions.
+List<String> _buildAsyncBreakdownWarnings(
+  List<ProfileFrameSummary> frames,
+  CpuSamples? cpuSamples,
+  int totalSampleCount,
+) {
+  if (frames.isEmpty) return const [];
+
+  // Aggregate stored frames by category.
+  final categories = <String, _AsyncCategoryAccumulator>{};
+  for (final frame in frames) {
+    final profileFrame = ProfileFrame(
+      name: frame.name,
+      kind: frame.kind,
+      location: frame.location,
+    );
+    if (profileFrame.isAsyncOverhead) {
+      final label = _asyncCategoryLabel(frame) ?? 'other';
+      categories.putIfAbsent(label, () => _AsyncCategoryAccumulator())
+        ..add(frame);
+    }
+  }
+
+  if (categories.isEmpty) return const [];
+
+  final divisor = totalSampleCount == 0 ? 1 : totalSampleCount;
+  final totalAsyncSamples = categories.values.fold<int>(
+    0,
+    (s, c) => s + c.selfSamples,
+  );
+  final totalPct = (totalAsyncSamples / divisor) * 100;
+  final parts = <String>[
+    'Async overhead breakdown: ${totalPct.toStringAsFixed(1)}% total',
+  ];
+
+  // Add category lines.
+  for (final entry in categories.entries) {
+    final pct = (entry.value.selfSamples / divisor) * 100;
+    final label = switch (entry.key) {
+      'async (normal completions)' => 'normal completions',
+      'async (error completions)' => 'error completions',
+      'async (listener dispatch)' => 'listener dispatch',
+      'async (microtask scheduling)' => 'microtask scheduling',
+      'async (zone overhead)' => 'zone overhead',
+      _ => entry.key,
+    };
+    parts.add('  $label: ${pct.toStringAsFixed(1)}%');
+  }
+
+  // When raw CPU samples are available, add caller attribution for error
+  // completions (the most actionable category).
+  if (cpuSamples?.samples != null) {
+    final attributed = _attributeAsyncByCaller(cpuSamples!);
+    if (attributed.isNotEmpty && totalSampleCount > 0) {
+      // Find entries with error completions.
+      final errorCallers =
+          attributed.where((e) => e.errorSelfSamples > 0).toList()
+            ..sort((a, b) => b.errorSelfSamples.compareTo(a.errorSelfSamples));
+
+      if (errorCallers.isNotEmpty) {
+        final callerDesc = errorCallers
+            .take(3)
+            .map((e) {
+              final callerPct = (e.errorSelfSamples / divisor) * 100;
+              return '${e.callerName} (${callerPct.toStringAsFixed(1)}%)';
+            })
+            .join(', ');
+        parts.add('  error completions from: $callerDesc');
+      }
+
+      // Also show normal completion callers.
+      final normalCallers =
+          attributed.where((e) => e.normalSelfSamples > 0).toList()..sort(
+            (a, b) => b.normalSelfSamples.compareTo(a.normalSelfSamples),
+          );
+
+      if (normalCallers.isNotEmpty) {
+        final callerDesc = normalCallers
+            .take(3)
+            .map((e) {
+              final callerPct = (e.normalSelfSamples / divisor) * 100;
+              return '${e.callerName} (${callerPct.toStringAsFixed(1)}%)';
+            })
+            .join(', ');
+        parts.add('  normal completions from: $callerDesc');
+      }
+    }
+  }
+
+  return [parts.join('\n')];
+}
+
+/// Accumulates sample counts for one async category.
+class _AsyncCategoryAccumulator {
+  int selfSamples = 0;
+  int totalSamples = 0;
+
+  void add(ProfileFrameSummary frame) {
+    selfSamples += frame.selfSamples;
+    totalSamples += frame.totalSamples;
+  }
+}
+
+/// A single caller-attributed async cost entry with category breakdown.
+final class _AsyncCallerEntry {
+  const _AsyncCallerEntry({
+    required this.callerName,
+    required this.selfSamples,
+    required this.totalSamples,
+    this.normalSelfSamples = 0,
+    this.errorSelfSamples = 0,
+    this.listenerSelfSamples = 0,
+    this.otherSelfSamples = 0,
+  });
+
+  final String callerName;
+  final int selfSamples;
+  final int totalSamples;
+
+  /// Self samples from normal completions (e.g. _completeWithValue).
+  /// These are the best candidates for sync conversion — the future completed
+  /// synchronously without yielding.
+  final int normalSelfSamples;
+
+  /// Self samples from error completions (e.g. _completeErrorObject).
+  /// Harder to eliminate because errors inherently need stack traces.
+  final int errorSelfSamples;
+
+  /// Self samples from listener dispatch (e.g. _propagateToListeners).
+  final int listenerSelfSamples;
+
+  /// Self samples from other async categories (microtask, zone, etc.).
+  final int otherSelfSamples;
+}
+
+/// Walks raw [cpuSamples] and attributes each async self-sample to the first
+/// non-async caller in the stack trace.
+///
+/// For each sample where the top (self) frame is a `dart:async` function, this
+/// finds the first frame below it that is NOT `dart:async` and accumulates the
+/// sample there. The result answers "which calling function triggered this
+/// async cost?"
+List<_AsyncCallerEntry> _attributeAsyncByCaller(CpuSamples cpuSamples) {
+  final functions = cpuSamples.functions ?? const <ProfileFunction>[];
+  final samples = cpuSamples.samples ?? const <CpuSample>[];
+  if (functions.isEmpty || samples.isEmpty) return const [];
+
+  final callerCounts = <String, int>{};
+  final callerCategories = <String, Map<String, int>>{};
+  var totalZeroCallerSamples = 0;
+
+  for (final sample in samples) {
+    final stack = sample.stack ?? const <int>[];
+    if (stack.isEmpty) continue;
+
+    // Check if the top (self) frame is async.
+    final selfFrame = profileFrameFromFunction(functions, stack.first);
+    if (!selfFrame.isAsyncOverhead) continue;
+
+    // Find the first non-async frame below the self frame.
+    String? callerName;
+    for (var i = 1; i < stack.length; i++) {
+      final frame = profileFrameFromFunction(functions, stack[i]);
+      if (!frame.isAsyncOverhead) {
+        callerName = frame.name;
+        break;
+      }
+    }
+
+    // Determine async category for what-if analysis.
+    final category = _asyncCategoryFromName(selfFrame.name, selfFrame.location);
+
+    if (callerName != null) {
+      callerCounts[callerName] = (callerCounts[callerName] ?? 0) + 1;
+      callerCategories.putIfAbsent(callerName, () => {})
+        ..update(category, (v) => v + 1, ifAbsent: () => 1);
+    } else {
+      totalZeroCallerSamples++;
+    }
+  }
+
+  if (callerCounts.isEmpty && totalZeroCallerSamples == 0) {
+    return const [];
+  }
+
+  final sorted = callerCounts.entries.toList()
+    ..sort((a, b) => b.value.compareTo(a.value));
+
+  final result = <_AsyncCallerEntry>[
+    for (final entry in sorted)
+      _AsyncCallerEntry(
+        callerName: entry.key,
+        selfSamples: entry.value,
+        totalSamples: entry.value,
+        normalSelfSamples: callerCategories[entry.key]?['normal'] ?? 0,
+        errorSelfSamples: callerCategories[entry.key]?['error'] ?? 0,
+        listenerSelfSamples: callerCategories[entry.key]?['listener'] ?? 0,
+        otherSelfSamples:
+            (entry.value) -
+            (callerCategories[entry.key]?['normal'] ?? 0) -
+            (callerCategories[entry.key]?['error'] ?? 0) -
+            (callerCategories[entry.key]?['listener'] ?? 0),
+      ),
+  ];
+
+  if (totalZeroCallerSamples > 0) {
+    result.add(
+      _AsyncCallerEntry(
+        callerName: 'no-caller',
+        selfSamples: totalZeroCallerSamples,
+        totalSamples: totalZeroCallerSamples,
+      ),
+    );
+  }
+
+  return result;
+}
+
+/// Returns the async category name for the given async frame [name] and
+/// [location]. Uses substring matching to handle VM name prefixes.
+String _asyncCategoryFromName(String name, String? location) {
+  for (final entry in _asyncNormalCompletionNames) {
+    if (name.contains(entry)) return 'normal';
+  }
+  for (final entry in _asyncErrorCompletionNames) {
+    if (name.contains(entry)) return 'error';
+  }
+  for (final entry in _asyncListenerDispatchNames) {
+    if (name.contains(entry)) return 'listener';
+  }
+  return 'other';
+}
+
+/// Produces warning messages estimating the savings from removing async from
+/// specific callers.
+int _compareSelfDescending(ProfileFrameSummary a, ProfileFrameSummary b) {
+  final c = b.selfSamples.compareTo(a.selfSamples);
+  if (c != 0) return c;
+  return b.totalSamples.compareTo(a.totalSamples);
 }

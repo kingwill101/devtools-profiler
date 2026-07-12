@@ -24,6 +24,7 @@ ProfileRegionResult summarizeCpuSamples({
   String? rawProfilePath,
   int topFrameCount = 10,
   ProfileFramePredicate? includeFrame,
+  Map<String, Object?> extra = const {},
 }) {
   final functions = cpuSamples.functions ?? const <ProfileFunction>[];
   final samples = cpuSamples.samples ?? const <CpuSample>[];
@@ -89,6 +90,7 @@ ProfileRegionResult summarizeCpuSamples({
     topTotalFrames: topTotalFrames,
     rawProfilePath: rawProfilePath,
     summaryPath: summaryPath,
+    extra: extra,
   );
 }
 

@@ -27,6 +27,7 @@ class ProfileRegionResult {
     required this.summaryPath,
     this.memory,
     this.parentRegionId,
+    this.extra = const {},
     List<String>? isolateIds,
     List<ProfileCaptureKind> captureKinds = defaultProfileCaptureKinds,
     this.isolateScope = ProfileIsolateScope.current,
@@ -84,6 +85,10 @@ class ProfileRegionResult {
       summaryPath: json['summaryPath'] as String? ?? '',
       rawProfilePath: json['rawProfilePath'] as String?,
       error: json['error'] as String?,
+      extra: switch (json['extra']) {
+        final Map<String, Object?> m => m,
+        _ => <String, Object?>{},
+      },
     );
   }
 
@@ -115,6 +120,13 @@ class ProfileRegionResult {
 
   /// The parent region id when this region was started inside another region.
   final String? parentRegionId;
+
+  /// Extra tool-specific metadata attached at region start.
+  ///
+  /// Tools like `lualike` can attach arbitrary key-value data here (e.g.
+  /// `{'luaFile': 'calls.lua', 'luaFunction': 'runBenchmark'}`). This data
+  /// is preserved in the session artifact and displayed in region summaries.
+  final Map<String, Object?> extra;
 
   /// The region start timestamp from `Timeline.now`.
   final int startTimestampMicros;
@@ -176,5 +188,6 @@ class ProfileRegionResult {
     'summaryPath': summaryPath,
     'rawProfilePath': rawProfilePath,
     'error': error,
+    if (extra.isNotEmpty) 'extra': Map<String, Object?>.from(extra),
   };
 }

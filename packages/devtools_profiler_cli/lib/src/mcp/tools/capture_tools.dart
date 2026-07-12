@@ -51,6 +51,11 @@ final Tool profileRunTool = Tool(
       'hideRuntimeHelpers': Schema.bool(
         description: 'Whether to hide common profiler/runtime helper packages.',
       ),
+      'collapseAsync': Schema.bool(
+        description:
+            'Whether to collapse dart:async frames into a single "async overhead" '
+            'entry in summary tables.',
+      ),
       'includePackages': Schema.list(
         description:
             'Optional package prefixes to keep. Frames outside these packages are hidden.',
@@ -135,6 +140,11 @@ final Tool profileAttachTool = Tool(
       ),
       'hideRuntimeHelpers': Schema.bool(
         description: 'Whether to hide common profiler/runtime helper packages.',
+      ),
+      'collapseAsync': Schema.bool(
+        description:
+            'Whether to collapse dart:async frames into a single "async overhead" '
+            'entry in summary tables.',
       ),
       'includePackages': Schema.list(
         description:

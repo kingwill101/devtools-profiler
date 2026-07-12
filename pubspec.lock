@@ -45,18 +45,18 @@ packages:
     dependency: transitive
     description:
       name: artisanal
-      sha256: ff67fd9dea58a603dea7c4073427c30f7ddeebba5da6a05a40cb7a8777ec1b8c
+      sha256: "9e79856b60b3f5d8334058c44243def8759731434f86ee7e2de6362f9aff9650"
       url: "https://pub.dev"
     source: hosted
-    version: "0.3.0"
+    version: "0.4.0"
   artisanal_widgets:
     dependency: transitive
     description:
       name: artisanal_widgets
-      sha256: d32b5e41689c9853241437ff9644a5272fbf341e938154fe502601c69009fa0a
+      sha256: "5af51aac97900a7f6bdb500a6629203b5bbbde987dbd4ab73aff51ca6e73b90e"
       url: "https://pub.dev"
     source: hosted
-    version: "0.2.0"
+    version: "0.2.2"
   async:
     dependency: transitive
     description:
@@ -113,6 +113,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.19.1"
+  completion:
+    dependency: transitive
+    description:
+      name: completion
+      sha256: "82fa09800c0b71a2e8396bf3ca6b36b43cd35fe7ba2aeab53b6349ac671d0f5b"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.2"
   convert:
     dependency: transitive
     description:
@@ -257,6 +265,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.7.0"
+  hotreloader:
+    dependency: transitive
+    description:
+      name: hotreloader
+      sha256: "66871df468fc24eee81f1a0a7cb98acc104716f9b7376d355437b48d633c4ebf"
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.4.0"
   html:
     dependency: transitive
     description:
@@ -621,10 +637,10 @@ packages:
     dependency: transitive
     description:
       name: ultraviolet
-      sha256: eddf41c6a43976d8d0de9059a789fc7b4013915fc658a2e596cb7cf56ffc0cd5
+      sha256: "5b81c9118dad4b64caf816a461c2563794abafdd692dc8a4849a69d90b718b1c"
       url: "https://pub.dev"
     source: hosted
-    version: "0.2.0"
+    version: "0.3.0"
   unified_analytics:
     dependency: transitive
     description:

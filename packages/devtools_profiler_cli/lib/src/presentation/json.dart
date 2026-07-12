@@ -13,6 +13,7 @@ Map<String, Object?> sessionPresentationJson(
   Map<String, ProfileCallTree> regionTrees,
   Map<String, ProfileCallTree> regionBottomUpTrees,
   Map<String, ProfileMethodTable> regionMethodTables,
+  List<AllocationAttribution> overallAllocAttribution,
 ) {
   return {
     ...session.toJson(),
@@ -33,6 +34,10 @@ Map<String, Object?> sessionPresentationJson(
           regionMethodTables[region.regionId],
         ),
     ],
+    if (overallAllocAttribution.isNotEmpty)
+      'overallAllocAttribution': [
+        for (final attr in overallAllocAttribution) attr.toJson(),
+      ],
   };
 }
 
@@ -43,6 +48,7 @@ Map<String, Object?> regionPresentationJson(
   ProfileCallTree? bottomUpTree,
   ProfileMethodTable? methodTable, {
   List<String> warnings = const [],
+  List<AllocationAttribution> allocAttribution = const [],
 }) {
   return {
     ...region.toJson(),
@@ -52,6 +58,8 @@ Map<String, Object?> regionPresentationJson(
     if (bottomUpTree != null) 'bottomUpTree': bottomUpTree.toJson(),
     if (methodTable != null) 'methodTable': methodTable.toJson(),
     if (warnings.isNotEmpty) 'preparationWarnings': warnings,
+    if (allocAttribution.isNotEmpty)
+      'allocAttribution': [for (final attr in allocAttribution) attr.toJson()],
   };
 }
 
@@ -161,6 +169,7 @@ Map<String, Object?> _comparisonTargetJson(PreparedComparisonTarget target) {
       target.presentation.bottomUpTree,
       target.presentation.methodTable,
       warnings: target.presentation.warnings,
+      allocAttribution: target.presentation.allocAttribution,
     ),
   };
 }

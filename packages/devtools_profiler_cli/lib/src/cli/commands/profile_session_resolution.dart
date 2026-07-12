@@ -39,6 +39,31 @@ mixin ProfileSessionResolution on ProfilerCommand {
     return Directory.current;
   }
 
+  /// Resolves [input] as a stored session id when possible; otherwise
+  /// returns the normalized absolute path.
+  ///
+  /// Session ids are matched against stored sessions under
+  /// [sessionsDirectory] (or [defaultSessionsDirectory] when omitted).
+  /// When no stored sessions are available or the input does not match
+  /// any session id, the input is treated as a file path and normalized
+  /// to an absolute path.
+  Future<String> resolveSessionOrPath(
+    String input, {
+    Directory? sessionsDirectory,
+  }) async {
+    final dir = sessionsDirectory ?? defaultSessionsDirectory();
+    final sessions = await discoverSessions(dir);
+    if (sessions.isNotEmpty) {
+      try {
+        final selected = selectSession(sessions, sessionId: input);
+        return selected.directory.path;
+      } on ArgumentError {
+        // Not a matching session id — fall through to file path.
+      }
+    }
+    return path.normalize(path.absolute(input));
+  }
+
   /// Lists all stored profiling sessions, sorted newest first.
   ///
   /// Reads each subdirectory of [directory] that contains a `session.json`

@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.5.0
+
+- Added `AllocationAttribution` class and `attributeAllocationsToCallers()`
+  that cross-references CPU samples with memory class deltas to attribute
+  allocations to the functions on the stack during heap growth.
+- Added `lineForFunction()` helper that extracts line numbers from VM
+  profile function data, enabling line-level source annotation.
+- Added `isAsyncOverhead` getter to `ProfileFrame` for identifying
+  `dart:async` frames, supporting the `--collapse-async` feature.
+- Added `extra` field to `ActiveProfileRegion` and `ProfileRegionResult`
+  for tool-specific metadata that persists in session artifacts.
+- Memory class attribution now exposes `AllocationAttribution` data through
+  `PreparedRegionPresentation.allocAttribution`.
+
 ## 0.4.0
 
 - Added live Flutter frame timing analysis with jank attribution and timeline

@@ -292,6 +292,17 @@ stored session exists — it falls back to the latest session automatically.
 Use `--session-id latest`, `--session-id previous`, or `--session-id <id>`
 to pick a different stored session explicitly.
 
+Positional arguments accept session ids in addition to file paths, so you can
+pass a session id directly instead of its on-disk path:
+
+```bash
+devtools-profiler summarize 0712060003-8c410
+devtools-profiler compare 0712060003-8c410 0711235455-ebfb3
+devtools-profiler trends session-a session-b session-c
+devtools-profiler inspect --method Parser.parseFile 0712060003-8c410
+devtools-profiler inspect-classes --class String 0712060003-8c410
+```
+
 Summarize a session:
 
 ```bash
@@ -363,16 +374,40 @@ devtools-profiler trends \
   /path/to/session-1 \
   /path/to/session-2 \
   /path/to/session-3
+
+# Or use the N most recent stored sessions:
+devtools-profiler trends --last 5
+```
+
+Check for regressions against a known-good baseline (useful in CI):
+
+```bash
+devtools-profiler regress path/to/baseline-session
+devtools-profiler regress 0712060003-8c410 0711235455-ebfb3
+```
+
+Exits with code 1 when regressions are found. Use `--warn-only` to exit 0.
+
+Compare three or more sessions with an aligned hotspot table:
+
+```bash
+devtools-profiler compare session-a session-b session-c
+devtools-profiler compare --csv session-a session-b session-c
 ```
 
 ## Important Flags
 
 - `--json` emits machine-readable JSON.
+- `--csv` outputs compact CSV tables instead of formatted terminal output.
 - `--call-tree` includes the top-down call tree.
 - `--bottom-up` includes the bottom-up caller tree.
 - `--method-table` includes DevTools-style caller and callee context.
 - `--hide-sdk` hides Dart and Flutter SDK frames.
 - `--hide-runtime-helpers` hides profiler transport and runtime helper frames.
+- `--collapse-async` categorizes `dart:async` frames by type (normal
+  completions, error completions, listener dispatch, microtask scheduling,
+  zone overhead) and attributes async cost to the calling function when
+  raw CPU samples are available (e.g. `async (await _executeFrame)`).
 - `--include-package <prefix>` keeps only matching package prefixes.
 - `--exclude-package <prefix>` removes matching package prefixes.
 - `--full-locations` keeps full source locations instead of compact labels.
@@ -393,6 +428,8 @@ devtools-profiler trends \
   `inspect-classes`.
 - `--memory-class-limit <n>` controls compared memory class rows for `compare`.
   `0` means unlimited.
+- `--last <n>` on `trends` uses the `n` most recent stored sessions.
+  Example: `devtools-profiler trends --last 5`.
 
 Commands that operate on one profile use `--profile-id overall` for the
 whole-session profile or a generated region id for a marked region. Region names
