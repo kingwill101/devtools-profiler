@@ -1,5 +1,40 @@
 # Changelog
 
+## 0.6.0
+
+- Added an opt-in `browse` terminal UI for searchable stored sessions and
+  explicit baseline/current region selection, summary previews, and command
+  export. Redirected hosts cannot enter terminal mode.
+- Matched multi-run CPU frames by name, kind, and location instead of name
+  alone; missing entries no longer claim a function was eliminated.
+- Corrected default pairwise comparison order: previous run is the baseline,
+  newest run is current.
+- Rebuilt multi-run frame lists before filtering/alignment and applied row
+  limits after alignment. Added MCP `profile_compare.paths` support.
+- Added aligned nullable rows to multi-run JSON and trend JSON. Multi-run CSV
+  now includes kind/location columns and blank cells for missing observations.
+- Aligned the MCP implementation version with the CLI release and required
+  core 0.6.0 for the improved artifact reader and capture lifecycle.
+- Improved saved-profile frame names and CPU isolate/thread metadata through the
+  shared core reader, for CLI and MCP workflows.
+- Finalized in-flight region captures before terminating duration-limited runs.
+- Kept `run --json` stdout parseable by forwarding target logs to stderr;
+  `--no-forward-output` still suppresses them.
+- Shared complete CPU call paths across top-down, bottom-up, and method-table
+  presentation for both CLI and MCP, before applying output limits.
+- Required Dart 3.13 or later and refreshed dependencies, including artisanal
+  0.6 and dart_mcp 0.5.2 (remaining on the supported 0.5.x line).
+
+## 0.5.2
+
+- Updated the CLI release to use core 0.5.2, fixing profiling from AOT bundles
+  installed with `dart install`.
+
+## 0.5.1
+
+- Updated the CLI release to use `devtools_profiler_core` 0.5.1, including
+  reliable completion of interrupted CPU and memory profile captures.
+
 ## 0.5.0
 
 - Added `replay` command that animates through stored CPU samples as a

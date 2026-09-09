@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:vm_service/vm_service.dart';
 
 /// A node in the captured Flutter widget tree.

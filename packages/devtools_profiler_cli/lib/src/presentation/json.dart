@@ -4,6 +4,31 @@ import 'cli_command.dart';
 import 'models.dart';
 import 'options.dart';
 
+/// Converts aligned cross-run frames to the shared CLI/MCP response.
+Map<String, Object?> frameColumnsJson(
+  List<ProfileFrameColumn> columns, {
+  List<String> warnings = const [],
+  int? frameLimit,
+}) {
+  final rows = alignProfileFrames(columns, limit: frameLimit);
+  return {
+    'kind': 'multi-compare',
+    'warnings': warnings,
+    'missingFrameMeaning': 'not listed; not evidence of elimination',
+    'rows': [for (final row in rows) row.toJson()],
+    'columns': [
+      for (var i = 0; i < columns.length; i++)
+        {
+          'label': columns[i].label,
+          'frames': [
+            for (final row in rows)
+              if (row.frames[i] case final frame?) frame.toJson(),
+          ],
+        },
+    ],
+  };
+}
+
 /// Converts a prepared session to structured JSON.
 Map<String, Object?> sessionPresentationJson(
   ProfileRunResult session,
@@ -152,6 +177,19 @@ Map<String, Object?> trendPresentationJson(PreparedProfileTrends trends) {
     'kind': 'profileTrends',
     'cliCommand': _trendsCliCommand(trends),
     'targets': [for (final target in trends.targets) _trendTargetJson(target)],
+    'frameAlignment': {
+      'missingFrameMeaning': 'not listed; not evidence of elimination',
+      'rows': [
+        for (final row in alignProfileFrames([
+          for (final target in trends.targets)
+            ProfileFrameColumn(
+              label: target.path,
+              frames: target.presentation.region.topSelfFrames,
+            ),
+        ]))
+          row.toJson(),
+      ],
+    },
     'trends': trends.trends.toJson(),
   };
 }

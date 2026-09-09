@@ -15,8 +15,11 @@ const _sessionFileName = 'session.json';
 const _sessionsDirectoryName = 'sessions';
 const _defaultSessionListLimit = 20;
 
-typedef _ProgressReporter =
-    void Function(num progress, num total, String message);
+typedef _ProgressReporter = void Function(
+  num progress,
+  num total,
+  String message,
+);
 
 /// Handles MCP profiler tool calls.
 class McpToolHandlers {
@@ -494,6 +497,24 @@ class McpToolHandlers {
       action: (progress) async {
         final arguments = request.arguments ?? const <String, Object?>{};
         final treeOptions = _treeOptionsFromArguments(arguments);
+        if (arguments.containsKey('paths')) {
+          final paths = _stringListArgument(arguments, key: 'paths');
+          if (paths.length < 2) {
+            throw ArgumentError('paths requires at least two profile targets.');
+          }
+          progress(0, 2, 'Preparing cross-run frames.');
+          final prepared = await prepareProfileFrameColumns(
+            runner,
+            paths: paths,
+            options: treeOptions,
+          );
+          progress(2, 2, 'Cross-run frames prepared.');
+          return frameColumnsJson(
+            prepared.columns,
+            warnings: prepared.warnings,
+            frameLimit: treeOptions.frameLimit,
+          );
+        }
         progress(0, 3, 'Resolving comparison targets.');
         final baselinePath = await _resolveComparisonTargetPath(
           arguments,

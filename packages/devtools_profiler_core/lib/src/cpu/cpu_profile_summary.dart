@@ -27,14 +27,14 @@ ProfileRegionResult summarizeCpuSamples({
   Map<String, Object?> extra = const {},
 }) {
   final functions = cpuSamples.functions ?? const <ProfileFunction>[];
+  final resolver = ProfileFrameResolver(functions);
   final samples = cpuSamples.samples ?? const <CpuSample>[];
   final statsByFrameKey = <String, _MutableFrameStats>{};
   var sampleCount = 0;
 
   for (final sample in samples) {
-    final frames = filterStackFrames(
+    final frames = resolver.filterStack(
       sample.stack ?? const <int>[],
-      functions,
       includeFrame: includeFrame,
     );
     if (frames.isEmpty) continue;

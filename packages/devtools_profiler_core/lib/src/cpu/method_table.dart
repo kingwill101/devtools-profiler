@@ -1,5 +1,6 @@
 import 'package:vm_service/vm_service.dart';
 
+import 'call_tree.dart';
 import 'profile_frames.dart';
 
 /// A caller or callee relationship for a method table entry.
@@ -233,39 +234,33 @@ class ProfileMethodTable {
 ProfileMethodTable buildMethodTable({
   required CpuSamples cpuSamples,
   ProfileFramePredicate? includeFrame,
-}) {
-  final samplePeriodMicros = cpuSamples.samplePeriod ?? 0;
-  final functions = cpuSamples.functions ?? const <ProfileFunction>[];
-  final root = _MethodTableOccurrence.root();
-  var sampleCount = 0;
-  var nextOccurrenceId = 1;
+}) => buildMethodTableFromCallTree(
+  buildCallTree(cpuSamples: cpuSamples, includeFrame: includeFrame),
+);
 
-  for (final sample in cpuSamples.samples ?? const <CpuSample>[]) {
-    final frames = filterStackFrames(
-      sample.stack ?? const <int>[],
-      functions,
-      includeFrame: includeFrame,
+/// Builds a method table from an untruncated top-down [callTree].
+///
+/// Reuses resolved, filtered paths when multiple views of one profile are
+/// needed. Apply presentation limits only after deriving all views.
+/// Throws [ArgumentError] if [callTree] is not a top-down view.
+ProfileMethodTable buildMethodTableFromCallTree(ProfileCallTree callTree) {
+  if (callTree.view != ProfileCallTreeView.topDown) {
+    throw ArgumentError.value(
+      callTree.view,
+      'callTree.view',
+      'Expected topDown',
     );
-    if (frames.isEmpty) continue;
-
-    sampleCount++;
-    var current = root;
-    for (final frame in frames.reversed) {
-      current = current.childFor(
-        frame,
-        occurrenceIdFactory: () => nextOccurrenceId++,
-      );
-      current.totalSamples++;
-    }
-    current.selfSamples++;
   }
+  final samplePeriodMicros = callTree.samplePeriodMicros;
+  final sampleCount = callTree.sampleCount;
 
   final methodsById = <String, _MutableMethodEntry>{};
-  for (final child in root.children.values) {
+  final ancestorMethodIds = <String>{};
+  for (final child in callTree.root.children) {
     _walkMethodTableOccurrences(
       node: child,
       methodsById: methodsById,
-      ancestorOccurrenceIds: const <int>{},
+      ancestorMethodIds: ancestorMethodIds,
       parentEntry: null,
     );
   }
@@ -289,19 +284,25 @@ ProfileMethodTable buildMethodTable({
 }
 
 void _walkMethodTableOccurrences({
-  required _MethodTableOccurrence node,
+  required ProfileCallTreeNode node,
   required Map<String, _MutableMethodEntry> methodsById,
-  required Set<int> ancestorOccurrenceIds,
+  required Set<String> ancestorMethodIds,
   required _MutableMethodEntry? parentEntry,
 }) {
+  final methodId = '${node.name}|${node.kind}|${node.location ?? ''}';
   final entry = methodsById.putIfAbsent(
-    node.methodId,
-    () => _MutableMethodEntry.fromNode(node),
+    methodId,
+    () => _MutableMethodEntry(
+      methodId: methodId,
+      name: node.name,
+      kind: node.kind,
+      location: node.location,
+    ),
   );
 
-  final shouldMergeTotal = !entry.contributingOccurrenceIds.any(
-    ancestorOccurrenceIds.contains,
-  );
+  // Only the outermost occurrence contributes inclusive samples. Reuse the
+  // active path rather than copying ancestors or scanning earlier branches.
+  final shouldMergeTotal = ancestorMethodIds.add(methodId);
   entry.merge(node, mergeTotal: shouldMergeTotal);
 
   if (parentEntry != null) {
@@ -311,45 +312,16 @@ void _walkMethodTableOccurrences({
         (entry.callerEdgeCounts[parentEntry.methodId] ?? 0) + node.totalSamples;
   }
 
-  final childAncestorIds = {...ancestorOccurrenceIds, node.occurrenceId};
-  for (final child in node.children.values) {
+  for (final child in node.children) {
     _walkMethodTableOccurrences(
       node: child,
       methodsById: methodsById,
-      ancestorOccurrenceIds: childAncestorIds,
+      ancestorMethodIds: ancestorMethodIds,
       parentEntry: entry,
     );
   }
-}
-
-final class _MethodTableOccurrence {
-  _MethodTableOccurrence({required this.occurrenceId, required this.frame});
-
-  factory _MethodTableOccurrence.root() => _MethodTableOccurrence(
-    occurrenceId: 0,
-    frame: const ProfileFrame(name: 'all', kind: 'root', location: null),
-  );
-
-  final int occurrenceId;
-  final ProfileFrame frame;
-  final Map<String, _MethodTableOccurrence> children = {};
-
-  int selfSamples = 0;
-  int totalSamples = 0;
-
-  String get methodId => frame.key;
-
-  _MethodTableOccurrence childFor(
-    ProfileFrame frame, {
-    required int Function() occurrenceIdFactory,
-  }) {
-    return children.putIfAbsent(
-      frame.key,
-      () => _MethodTableOccurrence(
-        occurrenceId: occurrenceIdFactory(),
-        frame: frame,
-      ),
-    );
+  if (shouldMergeTotal) {
+    ancestorMethodIds.remove(methodId);
   }
 }
 
@@ -361,28 +333,17 @@ final class _MutableMethodEntry {
     required this.location,
   });
 
-  factory _MutableMethodEntry.fromNode(_MethodTableOccurrence node) {
-    return _MutableMethodEntry(
-      methodId: node.methodId,
-      name: node.frame.name,
-      kind: node.frame.kind,
-      location: node.frame.location,
-    );
-  }
-
   final String methodId;
   final String name;
   final String kind;
   final String? location;
-  final Set<int> contributingOccurrenceIds = {};
   final Map<String, int> callerEdgeCounts = {};
   final Map<String, int> calleeEdgeCounts = {};
 
   int selfSamples = 0;
   int totalSamples = 0;
 
-  void merge(_MethodTableOccurrence node, {required bool mergeTotal}) {
-    contributingOccurrenceIds.add(node.occurrenceId);
+  void merge(ProfileCallTreeNode node, {required bool mergeTotal}) {
     selfSamples += node.selfSamples;
     if (mergeTotal) {
       totalSamples += node.totalSamples;

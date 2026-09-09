@@ -10,6 +10,39 @@ automation, and serve the same capabilities to AI agents over stdio MCP.
 
 For the full CLI guide, see [the profiler README](../../README.md).
 
+## Browse And Compare Stored Runs
+
+```bash
+devtools-profiler browse --cwd /path/to/project
+devtools-profiler compare --hide-sdk --frame-limit 20 baseline middle current
+devtools-profiler trends --last 5 --json
+```
+
+`browse` is an explicit, read-only terminal UI. Use `/` to search session IDs,
+commands, directories, and region names; arrows or `j`/`k` to move; `b` to set
+the baseline; and `c` or Enter to set the current profile. Regions are listed
+with their run-local IDs, so repeated names are not silently matched.
+Press `d` for scrollable comparison details, `e` to exit and print the full
+POSIX-shell comparison command, or `q`/Ctrl+C to quit.
+
+The browser reads stored summaries only, not large raw CPU artifacts. It
+requires terminal stdin/stdout and does not accept JSON, CSV, or frame filters.
+Use its exported command for full filtered analysis. No profile is modified.
+
+Multi-run `compare` rebuilds frame lists from raw CPU data when available,
+applies filters, aligns by name/kind/exact location, then limits output rows.
+Different checkout paths are not guessed to be equivalent. Missing entries
+mean **not listed**, not eliminated; stored summaries may be incomplete.
+Terminal output shows kind and location; CSV adds `kind` and `location` columns
+and uses blank cells for missing observations. JSON has aligned `rows` with
+nullable observations. MCP `profile_compare` accepts `paths` for the same
+cross-run CPU alignment; pairwise baseline/current selectors remain supported.
+
+Self percentages describe share of sampled CPU stacks, not elapsed time.
+Browser deltas are percentage points. Verify workloads, capture settings,
+build mode, and isolate coverage before interpreting a change as a regression.
+Repeated-run statistics and live capture controls are not part of this browser.
+
 ## Install And Run
 
 Install the CLI once:
@@ -398,6 +431,8 @@ devtools-profiler compare --csv session-a session-b session-c
 ## Important Flags
 
 - `--json` emits machine-readable JSON.
+- `run --json` sends forwarded target stdout and stderr to the profiler's
+  stderr, keeping stdout parseable. `--no-forward-output` suppresses target logs.
 - `--csv` outputs compact CSV tables instead of formatted terminal output.
 - `--call-tree` includes the top-down call tree.
 - `--bottom-up` includes the bottom-up caller tree.

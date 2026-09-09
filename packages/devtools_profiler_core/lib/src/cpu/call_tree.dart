@@ -248,14 +248,26 @@ ProfileCallTree buildCallTree({
 ProfileCallTree buildBottomUpTree({
   required CpuSamples cpuSamples,
   ProfileFramePredicate? includeFrame,
-}) {
-  final buildResult = _buildTopDownTree(
-    cpuSamples: cpuSamples,
-    includeFrame: includeFrame,
-  );
+}) => buildBottomUpTreeFromCallTree(
+  buildCallTree(cpuSamples: cpuSamples, includeFrame: includeFrame),
+);
+
+/// Builds a bottom-up view from an untruncated top-down [callTree].
+///
+/// Reuses resolved, filtered paths when multiple views of one profile are
+/// needed. Apply presentation limits only after deriving all views.
+/// Throws [ArgumentError] if [callTree] is not a top-down view.
+ProfileCallTree buildBottomUpTreeFromCallTree(ProfileCallTree callTree) {
+  if (callTree.view != ProfileCallTreeView.topDown) {
+    throw ArgumentError.value(
+      callTree.view,
+      'callTree.view',
+      'Expected topDown',
+    );
+  }
   final bottomUpRoots = <_MutableBottomUpNode>[];
 
-  for (final rootChild in buildResult.root.children) {
+  for (final rootChild in callTree.root.children) {
     _generateBottomUpRoots(
       node: rootChild,
       parent: null,
@@ -265,16 +277,16 @@ ProfileCallTree buildBottomUpTree({
 
   final mergedRoots = _mergeBottomUpNodes(bottomUpRoots);
   final syntheticRoot = _MutableBottomUpNode.root(
-    sampleCount: buildResult.sampleCount,
+    sampleCount: callTree.sampleCount,
   )..children.addAll(mergedRoots);
 
   return ProfileCallTree(
-    sampleCount: buildResult.sampleCount,
-    samplePeriodMicros: buildResult.samplePeriodMicros,
+    sampleCount: callTree.sampleCount,
+    samplePeriodMicros: callTree.samplePeriodMicros,
     view: ProfileCallTreeView.bottomUp,
     root: syntheticRoot.freeze(
-      totalSampleCount: buildResult.sampleCount,
-      samplePeriodMicros: buildResult.samplePeriodMicros,
+      totalSampleCount: callTree.sampleCount,
+      samplePeriodMicros: callTree.samplePeriodMicros,
     ),
   );
 }
@@ -285,13 +297,13 @@ _TopDownBuildResult _buildTopDownTree({
 }) {
   final samplePeriodMicros = cpuSamples.samplePeriod ?? 0;
   final functions = cpuSamples.functions ?? const <ProfileFunction>[];
+  final resolver = ProfileFrameResolver(functions);
   final root = _MutableCallTreeNode.root();
   var sampleCount = 0;
 
   for (final sample in cpuSamples.samples ?? const <CpuSample>[]) {
-    final frames = filterStackFrames(
+    final frames = resolver.filterStack(
       sample.stack ?? const <int>[],
-      functions,
       includeFrame: includeFrame,
     );
     if (frames.isEmpty) continue;
@@ -316,7 +328,7 @@ _TopDownBuildResult _buildTopDownTree({
 }
 
 void _generateBottomUpRoots({
-  required _MutableCallTreeNode node,
+  required ProfileCallTreeNode node,
   required _MutableBottomUpNode? parent,
   required List<_MutableBottomUpNode> bottomUpRoots,
 }) {
@@ -463,7 +475,7 @@ final class _MutableBottomUpNode {
     );
   }
 
-  factory _MutableBottomUpNode.fromTopDownNode(_MutableCallTreeNode node) {
+  factory _MutableBottomUpNode.fromTopDownNode(ProfileCallTreeNode node) {
     return _MutableBottomUpNode(
       name: node.name,
       kind: node.kind,

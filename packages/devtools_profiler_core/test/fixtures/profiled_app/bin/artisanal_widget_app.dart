@@ -1,10 +1,11 @@
 import 'package:artisanal/tui.dart' as tui;
+import 'package:artisanal_widgets/app.dart' as app;
 import 'package:artisanal_widgets/widgets.dart' as w;
 
 Future<void> main() async {
-  final app = tui.WidgetApp(ProfilerWidgetApp());
+  final widgetApp = app.WidgetApp(ProfilerWidgetApp());
   await tui.runProgram(
-    app,
+    widgetApp,
     options: const tui.ProgramOptions(
       altScreen: true,
       mouseMode: tui.MouseMode.allMotion,

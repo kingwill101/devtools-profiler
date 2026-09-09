@@ -11,6 +11,32 @@ import 'package:test/test.dart';
 import 'package:vm_service/vm_service.dart';
 
 void main() {
+  test('multi-path compare exposes aligned rows through MCP', () async {
+    final environment = _McpTestEnvironment(_FakeProfileRunner());
+    addTearDown(environment.shutdown);
+    await _initializeServer(environment);
+    final result = await environment.serverConnection.callTool(
+      CallToolRequest(
+        name: 'profile_compare',
+        arguments: {
+          'paths': [
+            '/tmp/profile.json',
+            '/tmp/profile.json',
+            '/tmp/profile.json',
+          ],
+          'frameLimit': 1,
+        },
+      ),
+    );
+    expect(result.isError, isNot(true), reason: result.content.toString());
+    expect(result.structuredContent!['kind'], 'multi-compare');
+    expect(result.structuredContent!['rows'], hasLength(1));
+    expect(
+      result.structuredContent!['missingFrameMeaning'],
+      contains('not evidence of elimination'),
+    );
+  });
+
   test('lists tools and forwards summarize calls to the runner', () async {
     final environment = _McpTestEnvironment(_FakeProfileRunner());
     addTearDown(environment.shutdown);

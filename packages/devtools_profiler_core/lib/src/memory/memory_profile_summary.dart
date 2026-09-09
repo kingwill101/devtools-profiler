@@ -8,8 +8,9 @@ import '../cpu/profile_frames.dart';
 import 'memory_models.dart';
 
 /// Predicate used to retain or hide memory class summaries.
-typedef ProfileMemoryClassPredicate =
-    bool Function(ProfileMemoryClassSummary summary);
+typedef ProfileMemoryClassPredicate = bool Function(
+  ProfileMemoryClassSummary summary,
+);
 
 /// Builds a [ProfileMemoryResult] from start and end allocation snapshots.
 ProfileMemoryResult summarizeMemoryProfile({
@@ -140,9 +141,9 @@ Future<ProfileMemoryResult> readMemoryClassesFromArtifact(
   ProfileMemoryClassPredicate? includeClass,
   int topClassCount = 50,
 }) async {
-  final json =
-      jsonDecode(await File(rawProfilePath).readAsString())
-          as Map<Object?, Object?>;
+  final json = jsonDecode(
+    await File(rawProfilePath).readAsString(),
+  ) as Map<Object?, Object?>;
   return rebuildMemoryProfileFromArtifact(
     json.cast<String, Object?>(),
     rawProfilePath: rawProfilePath,

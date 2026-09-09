@@ -10,6 +10,91 @@ import 'package:test/test.dart';
 import 'package:vm_service/vm_service.dart';
 
 void main() {
+  test('browse refuses redirected hosts without terminal output', () async {
+    final result = await _runCliCommand(const ['browse']);
+    expect(result.exitCode, 64);
+    expect(result.stdout, isEmpty);
+    expect(result.stderr, contains('requires an interactive terminal'));
+    expect(result.stderr, isNot(contains('\x1b')));
+  });
+
+  test(
+    'multi-compare JSON aligns before limiting and honors filters',
+    () async {
+      final result = await _runCliCommand(const [
+        'compare',
+        '--json',
+        '--hide-sdk',
+        '--frame-limit',
+        '1',
+        '/tmp/sessions/base',
+        '/tmp/sessions/mid',
+        '/tmp/sessions/current',
+      ], runner: _FakeRunnerWithFrames());
+      expect(result.exitCode, 0, reason: result.stderr);
+      final json = jsonDecode(result.stdout) as Map<String, dynamic>;
+      expect(json['kind'], 'multi-compare');
+      expect(json['rows'], hasLength(1));
+      final row = (json['rows'] as List).single as Map;
+      expect(row['location'].toString(), isNot(startsWith('dart:')));
+      expect(row['frames'], hasLength(3));
+      expect(
+        json['missingFrameMeaning'],
+        contains('not evidence of elimination'),
+      );
+    },
+  );
+
+  test(
+    'shared views apply tree limits after deriving overall and region data',
+    () async {
+      final combined = await _runJsonCommand([
+        'run',
+        '--json',
+        '--call-tree',
+        '--bottom-up',
+        '--method-table',
+        '--tree-depth',
+        '1',
+        '--tree-children',
+        '1',
+        '--method-limit',
+        '0',
+        '--',
+        'dart',
+        'run',
+        'bin/main.dart',
+      ]);
+      final methodsOnly = await _runJsonCommand([
+        'run',
+        '--json',
+        '--method-table',
+        '--method-limit',
+        '0',
+        '--',
+        'dart',
+        'run',
+        'bin/main.dart',
+      ]);
+      List<Map<String, Object?>> profiles(Map<String, Object?> json) => [
+        json['overallProfile'] as Map<String, Object?>,
+        ...(json['regions'] as List).cast<Map<String, Object?>>(),
+      ];
+
+      final combinedProfiles = profiles(combined);
+      final methodProfiles = profiles(methodsOnly);
+      expect(combinedProfiles.length, greaterThan(1));
+      for (var i = 0; i < combinedProfiles.length; i++) {
+        expect(
+          combinedProfiles[i]['methodTable'],
+          methodProfiles[i]['methodTable'],
+        );
+        expect(combinedProfiles[i]['callTree'], isNotNull);
+        expect(combinedProfiles[i]['bottomUpTree'], isNotNull);
+      }
+    },
+  );
+
   test('run help shows the target command separator and examples', () async {
     final stdoutCapture = _OutputCapture();
     final stderrCapture = _OutputCapture();
@@ -412,6 +497,8 @@ void main() {
 
     expect(exitCode, 0);
     expect(runner.lastRunRequest?.command, ['dart', 'run', 'bin/main.dart']);
+    expect(runner.lastRunRequest?.forwardOutput, isTrue);
+    expect(runner.lastRunRequest?.forwardOutputToStderr, isTrue);
     final json = jsonDecode(stdoutCapture.text) as Map<String, Object?>;
     expect(json['sessionId'], 'session-1');
     expect(json['overallProfile'], isA<Map<String, Object?>>());
@@ -501,6 +588,7 @@ void main() {
       ProfileProcessIoMode.inheritStdio,
     );
     expect(runner.lastRunRequest?.handleInterruptSignals, isTrue);
+    expect(runner.lastRunRequest?.forwardOutputToStderr, isFalse);
     expect(runner.lastRunRequest?.command, ['dart', 'run', 'bin/tui.dart']);
     expect(
       stdoutCapture.text,
@@ -1670,39 +1758,36 @@ void main() {
   });
 
   group('prepareRegionPresentation sample-count fallback', () {
-    test(
-      'emits warning and preserves stored count when raw profile produces 0 samples',
-      () async {
-        final stdoutCapture = _OutputCapture();
-        final stderrCapture = _OutputCapture();
-        addTearDown(() async {
-          await stdoutCapture.close();
-          await stderrCapture.close();
-        });
+    test('emits warning and preserves stored count when raw profile produces 0 samples', () async {
+      final stdoutCapture = _OutputCapture();
+      final stderrCapture = _OutputCapture();
+      addTearDown(() async {
+        await stdoutCapture.close();
+        await stderrCapture.close();
+      });
 
-        final exitCode = await runCli(
-          const ['run', '--', 'dart', 'run', 'bin/main.dart'],
-          runner: _FakeRunnerWithZeroSamples(),
-          output: stdoutCapture.sink,
-          errorOutput: stderrCapture.sink,
-        );
-        await stdoutCapture.flush();
-        await stderrCapture.flush();
+      final exitCode = await runCli(
+        const ['run', '--', 'dart', 'run', 'bin/main.dart'],
+        runner: _FakeRunnerWithZeroSamples(),
+        output: stdoutCapture.sink,
+        errorOutput: stderrCapture.sink,
+      );
+      await stdoutCapture.flush();
+      await stderrCapture.flush();
 
-        expect(exitCode, 0);
-        expect(
-          stdoutCapture.text,
-          contains('0 samples when re-read'),
-          reason: 'warning about zero re-read samples should appear',
-        );
-        expect(
-          stdoutCapture.text,
-          contains('50 samples'),
-          reason: 'warning should mention the stored sample count',
-        );
-        expect(stderrCapture.text, isEmpty);
-      },
-    );
+      expect(exitCode, 0);
+      expect(
+        stdoutCapture.text,
+        contains('0 samples when re-read'),
+        reason: 'warning about zero re-read samples should appear',
+      );
+      expect(
+        stdoutCapture.text,
+        contains('50 samples'),
+        reason: 'warning should mention the stored sample count',
+      );
+      expect(stderrCapture.text, isEmpty);
+    });
 
     test(
       'no warning emitted when raw CPU profile produces non-zero samples',

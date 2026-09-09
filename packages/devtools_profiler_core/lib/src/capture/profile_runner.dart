@@ -9,6 +9,7 @@ import '../memory/memory_models.dart';
 import 'artifacts.dart';
 import 'models.dart';
 import 'runner/dtd_process_session.dart';
+import 'runner/interrupt_finalization.dart';
 import 'runner/process_launch.dart';
 import 'runner/profile_runner_shared.dart';
 import 'runner/profile_session_controller.dart';
@@ -143,13 +144,23 @@ class ProfileRunner {
         runDurationTimer = Timer(runDuration, () {
           terminatedByProfiler = true;
           sessionController.addWarning(
-            'Profile run duration of ${runDuration.inMilliseconds}ms elapsed; terminating the target process.',
+            'Profile run duration of ${runDuration.inMilliseconds}ms elapsed; finalizing before terminating the target process.',
           );
-          if (process != null && !process.kill()) {
-            sessionController.addWarning(
-              'Failed to terminate the target process after the profile run duration elapsed.',
-            );
-          }
+          unawaited(() async {
+            try {
+              await sessionController.handleProcessExit();
+            } catch (error) {
+              sessionController.addWarning(
+                'Failed to finalize profile data at the duration limit: $error',
+              );
+            } finally {
+              if (process != null && !process.kill()) {
+                sessionController.addWarning(
+                  'Failed to terminate the target process after the profile run duration elapsed.',
+                );
+              }
+            }
+          }());
         });
       }
 
@@ -174,13 +185,17 @@ class ProfileRunner {
           'profile data before stopping the target process.',
         );
         try {
-          await sessionController.handleProcessExit().timeout(
-            _interruptFinalizationWait,
-          );
-        } on TimeoutException {
-          sessionController.addWarning(
-            'Timed out finalizing all profile data after interruption; '
-            'returning the diagnostics captured so far.',
+          final finalization = sessionController.handleProcessExit();
+          await awaitInterruptedFinalization(
+            finalization: finalization,
+            warningTimeout: _interruptFinalizationWait,
+            onTimeout: () {
+              sessionController.addWarning(
+                'Profile finalization exceeded '
+                '${_interruptFinalizationWait.inSeconds}s; '
+                'continuing until the complete profile is written.',
+              );
+            },
           );
         } catch (error) {
           sessionController.addWarning(
@@ -209,6 +224,15 @@ class ProfileRunner {
         exitCode = completion.exitCode!;
         processExited = true;
         await sessionController.handleProcessExit();
+      }
+
+      // In pipe mode, a terminal SIGINT can reach the launched process at the
+      // same time as the profiler. The process may therefore win the
+      // completion race before the profiler's signal watcher does, even
+      // though this is still a user interruption rather than an application
+      // failure.
+      if (!terminatedByProfiler && _isInterruptExitCode(exitCode)) {
+        terminatedByProfiler = true;
       }
 
       final result = sessionController.buildResult(
@@ -671,6 +695,8 @@ int _profileSignalExitCode(ProcessSignal signal) {
   }
   return 1;
 }
+
+bool _isInterruptExitCode(int exitCode) => exitCode == -2 || exitCode == 130;
 
 /// Watches process-level interrupt signals while one run is active.
 final class _ProfileRunSignalWatcher {

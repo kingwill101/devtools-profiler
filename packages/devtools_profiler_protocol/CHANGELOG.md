@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.0
+
+- Required Dart 3.13 or later and refreshed test dependencies.
+
 ## 0.2.0
 
 - Added `extra` field to `ProfileRegionOptions` for tool-specific metadata.

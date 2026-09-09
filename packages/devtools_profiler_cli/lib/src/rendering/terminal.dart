@@ -302,22 +302,13 @@ void writeComparisonSummary(
 ///
 /// Each column corresponds to one session or profile artifact in a
 /// multi-session comparison.
-class MultiCompareColumn {
-  /// Creates a multi-compare column.
-  const MultiCompareColumn({required this.label, required this.frames});
-
-  /// The display label for this column (e.g. session id or artifact name).
-  final String label;
-
-  /// The top self frames for this column.
-  final List<ProfileFrameSummary> frames;
-}
+typedef MultiCompareColumn = ProfileFrameColumn;
 
 /// Writes an aligned multi-column hotspot comparison table.
 ///
 /// Collects the union of all top-self frames across [columns] and renders
-/// each method's self-percentage for every column. Entries that do not appear
-/// in a column's top frames are shown as "eliminated".
+/// each method's self-percentage for every column. Missing entries are not
+/// interpreted as zero cost, since the supplied lists may be limited.
 void writeMultiCompareSummary(
   Console console,
   List<MultiCompareColumn> columns, {
@@ -327,46 +318,22 @@ void writeMultiCompareSummary(
     return;
   }
 
-  // Collect the union of method names across all columns.
-  final allNames = <String>{};
-  final nameOrder = <String>[];
-  for (final column in columns) {
-    for (final frame in column.frames) {
-      if (allNames.add(frame.name)) {
-        nameOrder.add(frame.name);
-      }
-    }
-  }
-
-  // Build a lookup: column index -> (frame name -> ProfileFrameSummary)
-  final lookups = <int, Map<String, ProfileFrameSummary>>{};
-  for (var i = 0; i < columns.length; i++) {
-    final map = <String, ProfileFrameSummary>{};
-    for (final frame in columns[i].frames) {
-      map[frame.name] = frame;
-    }
-    lookups[i] = map;
-  }
-
-  // Sort by the first column's self percent, descending.
-  nameOrder.sort((a, b) {
-    final aFrame = lookups[0]![a];
-    final bFrame = lookups[0]![b];
-    final aPercent = aFrame?.selfPercent ?? -1.0;
-    final bPercent = bFrame?.selfPercent ?? -1.0;
-    return bPercent.compareTo(aPercent);
-  });
-
-  final headers = ['Method', for (final column in columns) column.label];
-  final rows = <List<String>>[];
-  for (final name in nameOrder) {
-    final row = <String>[name];
-    for (var i = 0; i < columns.length; i++) {
-      final frame = lookups[i]![name];
-      row.add(frame != null ? formatPercent(frame.selfPercent) : 'eliminated');
-    }
-    rows.add(row);
-  }
+  final headers = [
+    'Method',
+    'Kind',
+    'Location',
+    for (final column in columns) column.label,
+  ];
+  final rows = [
+    for (final row in alignProfileFrames(columns, limit: options.frameLimit))
+      [
+        row.name,
+        row.kind,
+        row.location ?? '(unknown)',
+        for (final frame in row.frames)
+          frame != null ? formatPercent(frame.selfPercent) : 'not listed',
+      ],
+  ];
 
   if (rows.isEmpty) {
     console.warn('No profile frames available for comparison.');
@@ -374,6 +341,10 @@ void writeMultiCompareSummary(
   }
 
   console.title('Multi-Session Comparison (top self frames)');
+  console.comment(
+    'Self share of samples; not elapsed time. '
+    '"not listed" does not mean eliminated.',
+  );
   console.table(headers: headers, rows: rows);
 }
 

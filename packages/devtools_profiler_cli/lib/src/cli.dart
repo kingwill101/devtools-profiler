@@ -7,6 +7,7 @@ import 'package:devtools_profiler_core/devtools_profiler_core.dart';
 import 'cli/commands/analysis_commands.dart';
 import 'cli/commands/annotate_command.dart';
 import 'cli/commands/artifact_commands.dart';
+import 'cli/commands/browse_command.dart';
 import 'cli/commands/replay_command.dart';
 import 'cli/commands/capture_commands.dart';
 import 'cli/commands/discover_command.dart';
@@ -50,6 +51,12 @@ Future<int> runCli(
         ..addCommand(SearchMethodsCommand(profiler))
         ..addCommand(InspectClassesCommand(profiler))
         ..addCommand(ProfilesCommand(profiler))
+        ..addCommand(
+          BrowseCommand(
+            profiler,
+            terminalAllowed: output == null && errorOutput == null,
+          ),
+        )
         ..addCommand(DiscoverCommand(profiler))
         ..addCommand(FrameProfileCommand(profiler))
         ..addCommand(TimelineCommand(profiler))

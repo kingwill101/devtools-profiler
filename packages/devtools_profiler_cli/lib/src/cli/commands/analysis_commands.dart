@@ -1,5 +1,4 @@
 import 'package:devtools_profiler_core/devtools_profiler_core.dart';
-import 'package:path/path.dart' as path;
 
 import '../../presentation.dart';
 import '../../rendering.dart';
@@ -133,58 +132,31 @@ class CompareCommand extends ProfilerCommand with ProfileSessionResolution {
     }
 
     // 3+ args: multi-compare mode
-    final columns = <MultiCompareColumn>[];
-    for (final arg in argResults!.rest) {
-      final resolvedPath = await resolveSessionOrPath(arg);
-      final summary = await profileRunner.summarizeArtifact(resolvedPath);
-
-      String label;
-      List<ProfileFrameSummary> frames;
-
-      if (summary case {'regions': final Object? _}) {
-        final session = ProfileRunResult.fromJson(summary);
-        final profile =
-            session.overallProfile ??
-            (session.regions.isNotEmpty ? session.regions.first : null);
-        if (profile == null) {
-          throw ArgumentError(
-            'No profile data found in session at "$resolvedPath".',
-          );
-        }
-        frames = profile.topSelfFrames;
-        label = session.sessionId.isNotEmpty
-            ? session.sessionId
-            : path.basename(resolvedPath);
-      } else if (summary case {'topSelfFrames': final Object? _}) {
-        final region = ProfileRegionResult.fromJson(summary);
-        frames = region.topSelfFrames;
-        label = region.name.isNotEmpty
-            ? region.name
-            : path.basename(resolvedPath);
-      } else {
-        throw ArgumentError(
-          'Unsupported comparison target at "$resolvedPath". '
-          'Use a session directory or a profile summary/raw CPU artifact.',
-        );
-      }
-
-      columns.add(MultiCompareColumn(label: label, frames: frames));
-    }
+    final prepared = await prepareProfileFrameColumns(
+      profileRunner,
+      paths: [
+        for (final arg in argResults!.rest) await resolveSessionOrPath(arg),
+      ],
+      options: presentationOptions,
+    );
+    final columns = prepared.columns;
 
     if (printJson) {
-      writeJson({
-        'kind': 'multi-compare',
-        'columns': [
-          for (final column in columns)
-            {
-              'label': column.label,
-              'frames': column.frames.map((f) => f.toJson()).toList(),
-            },
-        ],
-      });
+      writeJson(
+        frameColumnsJson(
+          columns,
+          warnings: prepared.warnings,
+          frameLimit: presentationOptions.frameLimit,
+        ),
+      );
     } else if (printCsv) {
-      writeCsvMultiCompare(line, columns);
+      writeCsvMultiCompare(
+        line,
+        columns,
+        frameLimit: presentationOptions.frameLimit,
+      );
     } else {
+      for (final warning in prepared.warnings) warn(warning);
       writeMultiCompareSummary(io, columns, options: presentationOptions);
     }
 
@@ -200,11 +172,10 @@ class CompareCommand extends ProfilerCommand with ProfileSessionResolution {
         'sessions were found under "${sessionsDirectory.path}" for $label.',
       );
     }
-    if (label == 'baseline') return sessions.first.directory.path;
-    if (sessions.length >= 2) return sessions[1].directory.path;
-    throw ArgumentError(
-      'A second profile target is required and only one stored session is available.',
-    );
+    return selectComparisonSession(
+      sessions,
+      baseline: label == 'baseline',
+    ).directory.path;
   }
 }
 
@@ -463,8 +434,7 @@ class InspectCommand extends ProfileTargetCommand {
       ..addOption(
         'path-limit',
         defaultsTo: '$defaultMethodPathLimit',
-        help:
-            'Maximum representative top-down and bottom-up paths to include. Use 0 for unlimited.',
+        help: 'Maximum representative top-down and bottom-up paths to include. Use 0 for unlimited.',
       );
   }
 
@@ -545,8 +515,7 @@ class CompareMethodCommand extends ProfilerCommand
       ..addOption(
         'path-limit',
         defaultsTo: '$defaultMethodPathLimit',
-        help:
-            'Maximum representative top-down and bottom-up paths to include. Use 0 for unlimited.',
+        help: 'Maximum representative top-down and bottom-up paths to include. Use 0 for unlimited.',
       );
   }
 
@@ -621,11 +590,10 @@ class CompareMethodCommand extends ProfilerCommand
         'No explicit profile paths were provided and no stored profiling sessions were found for $label.',
       );
     }
-    if (label == 'baseline') return sessions.first.directory.path;
-    if (sessions.length >= 2) return sessions[1].directory.path;
-    throw ArgumentError(
-      'A second profile target is required and only one stored session is available.',
-    );
+    return selectComparisonSession(
+      sessions,
+      baseline: label == 'baseline',
+    ).directory.path;
   }
 }
 
@@ -704,8 +672,7 @@ class InspectClassesCommand extends ProfileTargetCommand {
     argParser
       ..addOption(
         'class',
-        help:
-            'Filter to classes whose name contains this query (case-insensitive).',
+        help: 'Filter to classes whose name contains this query (case-insensitive).',
       )
       ..addOption(
         'min-live-bytes',

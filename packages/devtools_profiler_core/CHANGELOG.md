@@ -1,5 +1,46 @@
 # Changelog
 
+## 0.6.0
+
+- Added shared cross-run frame alignment with explicit missing observations,
+  exact name/kind/location identity, and post-alignment row limits.
+- Restored named native/stub/tag functions when reading saved CPU artifacts.
+- Preserved per-sample isolate provenance, OS thread ids, tags and truncation
+  metadata while merging isolates; invalid local stack indices cannot alias
+  functions in another isolate.
+- Compacted capture function tables and bounded retention of earlier snapshots
+  for observed isolates that exit or become unavailable.
+- Captured CPU before allocation data and tolerated busier Flutter metadata
+  requests. Final whole-session capture now attempts fresh data.
+- Waited for in-flight region stops before disposing the VM connection, and
+  finalized duration-limited runs before terminating their targets.
+- Added a driven Flutter desktop stress fixture and repeatable attach validation.
+- Added profile-local frame resolution caching for CPU summaries and trees.
+- Added `buildBottomUpTreeFromCallTree` and `buildMethodTableFromCallTree` to
+  derive additional views without resolving and rebuilding sample paths.
+- Added `ProfileRunRequest.forwardOutputToStderr` for structured-output hosts.
+- Required Dart 3.13 or later and upgraded to devtools_shared 14 and
+  vm_service 15.3.
+- Reduced method-table traversal allocations and recursive-total bookkeeping
+  by tracking only method ids on the active call path.
+- Migrated the terminal widget fixture to artisanal 0.6 / widgets 0.4.
+
+## 0.5.2
+
+- Fixed installed AOT CLI bundles launching themselves instead of the Dart VM
+  when starting the tooling daemon or a bare `dart` target.
+- Added `DEVTOOLS_PROFILER_DART_EXECUTABLE` for environments that need to
+  select a specific Dart executable.
+
+## 0.5.1
+
+- Fixed interrupted profiling finalization so complete CPU and memory profiles
+  are written to `session.json` before the target process is stopped.
+- Added bounded VM-service timeouts for large CPU and allocation profile
+  responses.
+- Fixed terminal interrupt races so SIGINT/SIGTERM-style exits are classified
+  as profiler interruptions after finalization completes.
+
 ## 0.5.0
 
 - Added `AllocationAttribution` class and `attributeAllocationsToCallers()`

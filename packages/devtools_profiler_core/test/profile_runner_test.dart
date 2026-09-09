@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:devtools_profiler_core/devtools_profiler_core.dart';
+import 'package:devtools_profiler_core/src/capture/runner/dart_executable.dart'
+    as dart_executable;
 import 'package:devtools_profiler_core/src/capture/runner/process_launch.dart'
     as launch;
 import 'package:path/path.dart' as path;
@@ -173,6 +175,28 @@ void main() {
       expect(plan.expectedVmServiceUri, Uri.parse('http://127.0.0.1:12345/'));
     },
   );
+
+  test('uses dart from PATH when the profiler is an AOT executable', () {
+    expect(
+      dart_executable.resolveDartExecutable(
+        resolvedExecutable: '/tmp/devtools-profiler',
+        environment: const {},
+      ),
+      'dart',
+    );
+  });
+
+  test('allows overriding the Dart executable for helper processes', () {
+    expect(
+      dart_executable.resolveDartExecutable(
+        resolvedExecutable: '/tmp/devtools-profiler',
+        environment: const {
+          'DEVTOOLS_PROFILER_DART_EXECUTABLE': '/opt/dart/bin/dart',
+        },
+      ),
+      '/opt/dart/bin/dart',
+    );
+  });
 
   test(
     'builds inherited-stdio Flutter run with a deterministic service URI',
@@ -360,7 +384,8 @@ sleep 5
     expect(result.overallProfile, isNotNull);
     expect(result.overallProfile!.succeeded, isTrue);
     expect(result.overallProfile!.sampleCount, greaterThan(0));
-  });
+    // Cold compilation of the terminal widget stack can exceed 30 seconds.
+  }, timeout: const Timeout(Duration(minutes: 2)));
 
   test('returns available diagnostics when interrupted', () async {
     if (Platform.isWindows) {
@@ -399,6 +424,10 @@ sleep 5
       isA<int>().having((count) => count, 'count', greaterThan(0)),
     );
     expect(File(payload['sessionJson']! as String).existsSync(), isTrue);
+    final session = await ProfileArtifacts.readSession(
+      payload['artifactDirectory']! as String,
+    );
+    expect(session.overallProfile, isNotNull);
   });
 
   test('waits for worker isolates before finalizing a Dart run', () async {
@@ -803,7 +832,7 @@ echo "The Dart VM service is listening on http://127.0.0.1:1/"
       failed = true;
     }
     expect(failed, isTrue);
-    return argumentsFile.readAsLines();
+    return await argumentsFile.readAsLines();
   } finally {
     await tempDirectory.delete(recursive: true);
   }

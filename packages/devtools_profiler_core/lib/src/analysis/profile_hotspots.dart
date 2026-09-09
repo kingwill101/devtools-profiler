@@ -424,8 +424,7 @@ ProfileHotspotSummary explainProfileHotspots(
         kind: 'distribution',
         subject: region.name,
         title: 'Work is spread across multiple frames',
-        summary:
-            'No single self frame exceeds 20% of samples, so the bottleneck is likely distributed across a wider call path.',
+        summary: 'No single self frame exceeds 20% of samples, so the bottleneck is likely distributed across a wider call path.',
         severity: ProfileHotspotSeverity.low,
       ),
     );

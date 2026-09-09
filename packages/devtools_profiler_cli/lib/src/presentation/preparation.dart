@@ -4,6 +4,47 @@ import 'package:vm_service/vm_service.dart';
 import 'models.dart';
 import 'options.dart';
 
+/// Prepares complete available frame lists for cross-run alignment.
+///
+/// Rebuilds from raw samples when available and honors the shared frame filters.
+/// Stored-summary fallbacks remain explicitly incomplete. Output row limits
+/// should be applied after alignment, not independently to each source.
+Future<({List<ProfileFrameColumn> columns, List<String> warnings})>
+prepareProfileFrameColumns(
+  ProfileRunner runner, {
+  required List<String> paths,
+  required ProfilePresentationOptions options,
+}) async {
+  final columns = <ProfileFrameColumn>[];
+  final warnings = <String>[];
+  for (final path in paths) {
+    final target = await _resolveComparisonTarget(
+      runner,
+      path,
+      options: options.copyWith(
+        frameLimit: 0,
+        includeCallTree: false,
+        includeBottomUpTree: false,
+        includeMethodTable: false,
+      ),
+    );
+    final region = target.presentation.region;
+    columns.add(
+      ProfileFrameColumn(
+        label: target.sessionId ?? path,
+        frames: region.topSelfFrames,
+      ),
+    );
+    warnings.addAll(target.presentation.warnings);
+    if (!region.succeeded ||
+        region.rawProfilePath == null ||
+        region.rawProfilePath!.isEmpty) {
+      warnings.add('$path: Only the stored top-frame list is available.');
+    }
+  }
+  return (columns: columns, warnings: warnings);
+}
+
 /// Rebuilds session summaries and trees to match [options].
 Future<PreparedSessionPresentation> prepareSessionPresentation(
   ProfileRunner runner,
@@ -626,24 +667,31 @@ Future<PreparedRegionPresentation> prepareRegionPresentation(
       ? attributeAllocationsToCallers(memory, cpuSamples)
       : const <AllocationAttribution>[];
 
-  final callTree = options.includeCallTree
+  // Derive every view from the same complete filtered paths. Limit only the
+  // output trees; limiting first would lose method totals and caller edges.
+  final completeCallTree =
+      options.includeCallTree ||
+          options.includeBottomUpTree ||
+          options.includeMethodTable
       ? buildCallTree(
           cpuSamples: cpuSamples,
           includeFrame: options.framePredicate,
-        ).limited(maxDepth: options.maxDepth, maxChildren: options.maxChildren)
+        )
+      : null;
+  final callTree = options.includeCallTree
+      ? completeCallTree!.limited(
+          maxDepth: options.maxDepth,
+          maxChildren: options.maxChildren,
+        )
       : null;
   final bottomUpTree = options.includeBottomUpTree
-      ? buildBottomUpTree(
-          cpuSamples: cpuSamples,
-          includeFrame: options.framePredicate,
+      ? buildBottomUpTreeFromCallTree(
+          completeCallTree!,
         ).limited(maxDepth: options.maxDepth, maxChildren: options.maxChildren)
       : null;
   final methodTable = options.includeMethodTable
       ? _limitMethodTable(
-          buildMethodTable(
-            cpuSamples: cpuSamples,
-            includeFrame: options.framePredicate,
-          ),
+          buildMethodTableFromCallTree(completeCallTree!),
           options,
         )
       : null;

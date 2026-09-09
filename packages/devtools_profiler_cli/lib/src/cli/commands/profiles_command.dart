@@ -21,8 +21,7 @@ class ProfilesCommand extends ProfilerCommand with ProfileSessionResolution {
   ProfilesCommand(super.profileRunner) {
     argParser.addOption(
       'cwd',
-      help:
-          'The working directory containing .dart_tool/devtools_profiler/sessions. Defaults to the current directory.',
+      help: 'The working directory containing .dart_tool/devtools_profiler/sessions. Defaults to the current directory.',
     );
     argParser.addFlag(
       'extended',

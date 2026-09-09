@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.0
+
+- Required Dart 3.13 or later and refreshed test dependencies. Flutter targets
+  using this helper need a Flutter SDK that includes Dart 3.13 or later.
+
 ## 0.2.0
 
 - Added `profileRegionSync<T>()` — synchronous overload of `profileRegion` that

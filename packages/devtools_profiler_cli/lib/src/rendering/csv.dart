@@ -116,56 +116,27 @@ String _csvEscape(String value) {
 /// Writes a multi-compare column table as CSV.
 void writeCsvMultiCompare(
   void Function(String line) writeLine,
-  List<MultiCompareColumn> columns,
-) {
+  List<MultiCompareColumn> columns, {
+  int? frameLimit,
+}) {
   if (columns.isEmpty) return;
 
-  // Collect union of method names.
-  final allNames = <String>{};
-  final nameOrder = <String>[];
-  for (final column in columns) {
-    for (final frame in column.frames) {
-      if (allNames.add(frame.name)) {
-        nameOrder.add(frame.name);
-      }
-    }
-  }
-
-  // Build lookups.
-  final lookups = <int, Map<String, ProfileFrameSummary>>{};
-  for (var i = 0; i < columns.length; i++) {
-    final map = <String, ProfileFrameSummary>{};
-    for (final frame in columns[i].frames) {
-      map[frame.name] = frame;
-    }
-    lookups[i] = map;
-  }
-
-  // Sort by first column.
-  nameOrder.sort((a, b) {
-    final aFrame = lookups[0]![a];
-    final bFrame = lookups[0]![b];
-    final aPercent = aFrame?.selfPercent ?? -1.0;
-    final bPercent = bFrame?.selfPercent ?? -1.0;
-    return bPercent.compareTo(aPercent);
-  });
-
   // Header
-  final header = StringBuffer('method');
+  final header = StringBuffer('method,kind,location');
   for (final column in columns) {
     header.write(',${_csvEscape(column.label)}');
   }
   writeLine(header.toString());
 
   // Rows
-  for (final name in nameOrder) {
-    final row = StringBuffer(_csvEscape(name));
-    for (var i = 0; i < columns.length; i++) {
-      final frame = lookups[i]![name];
+  for (final aligned in alignProfileFrames(columns, limit: frameLimit)) {
+    final row = StringBuffer(
+      '${_csvEscape(aligned.name)},${_csvEscape(aligned.kind)},'
+      '${_csvEscape(aligned.location ?? '')}',
+    );
+    for (final frame in aligned.frames) {
       row.write(',');
-      row.write(
-        frame != null ? frame.selfPercent.toStringAsFixed(4) : 'eliminated',
-      );
+      row.write(frame != null ? frame.selfPercent.toStringAsFixed(4) : '');
     }
     writeLine(row.toString());
   }

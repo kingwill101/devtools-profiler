@@ -9,8 +9,7 @@ final Tool profileRunTool = Tool(
   inputSchema: Schema.object(
     properties: {
       'command': Schema.list(
-        description:
-            'A command such as ["dart", "run", "bin/main.dart"] or ["flutter", "test"].',
+        description: 'A command such as ["dart", "run", "bin/main.dart"] or ["flutter", "test"].',
         items: Schema.string(),
       ),
       'workingDirectory': Schema.string(
@@ -20,12 +19,10 @@ final Tool profileRunTool = Tool(
         description: 'Where session artifacts should be written.',
       ),
       'durationSeconds': Schema.int(
-        description:
-            'Optional duration in seconds to profile before terminating the launched process.',
+        description: 'Optional duration in seconds to profile before terminating the launched process.',
       ),
       'vmServiceTimeoutSeconds': Schema.int(
-        description:
-            'Optional timeout in seconds for waiting for the launched process to expose a Dart VM service URI.',
+        description: 'Optional timeout in seconds for waiting for the launched process to expose a Dart VM service URI.',
       ),
       'warmUpSeconds': Schema.int(
         description:
@@ -57,8 +54,7 @@ final Tool profileRunTool = Tool(
             'entry in summary tables.',
       ),
       'includePackages': Schema.list(
-        description:
-            'Optional package prefixes to keep. Frames outside these packages are hidden.',
+        description: 'Optional package prefixes to keep. Frames outside these packages are hidden.',
         items: Schema.string(),
       ),
       'excludePackages': Schema.list(
@@ -70,16 +66,13 @@ final Tool profileRunTool = Tool(
             'Maximum rows per self / total table. Use 0 for unlimited.',
       ),
       'methodLimit': Schema.int(
-        description:
-            'Maximum methods to include in the method table. Use 0 for unlimited.',
+        description: 'Maximum methods to include in the method table. Use 0 for unlimited.',
       ),
       'treeDepth': Schema.int(
-        description:
-            'Maximum call tree depth when includeCallTree is true. Use 0 for unlimited.',
+        description: 'Maximum call tree depth when includeCallTree is true. Use 0 for unlimited.',
       ),
       'treeChildren': Schema.int(
-        description:
-            'Maximum children per call tree node when includeCallTree is true. Use 0 for unlimited.',
+        description: 'Maximum children per call tree node when includeCallTree is true. Use 0 for unlimited.',
       ),
     },
     required: ['command'],
@@ -101,13 +94,11 @@ final Tool profileRunTool = Tool(
 final Tool profileAttachTool = Tool(
   name: 'profile_attach',
   title: 'Profile Attach',
-  description:
-      'Attach to an existing Dart or Flutter VM service URI and return structured CPU summaries for a fixed profiling window.',
+  description: 'Attach to an existing Dart or Flutter VM service URI and return structured CPU summaries for a fixed profiling window.',
   inputSchema: Schema.object(
     properties: {
       'vmServiceUri': Schema.string(
-        description:
-            'The HTTP VM service URI printed by dart or flutter, for example "http://127.0.0.1:8181/abcd/".',
+        description: 'The HTTP VM service URI printed by dart or flutter, for example "http://127.0.0.1:8181/abcd/".',
       ),
       'durationSeconds': Schema.int(
         description:
@@ -147,8 +138,7 @@ final Tool profileAttachTool = Tool(
             'entry in summary tables.',
       ),
       'includePackages': Schema.list(
-        description:
-            'Optional package prefixes to keep. Frames outside these packages are hidden.',
+        description: 'Optional package prefixes to keep. Frames outside these packages are hidden.',
         items: Schema.string(),
       ),
       'excludePackages': Schema.list(
@@ -160,16 +150,13 @@ final Tool profileAttachTool = Tool(
             'Maximum rows per self / total table. Use 0 for unlimited.',
       ),
       'methodLimit': Schema.int(
-        description:
-            'Maximum methods to include in the method table. Use 0 for unlimited.',
+        description: 'Maximum methods to include in the method table. Use 0 for unlimited.',
       ),
       'treeDepth': Schema.int(
-        description:
-            'Maximum call tree depth when includeCallTree is true. Use 0 for unlimited.',
+        description: 'Maximum call tree depth when includeCallTree is true. Use 0 for unlimited.',
       ),
       'treeChildren': Schema.int(
-        description:
-            'Maximum children per call tree node when includeCallTree is true. Use 0 for unlimited.',
+        description: 'Maximum children per call tree node when includeCallTree is true. Use 0 for unlimited.',
       ),
     },
     required: ['vmServiceUri'],

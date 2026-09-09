@@ -8,8 +8,11 @@ import '../options.dart';
 /// Base class for profiler commands that expose common presentation options.
 abstract class ProfilerCommand extends Command<int> {
   /// Creates a profiler command backed by [profileRunner].
-  ProfilerCommand(this.profileRunner) {
-    addPresentationOptions(argParser);
+  ProfilerCommand(
+    this.profileRunner, {
+    bool includePresentationOptions = true,
+  }) {
+    if (includePresentationOptions) addPresentationOptions(argParser);
   }
 
   /// The profiler backend used by this command.

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:devtools_profiler_protocol/devtools_profiler_protocol.dart';
 import 'package:dtd/dtd.dart';
 import 'package:json_rpc_2/json_rpc_2.dart';
@@ -19,6 +21,8 @@ final class ProfileSessionRegionRpcHandler {
   final ProfileSessionContext context;
   final ProfileSessionSnapshotCapture snapshotCapture;
   final ProfileSessionVmHookup vmHookup;
+  final _pendingRegionStops = <Completer<void>>{};
+  Future<void>? _processExitOperation;
 
   /// Handles the DTD session-info request.
   Future<Map<String, Object?>> handleGetSessionInfo(Parameters params) async {
@@ -94,6 +98,11 @@ final class ProfileSessionRegionRpcHandler {
       }
     }
 
+    if (context.processExited) {
+      throw RpcException.invalidParams(
+        'The profiling session ended while the region was starting.',
+      );
+    }
     final region = ActiveProfileRegion(
       attributes: stringMap(params['attributes'].valueOr(const {})),
       isolateId: isolateId,
@@ -126,6 +135,9 @@ final class ProfileSessionRegionRpcHandler {
   Future<Map<String, Object?>> handleStopRegion(Parameters params) async {
     await vmHookup.waitForVmService();
     vmHookup.validateSession(params['sessionId'].asString);
+    if (context.processExited) {
+      throw RpcException.invalidParams('The profiling session has ended.');
+    }
     final regionId = params['regionId'].asString;
     final region = context.activeRegions[regionId];
     if (region == null) {
@@ -151,6 +163,8 @@ final class ProfileSessionRegionRpcHandler {
     }
 
     context.activeRegions.remove(region.regionId);
+    final pendingStop = Completer<void>();
+    _pendingRegionStops.add(pendingStop);
 
     try {
       final snapshot = await snapshotCapture.captureRegionSnapshot(
@@ -209,11 +223,17 @@ final class ProfileSessionRegionRpcHandler {
       throw RpcException.invalidParams(
         'Failed to capture requested profile data: $error',
       );
+    } finally {
+      _pendingRegionStops.remove(pendingStop);
+      pendingStop.complete();
     }
   }
 
   /// Finalizes this session when the profiled process exits.
-  Future<void> handleProcessExit() async {
+  Future<void> handleProcessExit() =>
+      _processExitOperation ??= _handleProcessExit();
+
+  Future<void> _handleProcessExit() async {
     context.processExited = true;
     await finishProfilingWindow(
       warningForRegion: (region) =>
@@ -226,6 +246,7 @@ final class ProfileSessionRegionRpcHandler {
 
   /// Finalizes this session when attach-mode profiling ends.
   Future<void> finishAttachedWindow() async {
+    context.processExited = true;
     await finishProfilingWindow(
       warningForRegion: (region) =>
           'Region "${region.name}" was still active when the attach profiling '
@@ -240,6 +261,10 @@ final class ProfileSessionRegionRpcHandler {
     required String Function(ActiveProfileRegion region) warningForRegion,
     required String Function(ActiveProfileRegion region) errorForRegion,
   }) async {
+    context.overallProfilePoller?.cancel();
+    // A stopped region is removed from activeRegions before its VM requests
+    // finish. Do not dispose the connection or serialize session.json early.
+    await Future.wait([for (final stop in _pendingRegionStops) stop.future]);
     final activeRegions = context.activeRegions.values.toList()
       ..sort(
         (left, right) =>

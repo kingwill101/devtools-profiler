@@ -96,6 +96,19 @@ mixin ProfileSessionResolution on ProfilerCommand {
     return sessions;
   }
 
+  /// Selects the previous baseline or newest current run from discovery order.
+  StoredSession selectComparisonSession(
+    List<StoredSession> sessions, {
+    required bool baseline,
+  }) {
+    if (sessions.length < 2) {
+      throw ArgumentError(
+        'A comparison requires at least two stored sessions.',
+      );
+    }
+    return selectSession(sessions, sessionId: baseline ? 'previous' : 'latest');
+  }
+
   /// Returns the single stored session identified by [sessionId].
   ///
   /// When [sessionId] is `null` or empty, returns the first (newest) session.

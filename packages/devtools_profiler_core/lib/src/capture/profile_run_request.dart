@@ -29,6 +29,7 @@ class ProfileRunRequest {
     this.workingDirectory,
     this.artifactDirectory,
     this.forwardOutput = false,
+    this.forwardOutputToStderr = false,
     this.environment = const {},
     this.processIoMode = ProfileProcessIoMode.pipe,
     this.handleInterruptSignals = false,
@@ -52,6 +53,13 @@ class ProfileRunRequest {
 
   /// Whether stdout and stderr from the profiled process should be echoed.
   final bool forwardOutput;
+
+  /// Whether all forwarded output should go to stderr.
+  ///
+  /// Keeps stdout available for structured results such as JSON. Has no effect
+  /// when [forwardOutput] is false or [processIoMode] is
+  /// [ProfileProcessIoMode.inheritStdio].
+  final bool forwardOutputToStderr;
 
   /// Extra environment variables to inject into the launched process.
   final Map<String, String> environment;

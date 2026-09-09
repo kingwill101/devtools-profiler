@@ -16,6 +16,10 @@ It intentionally does not use the DevTools Flutter or web UI.
 
 ## Fast Start
 
+Requires Dart 3.13 or later (before Dart 4). The region-marking helper also
+requires Dart 3.13, so Flutter apps using it need a Flutter SDK that bundles
+Dart 3.13 or later. The profiler itself remains a pure-Dart CLI/MCP tool.
+
 Install the CLI once:
 
 ```bash
@@ -276,6 +280,14 @@ await profileRegion(
 
 Human output is designed for terminal scanning. JSON output is designed for
 automation and AI agents.
+
+`run --json` reserves stdout for the JSON result and forwards target logs from
+both streams to stderr. Use `--no-forward-output` to suppress target logs:
+
+```bash
+devtools-profiler run --json -- dart run bin/main.dart \
+  > profile.json 2> target.log
+```
 
 Use human output while exploring:
 

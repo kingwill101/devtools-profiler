@@ -1,8 +1,43 @@
 import 'package:devtools_profiler_core/devtools_profiler_core.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
+import 'package:vm_service/vm_service.dart';
 
 void main() {
+  test('resolver reuses metadata across stacks without caching predicates', () {
+    final resolver = ProfileFrameResolver([
+      ProfileFunction(
+        kind: 'Dart',
+        function: FuncRef(id: 'functions/work', name: 'work'),
+      ),
+    ]);
+    var predicateCalls = 0;
+    bool includeFrame(ProfileFrame frame) => ++predicateCalls != 2;
+
+    final first = resolver.filterStack([0, 0], includeFrame: includeFrame);
+    final second = resolver.filterStack([0], includeFrame: includeFrame);
+
+    expect(predicateCalls, 3);
+    expect(first, hasLength(1));
+    expect(identical(first.single, second.single), isTrue);
+    expect(resolver.filterStack([0, 0]), hasLength(2));
+    expect(resolver.filterStack([]), isEmpty);
+    expect(identical(resolver.resolve(-10), resolver.resolve(100)), isTrue);
+    expect(resolver.resolve(100).name, 'unknown');
+  });
+
+  test('resolvers isolate metadata from different profile function tables', () {
+    ProfileFrameResolver resolverFor(String name) => ProfileFrameResolver([
+      ProfileFunction(
+        kind: 'Dart',
+        function: FuncRef(id: 'functions/0', name: name),
+      ),
+    ]);
+
+    expect(resolverFor('first').resolve(0).name, 'first');
+    expect(resolverFor('second').resolve(0).name, 'second');
+  });
+
   test('packageName resolves package URIs', () {
     const frame = ProfileFrame(
       name: 'Value.toString',

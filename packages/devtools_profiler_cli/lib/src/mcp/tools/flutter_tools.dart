@@ -314,8 +314,7 @@ final Tool profileDebugDumpTool = Tool(
             'ws://127.0.0.1:8181/abc123/ws).',
       ),
       'kind': Schema.string(
-        description:
-            'What to dump: app, render, layer, focus, semantics (default: app).',
+        description: 'What to dump: app, render, layer, focus, semantics (default: app).',
       ),
     },
     required: ['vmServiceUri'],

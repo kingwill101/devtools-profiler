@@ -29,24 +29,21 @@ class RunCommand extends ProfilerCommand {
       )
       ..addOption(
         'duration',
-        help:
-            'Stop the launched process after this profiling duration. Supports raw seconds, "10s", "500ms", or "2m".',
+        help: 'Stop the launched process after this profiling duration. Supports raw seconds, "10s", "500ms", or "2m".',
       )
       ..addOption(
         'vm-service-timeout',
-        help:
-            'How long to wait for the launched process to expose a Dart VM service URI. Supports raw seconds, "180s", or "3m".',
+        help: 'How long to wait for the launched process to expose a Dart VM service URI. Supports raw seconds, "180s", or "3m".',
       )
       ..addFlag(
         'forward-output',
         defaultsTo: true,
-        help: 'Echo stdout and stderr from the launched process.',
+        help: 'Echo target output. With --json, send both streams to stderr.',
       )
       ..addFlag(
         'terminal',
         negatable: false,
-        help:
-            'Give the launched process direct terminal access for TUI and alternate-screen apps.',
+        help: 'Give the launched process direct terminal access for TUI and alternate-screen apps.',
       )
       ..addOption(
         'warm-up',
@@ -112,6 +109,7 @@ class RunCommand extends ProfilerCommand {
         artifactDirectory: argResults!['artifact-dir'] as String?,
         command: commandArguments,
         forwardOutput: argResults!['forward-output'] as bool,
+        forwardOutputToStderr: printJson,
         handleInterruptSignals: true,
         processIoMode: terminalMode
             ? ProfileProcessIoMode.inheritStdio
