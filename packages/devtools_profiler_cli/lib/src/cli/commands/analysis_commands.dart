@@ -403,7 +403,9 @@ class InspectCommand extends ProfileTargetCommand {
       ..addOption(
         'path-limit',
         defaultsTo: '$defaultMethodPathLimit',
-        help: 'Maximum representative top-down and bottom-up paths to include. Use 0 for unlimited.',
+        help:
+            'Maximum representative top-down and bottom-up paths to include. '
+            'Use 0 for unlimited.',
       );
   }
 
@@ -484,7 +486,9 @@ class CompareMethodCommand extends ProfilerCommand
       ..addOption(
         'path-limit',
         defaultsTo: '$defaultMethodPathLimit',
-        help: 'Maximum representative top-down and bottom-up paths to include. Use 0 for unlimited.',
+        help:
+            'Maximum representative top-down and bottom-up paths to include. '
+            'Use 0 for unlimited.',
       );
   }
 
@@ -641,7 +645,9 @@ class InspectClassesCommand extends ProfileTargetCommand {
     argParser
       ..addOption(
         'class',
-        help: 'Filter to classes whose name contains this query (case-insensitive).',
+        help:
+            'Filter to classes whose name contains this query '
+            '(case-insensitive).',
       )
       ..addOption(
         'min-live-bytes',

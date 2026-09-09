@@ -2,6 +2,9 @@
 
 ## 0.3.0
 
+- Reported synchronous start, stop, and cleanup failures at their own operation,
+  without relabeling failed starts as failed stops or masking a stop failure
+  with a cleanup failure.
 - Required Dart 3.13 or later and refreshed test dependencies. Flutter targets
   using this helper need a Flutter SDK that includes Dart 3.13 or later.
 

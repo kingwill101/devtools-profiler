@@ -483,6 +483,12 @@ devtools-profiler profiles --limit 0      # all stored sessions
 devtools-profiler profiles --json         # machine-readable output
 ```
 
+JSON output is a single object with `kind: "sessions"`, `sessionsDirectory`,
+`totalCount`, `returnedCount`, `truncated`, and a newest-first `sessions` array.
+Each entry contains the absolute `path`, UTC `modifiedTime`, and the complete
+stored `session` object. Empty discovery returns an empty array with zero counts.
+`--limit 0` includes every session; `--extended` only changes text output.
+
 ## MCP Server
 
 Start the local stdio MCP server:

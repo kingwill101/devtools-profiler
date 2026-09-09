@@ -30,7 +30,9 @@ final Tool profileSummarizeTool = Tool(
             'entry in summary tables.',
       ),
       'includePackages': Schema.list(
-        description: 'Optional package prefixes to keep. Frames outside these packages are hidden.',
+        description:
+            'Optional package prefixes to keep. Frames outside these packages '
+            'are hidden.',
         items: Schema.string(),
       ),
       'excludePackages': Schema.list(
@@ -42,13 +44,19 @@ final Tool profileSummarizeTool = Tool(
             'Maximum rows per self / total table. Use 0 for unlimited.',
       ),
       'methodLimit': Schema.int(
-        description: 'Maximum methods to include in the method table. Use 0 for unlimited.',
+        description:
+            'Maximum methods to include in the method table. '
+            'Use 0 for unlimited.',
       ),
       'treeDepth': Schema.int(
-        description: 'Maximum call tree depth when includeCallTree is true. Use 0 for unlimited.',
+        description:
+            'Maximum call tree depth when includeCallTree is true. '
+            'Use 0 for unlimited.',
       ),
       'treeChildren': Schema.int(
-        description: 'Maximum children per call tree node when includeCallTree is true. Use 0 for unlimited.',
+        description:
+            'Maximum children per call tree node when includeCallTree is true. '
+            'Use 0 for unlimited.',
       ),
     },
     required: ['path'],
@@ -96,7 +104,9 @@ final Tool profileReadArtifactTool = Tool(
 final Tool profileListSessionsTool = Tool(
   name: 'profile_list_sessions',
   title: 'Profile List Sessions',
-  description: 'List stored profiling sessions under a project root or sessions directory.',
+  description:
+      'List stored profiling sessions under a project root or sessions '
+      'directory.',
   inputSchema: Schema.object(
     properties: {
       'rootDirectory': Schema.string(
@@ -128,7 +138,9 @@ final Tool profileListSessionsTool = Tool(
 final Tool profileListRegionsTool = Tool(
   name: 'profile_list_regions',
   title: 'Profile List Regions',
-  description: 'List the whole-session profile and explicit regions stored in a session.',
+  description:
+      'List the whole-session profile and explicit regions '
+      'stored in a session.',
   inputSchema: Schema.object(
     properties: {
       'rootDirectory': Schema.string(
@@ -163,7 +175,9 @@ final Tool profileListRegionsTool = Tool(
 final Tool profileLatestSessionTool = Tool(
   name: 'profile_latest_session',
   title: 'Profile Latest Session',
-  description: 'Resolve the newest stored profiling session and return its prepared summary.',
+  description:
+      'Resolve the newest stored profiling session and return its prepared '
+      'summary.',
   inputSchema: Schema.object(
     properties: {
       'rootDirectory': Schema.string(
@@ -194,7 +208,9 @@ final Tool profileLatestSessionTool = Tool(
             'entry in summary tables.',
       ),
       'includePackages': Schema.list(
-        description: 'Optional package prefixes to keep. Frames outside these packages are hidden.',
+        description:
+            'Optional package prefixes to keep. Frames outside these packages '
+            'are hidden.',
         items: Schema.string(),
       ),
       'excludePackages': Schema.list(
@@ -206,13 +222,19 @@ final Tool profileLatestSessionTool = Tool(
             'Maximum rows per self / total table. Use 0 for unlimited.',
       ),
       'methodLimit': Schema.int(
-        description: 'Maximum methods to include in the method table. Use 0 for unlimited.',
+        description:
+            'Maximum methods to include in the method table. '
+            'Use 0 for unlimited.',
       ),
       'treeDepth': Schema.int(
-        description: 'Maximum call tree depth when includeCallTree is true. Use 0 for unlimited.',
+        description:
+            'Maximum call tree depth when includeCallTree is true. '
+            'Use 0 for unlimited.',
       ),
       'treeChildren': Schema.int(
-        description: 'Maximum children per call tree node when includeCallTree is true. Use 0 for unlimited.',
+        description:
+            'Maximum children per call tree node when includeCallTree is true. '
+            'Use 0 for unlimited.',
       ),
     },
     additionalProperties: false,
@@ -233,7 +255,9 @@ final Tool profileLatestSessionTool = Tool(
 final Tool profileGetSessionTool = Tool(
   name: 'profile_get_session',
   title: 'Profile Get Session',
-  description: 'Resolve a stored profiling session by id or path and return its prepared summary.',
+  description:
+      'Resolve a stored profiling session by id or path and return its '
+      'prepared summary.',
   inputSchema: Schema.object(
     properties: {
       'rootDirectory': Schema.string(
@@ -244,7 +268,9 @@ final Tool profileGetSessionTool = Tool(
         description: 'A direct path to a devtools_profiler sessions directory.',
       ),
       'sessionId': Schema.string(
-        description: 'Session id to resolve under the sessions directory. Also accepts "latest" or "previous".',
+        description:
+            'Session id to resolve under the sessions directory. Also accepts '
+            '"latest" or "previous".',
       ),
       'sessionPath': Schema.string(
         description: 'Direct path to a session directory.',
@@ -270,7 +296,9 @@ final Tool profileGetSessionTool = Tool(
             'entry in summary tables.',
       ),
       'includePackages': Schema.list(
-        description: 'Optional package prefixes to keep. Frames outside these packages are hidden.',
+        description:
+            'Optional package prefixes to keep. Frames outside these packages '
+            'are hidden.',
         items: Schema.string(),
       ),
       'excludePackages': Schema.list(
@@ -282,13 +310,19 @@ final Tool profileGetSessionTool = Tool(
             'Maximum rows per self / total table. Use 0 for unlimited.',
       ),
       'methodLimit': Schema.int(
-        description: 'Maximum methods to include in the method table. Use 0 for unlimited.',
+        description:
+            'Maximum methods to include in the method table. '
+            'Use 0 for unlimited.',
       ),
       'treeDepth': Schema.int(
-        description: 'Maximum call tree depth when includeCallTree is true. Use 0 for unlimited.',
+        description:
+            'Maximum call tree depth when includeCallTree is true. '
+            'Use 0 for unlimited.',
       ),
       'treeChildren': Schema.int(
-        description: 'Maximum children per call tree node when includeCallTree is true. Use 0 for unlimited.',
+        description:
+            'Maximum children per call tree node when includeCallTree is true. '
+            'Use 0 for unlimited.',
       ),
     },
     additionalProperties: false,
@@ -309,7 +343,9 @@ final Tool profileGetSessionTool = Tool(
 final Tool profileGetRegionTool = Tool(
   name: 'profile_get_region',
   title: 'Profile Get Region',
-  description: 'Read a stored whole-session profile or explicit region by id and return the prepared summary.',
+  description:
+      'Read a stored whole-session profile or explicit region by id and return '
+      'the prepared summary.',
   inputSchema: Schema.object(
     properties: {
       'rootDirectory': Schema.string(
@@ -326,7 +362,9 @@ final Tool profileGetRegionTool = Tool(
         description: 'Direct path to a session directory.',
       ),
       'regionId': Schema.string(
-        description: 'The explicit region id to load, or "overall" for the whole-session profile.',
+        description:
+            'The explicit region id to load, or "overall" for the '
+            'whole-session profile.',
       ),
       'includeCallTree': Schema.bool(
         description: 'Whether to attach a top-down call tree.',
@@ -349,7 +387,9 @@ final Tool profileGetRegionTool = Tool(
             'entry in summary tables.',
       ),
       'includePackages': Schema.list(
-        description: 'Optional package prefixes to keep. Frames outside these packages are hidden.',
+        description:
+            'Optional package prefixes to keep. Frames outside these packages '
+            'are hidden.',
         items: Schema.string(),
       ),
       'excludePackages': Schema.list(
@@ -361,13 +401,19 @@ final Tool profileGetRegionTool = Tool(
             'Maximum rows per self / total table. Use 0 for unlimited.',
       ),
       'methodLimit': Schema.int(
-        description: 'Maximum methods to include in the method table. Use 0 for unlimited.',
+        description:
+            'Maximum methods to include in the method table. '
+            'Use 0 for unlimited.',
       ),
       'treeDepth': Schema.int(
-        description: 'Maximum call tree depth when includeCallTree is true. Use 0 for unlimited.',
+        description:
+            'Maximum call tree depth when includeCallTree is true. '
+            'Use 0 for unlimited.',
       ),
       'treeChildren': Schema.int(
-        description: 'Maximum children per call tree node when includeCallTree is true. Use 0 for unlimited.',
+        description:
+            'Maximum children per call tree node when includeCallTree is true. '
+            'Use 0 for unlimited.',
       ),
     },
     required: ['regionId'],

@@ -19,7 +19,10 @@ class ProfilesCommand extends ProfilerCommand with ProfileSessionResolution {
   ProfilesCommand(super.profileRunner) {
     argParser.addOption(
       'cwd',
-      help: 'The working directory containing .dart_tool/devtools_profiler/sessions. Defaults to the current directory.',
+      help:
+          'The working directory containing '
+          '.dart_tool/devtools_profiler/sessions. '
+          'Defaults to the current directory.',
     );
     argParser.addFlag(
       'extended',
@@ -54,8 +57,35 @@ class ProfilesCommand extends ProfilerCommand with ProfileSessionResolution {
 
   @override
   Future<int> run() async {
+    final limit = parseLimit(
+      argResults!['limit'] as String?,
+      optionName: 'limit',
+    );
     final sessionsDirectory = _resolveSessionsDirectory();
     final sessions = await discoverSessions(sessionsDirectory);
+    final listed = limit == null
+        ? sessions
+        : sessions.take(limit).toList(growable: false);
+    final truncated = limit != null && sessions.length > limit;
+
+    if (printJson) {
+      writeJson({
+        'kind': 'sessions',
+        'sessionsDirectory': sessionsDirectory.path,
+        'totalCount': sessions.length,
+        'returnedCount': listed.length,
+        'truncated': truncated,
+        'sessions': [
+          for (final session in listed)
+            {
+              'path': session.directory.path,
+              'modifiedTime': session.modifiedTime.toUtc().toIso8601String(),
+              'session': session.result.toJson(),
+            },
+        ],
+      });
+      return successExitCode;
+    }
 
     if (sessions.isEmpty) {
       warn(
@@ -63,15 +93,6 @@ class ProfilesCommand extends ProfilerCommand with ProfileSessionResolution {
       );
       return successExitCode;
     }
-
-    final limit = parseLimit(
-      argResults!['limit'] as String?,
-      optionName: 'limit',
-    );
-    final listed = limit == null
-        ? sessions
-        : sessions.take(limit).toList(growable: false);
-    final truncated = limit != null && sessions.length > limit;
 
     line('Profiling Sessions (${listed.length} of ${sessions.length}):');
 

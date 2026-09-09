@@ -117,12 +117,9 @@ T profileRegionSync<T>(
       pendingStackTrace = stackTrace;
     }
 
-    // Fire-and-forget the stop — DTD events are sent asynchronously.
-    unawaited(
-      handle.stop().catchError((Object error, StackTrace stack) {
-        _reportRegionFailure(handle.regionId, 'stop', error, stack);
-      }),
-    );
+    // Each transport phase reports its own failures. Observe the future without
+    // relabeling a failed start as a failed stop.
+    unawaited(handle.stop().catchError((Object _) {}));
 
     if (pendingError != null) {
       Error.throwWithStackTrace(pendingError, pendingStackTrace!);
@@ -217,15 +214,26 @@ ProfileRegionHandle startProfileRegionSync(
     stopImpl: () async {
       // Capture the endpoint before waiting for transport, not after it.
       final timestampMicros = developer.Timeline.now;
+      // Failed starts already report their error and close their connection.
+      await started;
+      var stopFailed = false;
       try {
-        await started;
         await controlClient.stopRegionAsynchronously(
           isolateId: isolateId,
           regionId: regionId,
           timestampMicros: timestampMicros,
         );
+      } catch (error, stack) {
+        stopFailed = true;
+        _reportRegionFailure(regionId, 'stop', error, stack);
+        rethrow;
       } finally {
-        await controlClient.close();
+        try {
+          await controlClient.close();
+        } catch (error, stack) {
+          _reportRegionFailure(regionId, 'close', error, stack);
+          if (!stopFailed) rethrow;
+        }
       }
     },
   );

@@ -10,6 +10,82 @@ import 'package:test/test.dart';
 import 'package:vm_service/vm_service.dart';
 
 void main() {
+  group('profiles JSON', () {
+    late Directory directory;
+
+    setUp(() async {
+      directory = await Directory.systemTemp.createTemp('profiles_json.');
+    });
+    tearDown(() => directory.delete(recursive: true));
+
+    test('empty discovery is a JSON result, not a warning', () async {
+      final result = await _runCliCommand([
+        'profiles',
+        '--json',
+        '--cwd',
+        directory.path,
+      ]);
+      expect(result.exitCode, 0, reason: result.stderr);
+      expect(result.stderr, isEmpty);
+      final json = jsonDecode(result.stdout) as Map;
+      expect(json['kind'], 'sessions');
+      expect(json['sessions'], isEmpty);
+      expect(json['totalCount'], 0);
+      expect(json['returnedCount'], 0);
+      expect(json['truncated'], isFalse);
+    });
+
+    for (final limit in [1, 0]) {
+      test(
+        'lists newest first with limit $limit and complete metadata',
+        () async {
+          for (final day in [1, 2]) {
+            final sessionDirectory = await Directory(
+              '${directory.path}/session-$day',
+            ).create();
+            final session = ProfileRunResult.fromJson({
+              'sessionId': 'session-$day',
+              'command': ['dart', 'run', 'app.dart'],
+              'workingDirectory': directory.path,
+            });
+            final file = await File('${sessionDirectory.path}/session.json')
+                .writeAsString(jsonEncode(session.toJson()));
+            await file.setLastModified(DateTime.utc(2026, 1, day));
+          }
+          final result = await _runCliCommand([
+            'profiles',
+            '--json',
+            '--extended',
+            '--limit',
+            '$limit',
+            '--cwd',
+            directory.path,
+          ]);
+          expect(result.exitCode, 0, reason: result.stderr);
+          expect(result.stderr, isEmpty);
+          final json = jsonDecode(result.stdout) as Map;
+          final sessions = json['sessions'] as List;
+          expect(json['totalCount'], 2);
+          expect(json['returnedCount'], limit == 0 ? 2 : 1);
+          expect(json['truncated'], limit != 0);
+          expect(sessions, hasLength(limit == 0 ? 2 : 1));
+          final newest = sessions.first as Map;
+          expect((newest['session'] as Map)['sessionId'], 'session-2');
+          expect(newest['path'], '${directory.path}/session-2');
+          expect(
+            newest['modifiedTime'],
+            DateTime.utc(2026, 1, 2).toIso8601String(),
+          );
+          expect((newest['session'] as Map)['command'], [
+            'dart',
+            'run',
+            'app.dart',
+          ]);
+        },
+      );
+    }
+  });
+
   for (final value in ['abc', '0', '-1']) {
     test('trends rejects invalid --last before discovery: $value', () async {
       final result = await _runCliCommand(['trends', '--last', value]);
@@ -1799,7 +1875,8 @@ void main() {
   });
 
   group('prepareRegionPresentation sample-count fallback', () {
-    test('emits warning and preserves stored count when raw profile produces 0 samples', () async {
+    test('emits warning and preserves stored count '
+        'when raw profile produces 0 samples', () async {
       final stdoutCapture = _OutputCapture();
       final stderrCapture = _OutputCapture();
       addTearDown(() async {

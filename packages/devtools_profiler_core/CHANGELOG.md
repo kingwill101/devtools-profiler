@@ -2,6 +2,8 @@
 
 ## 0.6.0
 
+- Allowed newer pre-1.0 Artisanal and Artisanal Widgets releases in test and
+  fixture dependencies, retaining minimum versions 0.6.0 and 0.4.0.
 - Added shared cross-run frame alignment with explicit missing observations,
   exact name/kind/location identity, and post-alignment row limits.
 - Restored named native/stub/tag functions when reading saved CPU artifacts.

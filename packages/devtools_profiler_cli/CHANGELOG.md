@@ -2,6 +2,9 @@
 
 ## 0.6.0
 
+- Allowed Artisanal releases from 0.6.0 up to, but not including, 1.0.0.
+- Implemented `profiles --json` with structured empty results, session metadata,
+  and explicit listing counts and truncation.
 - Validated replay, trend, and output-format options before execution.
 - Kept replay output capturable and skipped animation for redirected hosts.
 - Unified session-directory resolution and preferred existing artifact paths.

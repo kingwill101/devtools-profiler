@@ -48,7 +48,9 @@ void addPresentationOptions(ArgParser parser) {
     )
     ..addMultiOption(
       'include-package',
-      help: 'Only include package prefixes that match these values. May be repeated.',
+      help:
+          'Only include package prefixes that match these values. '
+          'May be repeated.',
     )
     ..addMultiOption(
       'exclude-package',
@@ -63,22 +65,30 @@ void addPresentationOptions(ArgParser parser) {
     ..addOption(
       'frame-limit',
       defaultsTo: '$defaultFrameLimit',
-      help: 'Maximum rows per self / total table. Use 0 to show every matching frame.',
+      help:
+          'Maximum rows per self / total table. '
+          'Use 0 to show every matching frame.',
     )
     ..addOption(
       'tree-depth',
       defaultsTo: '$defaultTreeDepth',
-      help: 'Maximum call tree depth when --call-tree is used. Use 0 for unlimited.',
+      help:
+          'Maximum call tree depth when --call-tree is used. '
+          'Use 0 for unlimited.',
     )
     ..addOption(
       'tree-children',
       defaultsTo: '$defaultTreeChildren',
-      help: 'Maximum children per call tree node when --call-tree is used. Use 0 for unlimited.',
+      help:
+          'Maximum children per call tree node when --call-tree is used. '
+          'Use 0 for unlimited.',
     )
     ..addOption(
       'method-limit',
       defaultsTo: '$defaultFrameLimit',
-      help: 'Maximum methods to include when --method-table is used. Use 0 for unlimited.',
+      help:
+          'Maximum methods to include when --method-table is used. '
+          'Use 0 for unlimited.',
     );
 }
 

@@ -32,8 +32,7 @@ abstract class ProfilerCommand extends Command<int> {
         !const {'summarize', 'compare', 'regress', 'trends'}.contains(name)) {
       usageException('$name does not support --csv.');
     }
-    if (json &&
-        const {'replay', 'annotate', 'profiles', 'mcp'}.contains(name)) {
+    if (json && const {'replay', 'annotate', 'mcp'}.contains(name)) {
       usageException('$name does not support --json.');
     }
   }
