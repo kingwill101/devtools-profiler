@@ -50,7 +50,9 @@ final class ProfileFrameRow {
 /// Does not guess equivalence between different checkout roots or package
 /// versions. Package URIs already match portably; unresolved locations remain
 /// unresolved. Sorts by first-source self percentage with deterministic ties.
-/// Input lists must contain at most one entry per identity.
+/// Throws [ArgumentError] if an input list contains duplicate identities.
+/// A positive [limit] truncates rows after alignment; null or non-positive
+/// values return all rows.
 List<ProfileFrameRow> alignProfileFrames(
   List<ProfileFrameColumn> columns, {
   int? limit,

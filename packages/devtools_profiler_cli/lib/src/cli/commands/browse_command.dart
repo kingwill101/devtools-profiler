@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:artisanal/runtime.dart' as tui;
-import 'package:path/path.dart' as path;
 
 import '../../browser/session_browser.dart';
 import '../constants.dart';
@@ -33,17 +32,14 @@ final class BrowseCommand extends ProfilerCommand
         !terminalAllowed ||
         !stdin.hasTerminal ||
         !stdout.hasTerminal) {
-      throw const FormatException(
+      usageException(
         'browse requires an interactive terminal and no positional arguments. '
         'Use profiles --extended or compare <baseline> <current> instead.',
       );
     }
-    final cwd = argResults!['cwd'] as String?;
-    var directory = cwd == null ? defaultSessionsDirectory() : Directory(cwd);
-    final nested = Directory(
-      path.join(directory.path, '.dart_tool', 'devtools_profiler', 'sessions'),
+    final directory = resolveSessionsDirectory(
+      cwd: argResults!['cwd'] as String?,
     );
-    if (nested.existsSync()) directory = nested;
     final sessions = await discoverSessions(directory);
     final browser = SessionBrowser(sessions);
     if (browser.entries.isEmpty) {

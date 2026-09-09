@@ -9,11 +9,10 @@ import '../constants.dart';
 import '../options.dart';
 import 'profile_target_command.dart';
 
-/// Command that annotates source lines with sample counts from a profile.
+/// Command that annotates function definition lines with self sample counts.
 ///
-/// Uses raw CPU samples to attribute each sample to a source line via the
-/// function's [lineForFunction] location. Lines without hits are shown
-/// without annotations.
+/// Uses the function's [lineForFunction] location, not the sampled statement.
+/// This does not provide statement-level execution counts.
 class AnnotateCommand extends ProfileTargetCommand {
   /// Creates an annotate command.
   AnnotateCommand(super.profileRunner) {
@@ -44,7 +43,7 @@ class AnnotateCommand extends ProfileTargetCommand {
 
   @override
   String get description =>
-      'Annotate source lines with per-line sample counts from raw CPU data.';
+      'Annotate function definition lines with self sample counts.';
 
   @override
   String get invocation => '${runner!.executableName} annotate [path]';
@@ -63,7 +62,7 @@ class AnnotateCommand extends ProfileTargetCommand {
   Future<int> run() async {
     final targetPath = await resolveTargetPath();
     final fileFilter = argResults!['file'] as String?;
-    final topLimit = parseNonNegativeInt(
+    final topLimit = parseLimit(
       argResults!['top'] as String?,
       optionName: 'top',
     );
@@ -188,6 +187,12 @@ class AnnotateCommand extends ProfileTargetCommand {
         : sortedFiles.take(5);
 
     final filesList = filesToShow.toList();
+    if (fileFilter == null && sortedFiles.length > filesList.length) {
+      line(
+        'Showing ${filesList.length} of ${sortedFiles.length} files. '
+        'Use --file to select omitted files.',
+      );
+    }
     if (filesList.isEmpty) {
       warn('No files matched filter "$fileFilter".');
       return successExitCode;
@@ -218,27 +223,23 @@ class AnnotateCommand extends ProfileTargetCommand {
         final sortedLines = fileLineCounts.entries.toList()
           ..sort((a, b) => b.value.compareTo(a.value));
 
-        final shownLines = sortedLines
-            .where((e) => e.value >= (minSamples ?? 1))
-            .take(topLimit ?? 30)
-            .toList();
+        final eligibleLines = sortedLines.where(
+          (e) => e.value >= (minSamples ?? 1),
+        );
+        final shownLines =
+            (topLimit == null ? eligibleLines : eligibleLines.take(topLimit))
+                .toList();
 
         if (shownLines.isEmpty) {
           line('  (no lines meet minimum sample threshold)');
         } else {
           final maxCount = shownLines.first.value;
-          final sourcesByLine = <int, String>{};
-          for (final frame in topSelfFrames) {
-            if (frame.location?.contains(path.basename(filePath)) ?? false) {
-              sourcesByLine.clear();
-            }
-          }
 
           // Collect hit line numbers for context window.
           final hitLines = shownLines.map((e) => e.key).toSet();
 
           // Print each hit line with surrounding context.
-          for (final entry in shownLines) {
+          for (final (entryIndex, entry) in shownLines.indexed) {
             final lineNum = entry.key;
             final count = entry.value;
             final pct = (count / divisor) * 100;
@@ -254,7 +255,6 @@ class AnnotateCommand extends ProfileTargetCommand {
             );
 
             // Show context lines after (if not the last hit).
-            final entryIndex = shownLines.indexOf(entry);
             if (entryIndex < shownLines.length - 1) {
               final nextLine = shownLines[entryIndex + 1].key;
               for (
@@ -277,10 +277,8 @@ class AnnotateCommand extends ProfileTargetCommand {
         final sorted = fileFuncCounts.entries.toList()
           ..sort((a, b) => b.value.compareTo(a.value));
         final maxCount = sorted.isEmpty ? 1 : sorted.first.value;
-        final shown = sorted
-            .where((e) => e.value >= (minSamples ?? 1))
-            .take(topLimit ?? 30)
-            .toList();
+        final eligible = sorted.where((e) => e.value >= (minSamples ?? 1));
+        final shown = topLimit == null ? eligible : eligible.take(topLimit);
 
         for (final entry in shown) {
           final pct = (entry.value / divisor) * 100;
@@ -301,6 +299,7 @@ class AnnotateCommand extends ProfileTargetCommand {
     return successExitCode;
   }
 
+  /// Resolves package/file URIs or existing local paths; otherwise returns null.
   String? _resolveSourceFile(String location) {
     if (location.startsWith('package:')) {
       return _resolvePackageUri(location);
@@ -314,6 +313,9 @@ class AnnotateCommand extends ProfileTargetCommand {
     return null;
   }
 
+  /// Searches at most eight ancestors for the first package configuration.
+  ///
+  /// Returns null when no configuration or matching source file is found.
   String? _resolvePackageUri(String packageUri) {
     var dir = Directory.current;
     for (var i = 0; i < 8; i++) {
@@ -330,6 +332,10 @@ class AnnotateCommand extends ProfileTargetCommand {
     return null;
   }
 
+  /// Resolves a package root using rootUri, trying lib/ then root-relative paths.
+  ///
+  /// Custom packageUri mappings are not supported. Missing files or invalid
+  /// configurations return null.
   String? _resolveFromPackageConfig(File configFile, String packageUri) {
     try {
       final configDir = configFile.parent;

@@ -165,6 +165,7 @@ class RunCommand extends ProfilerCommand {
         regionBottomUpTrees: prepared.regionBottomUpTrees,
         regionMethodTables: prepared.regionMethodTables,
         options: options,
+        allocAttribution: prepared.overallAllocAttribution,
       );
     }
 
@@ -291,6 +292,7 @@ class AttachCommand extends ProfilerCommand with VmServiceDiscovery {
         regionBottomUpTrees: prepared.regionBottomUpTrees,
         regionMethodTables: prepared.regionMethodTables,
         options: options,
+        allocAttribution: prepared.overallAllocAttribution,
       );
     }
 

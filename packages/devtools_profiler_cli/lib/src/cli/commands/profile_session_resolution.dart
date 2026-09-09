@@ -18,6 +18,21 @@ import 'profiler_command.dart';
 /// These methods are shared between CLI commands (via [ProfilerCommand]) and
 /// the MCP tool handlers to avoid duplicating session discovery logic.
 mixin ProfileSessionResolution on ProfilerCommand {
+  /// Resolves a project root or sessions directory to an absolute directory.
+  ///
+  /// Throws [ArgumentError] if an explicitly supplied directory does not exist.
+  Directory resolveSessionsDirectory({String? cwd}) {
+    if (cwd == null) return defaultSessionsDirectory();
+    final directory = Directory(path.normalize(path.absolute(cwd)));
+    if (!directory.existsSync()) {
+      throw ArgumentError('Directory not found: $cwd');
+    }
+    final nested = Directory(
+      path.join(directory.path, '.dart_tool', 'devtools_profiler', 'sessions'),
+    );
+    return nested.existsSync() ? nested : directory;
+  }
+
   /// Locates the default sessions directory under the current working
   /// directory.
   ///
@@ -51,6 +66,11 @@ mixin ProfileSessionResolution on ProfilerCommand {
     String input, {
     Directory? sessionsDirectory,
   }) async {
+    final absolutePath = path.normalize(path.absolute(input));
+    if (FileSystemEntity.typeSync(absolutePath) !=
+        FileSystemEntityType.notFound) {
+      return absolutePath;
+    }
     final dir = sessionsDirectory ?? defaultSessionsDirectory();
     final sessions = await discoverSessions(dir);
     if (sessions.isNotEmpty) {
@@ -61,7 +81,7 @@ mixin ProfileSessionResolution on ProfilerCommand {
         // Not a matching session id — fall through to file path.
       }
     }
-    return path.normalize(path.absolute(input));
+    return absolutePath;
   }
 
   /// Lists all stored profiling sessions, sorted newest first.

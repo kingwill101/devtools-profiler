@@ -9,6 +9,31 @@ import 'package:test/test.dart';
 import 'package:vm_service/vm_service.dart';
 
 void main() {
+  test(
+    'rejects non-object region metadata before waiting for VM readiness',
+    () async {
+      final directory = await Directory.systemTemp.createTemp(
+        'region_metadata.',
+      );
+      addTearDown(() => directory.delete(recursive: true));
+      final controller = ProfileSessionController(
+        artifactStore: ProfileArtifactStore(directory),
+        childProcessId: null,
+        dtd: null,
+        sessionId: 'session',
+      );
+      await expectLater(
+        controller.handleStartRegion(
+          Parameters('startRegion', {
+            'extra': ['invalid'],
+          }),
+        ),
+        throwsA(isA<RpcException>()),
+      );
+      expect(controller.context.activeRegions, isEmpty);
+    },
+  );
+
   for (final fail in [false, true]) {
     test(
       'finalization waits for an in-flight region stop (failure=$fail)',

@@ -2,6 +2,21 @@ import 'package:devtools_profiler_core/devtools_profiler_core.dart';
 import 'package:test/test.dart';
 
 void main() {
+  test('limits aligned rows and treats zero as unlimited', () {
+    final columns = [
+      ProfileFrameColumn(
+        label: 'a',
+        frames: [_frame('package:a/a.dart'), _frame('package:b/b.dart')],
+      ),
+      ProfileFrameColumn(label: 'b', frames: [_frame('package:b/b.dart')]),
+    ];
+    final all = alignProfileFrames(columns);
+    expect(alignProfileFrames(columns, limit: 0), hasLength(2));
+    final limited = alignProfileFrames(columns, limit: 1);
+    expect(limited, hasLength(1));
+    expect(limited.single.toJson(), all.first.toJson());
+  });
+
   test('separates same-name functions by kind and exact location', () {
     final rows = alignProfileFrames([
       ProfileFrameColumn(

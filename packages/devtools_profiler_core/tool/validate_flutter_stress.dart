@@ -178,8 +178,14 @@ Future<void> main(List<String> arguments) async {
           isolateId: mainId,
         );
       }
+    } catch (error) {
+      stderr.writeln('Stress fixture cleanup failed: $error');
     } finally {
-      await service.dispose();
+      try {
+        await service.dispose();
+      } catch (error) {
+        stderr.writeln('VM service cleanup failed: $error');
+      }
     }
   }
 }

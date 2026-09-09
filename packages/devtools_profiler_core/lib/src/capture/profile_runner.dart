@@ -144,7 +144,8 @@ class ProfileRunner {
         runDurationTimer = Timer(runDuration, () {
           terminatedByProfiler = true;
           sessionController.addWarning(
-            'Profile run duration of ${runDuration.inMilliseconds}ms elapsed; finalizing before terminating the target process.',
+            'Profile run duration of ${runDuration.inMilliseconds}ms elapsed; '
+            'finalizing before terminating the target process.',
           );
           unawaited(() async {
             try {

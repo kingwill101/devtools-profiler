@@ -4,6 +4,8 @@ import 'cli_command.dart';
 import 'models.dart';
 import 'options.dart';
 
+const _missingFrameMeaning = 'not listed; not evidence of elimination';
+
 /// Converts aligned cross-run frames to the shared CLI/MCP response.
 Map<String, Object?> frameColumnsJson(
   List<ProfileFrameColumn> columns, {
@@ -14,7 +16,7 @@ Map<String, Object?> frameColumnsJson(
   return {
     'kind': 'multi-compare',
     'warnings': warnings,
-    'missingFrameMeaning': 'not listed; not evidence of elimination',
+    'missingFrameMeaning': _missingFrameMeaning,
     'rows': [for (final row in rows) row.toJson()],
     'columns': [
       for (var i = 0; i < columns.length; i++)
@@ -178,7 +180,7 @@ Map<String, Object?> trendPresentationJson(PreparedProfileTrends trends) {
     'cliCommand': _trendsCliCommand(trends),
     'targets': [for (final target in trends.targets) _trendTargetJson(target)],
     'frameAlignment': {
-      'missingFrameMeaning': 'not listed; not evidence of elimination',
+      'missingFrameMeaning': _missingFrameMeaning,
       'rows': [
         for (final row in alignProfileFrames([
           for (final target in trends.targets)

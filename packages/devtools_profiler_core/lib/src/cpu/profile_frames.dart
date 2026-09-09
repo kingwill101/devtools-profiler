@@ -73,16 +73,13 @@ class ProfileFrame {
     return _packageNameFromFilePath(parsedUri.toFilePath());
   }
 
-  /// Whether the frame belongs to `dart:async` and should be collapsed into
-  /// an "async overhead" entry when [ProfilePresentationOptions.collapseAsync]
-  /// is enabled.
+  /// Whether the frame belongs to `dart:async`.
   bool get isAsyncOverhead {
     final source = location;
     if (source == null || source.isEmpty) return false;
     if (source.startsWith('dart:async')) return true;
     // org-dartlang-sdk:///sdk/lib/async/...
     if (source.startsWith('org-dartlang-sdk:///sdk/lib/async/')) return true;
-    if (packageName == 'dart:async') return true;
     return false;
   }
 

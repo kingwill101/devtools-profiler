@@ -2,6 +2,11 @@
 
 ## 0.6.0
 
+- Validated replay, trend, and output-format options before execution.
+- Kept replay output capturable and skipped animation for redirected hosts.
+- Unified session-directory resolution and preferred existing artifact paths.
+- Clarified annotation granularity and allocation/CPU correlation semantics.
+- Fixed unlimited annotation output and aligned run/attach text with JSON.
 - Added an opt-in `browse` terminal UI for searchable stored sessions and
   explicit baseline/current region selection, summary previews, and command
   export. Redirected hosts cannot enter terminal mode.
@@ -81,11 +86,13 @@
   known-good baseline and reports regressions. Exits with code 1 when
   regressions are found. Use `--warn-only` to always exit 0.
   Examples:
-  ```
+
+  ```bash
   devtools-profiler regress path/to/baseline
   devtools-profiler regress 0712060003-8c410 0711235455-ebfb3
   devtools-profiler regress --warn-only path/to/baseline
   ```
+
 - Updated `--csv` output: now also supports the multi-compare mode and
   the `regress` command.
 

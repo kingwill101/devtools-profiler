@@ -8,6 +8,10 @@ import '../options.dart';
 /// Base class for profiler commands that expose common presentation options.
 abstract class ProfilerCommand extends Command<int> {
   /// Creates a profiler command backed by [profileRunner].
+  ///
+  /// When [includePresentationOptions] is false, presentation arguments are
+  /// omitted. Subclasses must not read [presentationOptions], [printJson],
+  /// or [printCsv].
   ProfilerCommand(
     this.profileRunner, {
     bool includePresentationOptions = true,
@@ -17,6 +21,22 @@ abstract class ProfilerCommand extends Command<int> {
 
   /// The profiler backend used by this command.
   final ProfileRunner profileRunner;
+
+  /// Rejects ambiguous formats and formats without an implemented renderer.
+  void validateOutputFormat(ArgResults arguments) {
+    if (!argParser.options.containsKey('json')) return;
+    final json = arguments['json'] as bool;
+    final csv = arguments['csv'] as bool;
+    if (json && csv) usageException('Pass either --json or --csv, not both.');
+    if (csv &&
+        !const {'summarize', 'compare', 'regress', 'trends'}.contains(name)) {
+      usageException('$name does not support --csv.');
+    }
+    if (json &&
+        const {'replay', 'annotate', 'profiles', 'mcp'}.contains(name)) {
+      usageException('$name does not support --json.');
+    }
+  }
 
   /// Returns presentation options parsed from the current [argResults].
   ProfilePresentationOptions get presentationOptions =>

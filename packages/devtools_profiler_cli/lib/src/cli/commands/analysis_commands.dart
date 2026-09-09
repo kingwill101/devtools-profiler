@@ -61,74 +61,13 @@ class CompareCommand extends ProfilerCommand with ProfileSessionResolution {
     if (argResults!.rest.isEmpty) {
       final baselinePath = await _resolveDefaultTarget('baseline');
       final currentPath = await _resolveDefaultTarget('current');
-      final options = presentationOptions;
-      final memoryClassLimitStr = argResults!['memory-class-limit'] as String?;
-      final memoryClassLimitSpecified = memoryClassLimitStr != null;
-      final comparison = await prepareProfileComparison(
-        profileRunner,
-        baselinePath: baselinePath,
-        currentPath: currentPath,
-        baselineProfileId: argResults!['baseline-profile-id'] as String?,
-        currentProfileId: argResults!['current-profile-id'] as String?,
-        minLiveBytes: parseNonNegativeInt(
-          argResults!['min-live-bytes'] as String?,
-          optionName: 'min-live-bytes',
-        ),
-        memoryClassLimit: parseLimit(
-          memoryClassLimitStr,
-          optionName: 'memory-class-limit',
-        ),
-        memoryClassLimitSpecified: memoryClassLimitSpecified,
-        options: options,
-      );
-      if (printJson) {
-        writeJson(comparisonPresentationJson(comparison));
-      } else if (printCsv) {
-        writeCsvComparisonFrames(line, comparison.comparison);
-      } else {
-        writeComparisonSummary(io, comparison, options: options);
-      }
-      return successExitCode;
+      return _comparePair(baselinePath, currentPath);
     }
 
     if (argResults!.rest.length == 2) {
-      final options = presentationOptions;
-
-      final memoryClassLimitStr = argResults!['memory-class-limit'] as String?;
-      final memoryClassLimitSpecified = memoryClassLimitStr != null;
-
-      // Resolve each positional arg as a session id first, then fall back to
-      // a file path. This lets users pass session ids directly.
       final baselinePath = await resolveSessionOrPath(argResults!.rest.first);
       final currentPath = await resolveSessionOrPath(argResults!.rest.last);
-
-      final comparison = await prepareProfileComparison(
-        profileRunner,
-        baselinePath: baselinePath,
-        currentPath: currentPath,
-        baselineProfileId: argResults!['baseline-profile-id'] as String?,
-        currentProfileId: argResults!['current-profile-id'] as String?,
-        minLiveBytes: parseNonNegativeInt(
-          argResults!['min-live-bytes'] as String?,
-          optionName: 'min-live-bytes',
-        ),
-        memoryClassLimit: parseLimit(
-          memoryClassLimitStr,
-          optionName: 'memory-class-limit',
-        ),
-        memoryClassLimitSpecified: memoryClassLimitSpecified,
-        options: options,
-      );
-
-      if (printJson) {
-        writeJson(comparisonPresentationJson(comparison));
-      } else if (printCsv) {
-        writeCsvComparisonFrames(line, comparison.comparison);
-      } else {
-        writeComparisonSummary(io, comparison, options: options);
-      }
-
-      return successExitCode;
+      return _comparePair(baselinePath, currentPath);
     }
 
     // 3+ args: multi-compare mode
@@ -160,6 +99,36 @@ class CompareCommand extends ProfilerCommand with ProfileSessionResolution {
       writeMultiCompareSummary(io, columns, options: presentationOptions);
     }
 
+    return successExitCode;
+  }
+
+  Future<int> _comparePair(String baselinePath, String currentPath) async {
+    final options = presentationOptions;
+    final memoryClassLimit = argResults!['memory-class-limit'] as String?;
+    final comparison = await prepareProfileComparison(
+      profileRunner,
+      baselinePath: baselinePath,
+      currentPath: currentPath,
+      baselineProfileId: argResults!['baseline-profile-id'] as String?,
+      currentProfileId: argResults!['current-profile-id'] as String?,
+      minLiveBytes: parseNonNegativeInt(
+        argResults!['min-live-bytes'] as String?,
+        optionName: 'min-live-bytes',
+      ),
+      memoryClassLimit: parseLimit(
+        memoryClassLimit,
+        optionName: 'memory-class-limit',
+      ),
+      memoryClassLimitSpecified: memoryClassLimit != null,
+      options: options,
+    );
+    if (printJson) {
+      writeJson(comparisonPresentationJson(comparison));
+    } else if (printCsv) {
+      writeCsvComparisonFrames(line, comparison.comparison);
+    } else {
+      writeComparisonSummary(io, comparison, options: options);
+    }
     return successExitCode;
   }
 
@@ -389,6 +358,11 @@ class TrendsCommand extends ProfilerCommand with ProfileSessionResolution {
   }
 
   Future<List<String>> _resolveTrendTargetPaths() async {
+    final last = argResults!['last'] as String?;
+    final requestedCount = last == null ? null : int.tryParse(last);
+    if (last != null && (requestedCount == null || requestedCount <= 0)) {
+      usageException('The --last option must be a positive integer.');
+    }
     if (argResults!.rest.isNotEmpty) {
       return [
         for (final arg in argResults!.rest) await resolveSessionOrPath(arg),
@@ -404,12 +378,7 @@ class TrendsCommand extends ProfilerCommand with ProfileSessionResolution {
       );
     }
 
-    final lastStr = argResults!['last'] as String?;
-    final requestedCount = int.tryParse(lastStr ?? '');
     if (requestedCount != null) {
-      if (requestedCount <= 0) {
-        throw ArgumentError('The --last option must be a positive integer.');
-      }
       final count = requestedCount < sessions.length
           ? requestedCount
           : sessions.length;

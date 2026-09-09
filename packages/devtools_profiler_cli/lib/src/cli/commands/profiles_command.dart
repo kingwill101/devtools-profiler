@@ -1,7 +1,5 @@
 import 'dart:io';
 
-import 'package:path/path.dart' as path;
-
 import '../constants.dart';
 import '../options.dart';
 import 'profiler_command.dart';
@@ -123,19 +121,7 @@ class ProfilesCommand extends ProfilerCommand with ProfileSessionResolution {
 
   /// Locates the sessions directory, using --cwd when provided.
   Directory _resolveSessionsDirectory() {
-    final cwd = argResults!['cwd'] as String?;
-    if (cwd != null) {
-      // Check for .dart_tool/devtools_profiler/sessions under the given path
-      final dartToolDir = Directory(
-        path.join(cwd, '.dart_tool', 'devtools_profiler', 'sessions'),
-      );
-      if (dartToolDir.existsSync()) return dartToolDir;
-      // Fall back to the raw path
-      final dir = Directory(cwd);
-      if (dir.existsSync()) return dir;
-      throw ArgumentError('Directory not found: $cwd');
-    }
-    return defaultSessionsDirectory();
+    return resolveSessionsDirectory(cwd: argResults!['cwd'] as String?);
   }
 
   String _formatTime(DateTime time) {

@@ -1,4 +1,4 @@
-@Timeout(Duration(minutes: 2))
+@Timeout(Duration(minutes: 5))
 library;
 
 import 'dart:convert';

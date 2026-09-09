@@ -21,6 +21,7 @@ prepareProfileFrameColumns(
     final target = await _resolveComparisonTarget(
       runner,
       path,
+      includeAllocationCorrelation: false,
       options: options.copyWith(
         frameLimit: 0,
         includeCallTree: false,
@@ -553,10 +554,14 @@ Future<PreparedMemoryClassInspection> prepareMemoryClassInspection(
 }
 
 /// Rebuilds a single region summary and tree to match [options].
+///
+/// Frame-only consumers can disable [includeAllocationCorrelation] to avoid
+/// scanning CPU samples for memory correlation data they do not render.
 Future<PreparedRegionPresentation> prepareRegionPresentation(
   ProfileRunner runner,
   ProfileRegionResult region, {
   required ProfilePresentationOptions options,
+  bool includeAllocationCorrelation = true,
 }) async {
   final rawProfilePath = region.rawProfilePath;
   if (!region.succeeded || rawProfilePath == null || rawProfilePath.isEmpty) {
@@ -663,7 +668,10 @@ Future<PreparedRegionPresentation> prepareRegionPresentation(
 
   // Allocation call-site attribution: cross-reference memory classes with
   // CPU samples to show which functions were allocating.
-  final allocAttribution = memory != null && cpuSamples.samples != null
+  final allocAttribution =
+      includeAllocationCorrelation &&
+          memory != null &&
+          cpuSamples.samples != null
       ? attributeAllocationsToCallers(memory, cpuSamples)
       : const <AllocationAttribution>[];
 
@@ -825,6 +833,7 @@ Future<PreparedComparisonTarget> _resolveComparisonTarget(
   String targetPath, {
   String? requestedProfileId,
   required ProfilePresentationOptions options,
+  bool includeAllocationCorrelation = true,
 }) async {
   final summary = await runner.summarizeArtifact(targetPath);
   if (summary case {'regions': final Object? _}) {
@@ -842,6 +851,7 @@ Future<PreparedComparisonTarget> _resolveComparisonTarget(
         runner,
         region,
         options: options,
+        includeAllocationCorrelation: includeAllocationCorrelation,
       ),
     );
   }
@@ -861,6 +871,7 @@ Future<PreparedComparisonTarget> _resolveComparisonTarget(
         runner,
         region,
         options: options,
+        includeAllocationCorrelation: includeAllocationCorrelation,
       ),
     );
   }
@@ -983,29 +994,39 @@ const _asyncZoneNames = {
   '_RootZone.runBinary',
 };
 
-/// Returns the async category label for [frame], or `null` if the frame is
-/// not a `dart:async` frame.
+/// Returns a display label for a recognized async function name.
 ///
 /// Uses substring matching because VM function names may include the owner
 /// class prefix multiple times (e.g. `_Future._Future._completeErrorObject`).
 String? _asyncCategoryLabel(ProfileFrameSummary frame) {
-  final name = frame.name;
+  return switch (_asyncCategoryFromName(frame.name)) {
+    'normal' => 'async (normal completions)',
+    'error' => 'async (error completions)',
+    'listener' => 'async (listener dispatch)',
+    'microtask' => 'async (microtask scheduling)',
+    'zone' => 'async (zone overhead)',
+    _ => null,
+  };
+}
+
+/// Classifies async names using substring matching for VM owner prefixes.
+String _asyncCategoryFromName(String name) {
   for (final entry in _asyncNormalCompletionNames) {
-    if (name.contains(entry)) return 'async (normal completions)';
+    if (name.contains(entry)) return 'normal';
   }
   for (final entry in _asyncErrorCompletionNames) {
-    if (name.contains(entry)) return 'async (error completions)';
+    if (name.contains(entry)) return 'error';
   }
   for (final entry in _asyncListenerDispatchNames) {
-    if (name.contains(entry)) return 'async (listener dispatch)';
+    if (name.contains(entry)) return 'listener';
   }
   for (final entry in _asyncMicrotaskNames) {
-    if (name.contains(entry)) return 'async (microtask scheduling)';
+    if (name.contains(entry)) return 'microtask';
   }
   for (final entry in _asyncZoneNames) {
-    if (name.contains(entry)) return 'async (zone overhead)';
+    if (name.contains(entry)) return 'zone';
   }
-  return null;
+  return 'other';
 }
 
 /// Categorizes async frames into explicit groups and replaces the individual
@@ -1134,7 +1155,8 @@ List<String> _buildAsyncBreakdownWarnings(
   );
   final totalPct = (totalAsyncSamples / divisor) * 100;
   final parts = <String>[
-    'Async overhead breakdown: ${totalPct.toStringAsFixed(1)}% total',
+    'Async overhead breakdown: ${totalPct.toStringAsFixed(1)}% of samples '
+        'represented by the available top-frame subset',
   ];
 
   // Add category lines.
@@ -1272,7 +1294,7 @@ List<_AsyncCallerEntry> _attributeAsyncByCaller(CpuSamples cpuSamples) {
     }
 
     // Determine async category for what-if analysis.
-    final category = _asyncCategoryFromName(selfFrame.name, selfFrame.location);
+    final category = _asyncCategoryFromName(selfFrame.name);
 
     if (callerName != null) {
       callerCounts[callerName] = (callerCounts[callerName] ?? 0) + 1;
@@ -1320,23 +1342,7 @@ List<_AsyncCallerEntry> _attributeAsyncByCaller(CpuSamples cpuSamples) {
   return result;
 }
 
-/// Returns the async category name for the given async frame [name] and
-/// [location]. Uses substring matching to handle VM name prefixes.
-String _asyncCategoryFromName(String name, String? location) {
-  for (final entry in _asyncNormalCompletionNames) {
-    if (name.contains(entry)) return 'normal';
-  }
-  for (final entry in _asyncErrorCompletionNames) {
-    if (name.contains(entry)) return 'error';
-  }
-  for (final entry in _asyncListenerDispatchNames) {
-    if (name.contains(entry)) return 'listener';
-  }
-  return 'other';
-}
-
-/// Produces warning messages estimating the savings from removing async from
-/// specific callers.
+/// Orders frames by descending self samples, then descending total samples.
 int _compareSelfDescending(ProfileFrameSummary a, ProfileFrameSummary b) {
   final c = b.selfSamples.compareTo(a.selfSamples);
   if (c != 0) return c;

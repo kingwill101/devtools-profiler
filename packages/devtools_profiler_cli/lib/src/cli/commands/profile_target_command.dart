@@ -1,7 +1,5 @@
 import 'dart:io';
 
-import 'package:path/path.dart' as path;
-
 import 'profiler_command.dart';
 import 'profile_session_resolution.dart';
 
@@ -81,17 +79,6 @@ abstract class ProfileTargetCommand extends ProfilerCommand
 
   /// Resolves the sessions directory, checking --cwd first.
   Directory _resolveSessionsDirectory() {
-    final cwd = argResults!['cwd'] as String?;
-    if (cwd != null) {
-      final normalized = path.normalize(path.absolute(cwd));
-      final dartTool = Directory(
-        path.join(normalized, '.dart_tool', 'devtools_profiler', 'sessions'),
-      );
-      if (dartTool.existsSync()) return dartTool;
-      final dir = Directory(normalized);
-      if (dir.existsSync()) return dir;
-      throw ArgumentError('Directory not found: $cwd');
-    }
-    return defaultSessionsDirectory();
+    return resolveSessionsDirectory(cwd: argResults!['cwd'] as String?);
   }
 }

@@ -52,6 +52,11 @@ final class ProfileSessionRegionRpcHandler {
 
   /// Handles the DTD region-start request.
   Future<Map<String, Object?>> handleStartRegion(Parameters params) async {
+    final rawExtra = params['extra'].valueOr(const <String, Object?>{});
+    if (rawExtra is! Map || rawExtra.keys.any((key) => key is! String)) {
+      throw RpcException.invalidParams('Region extra must be a JSON object.');
+    }
+    final extra = Map<String, Object?>.from(rawExtra);
     await vmHookup.waitForVmService();
     vmHookup.validateSession(params['sessionId'].asString);
     if (context.processExited) {
@@ -112,8 +117,7 @@ final class ProfileSessionRegionRpcHandler {
       parentRegionId: parentRegionId,
       regionId: regionId,
       startTimestampMicros: startTimestampMicros,
-      extra:
-          params['extra'].valueOr(<String, Object?>{}) as Map<String, Object?>,
+      extra: extra,
     );
 
     context.activeRegions[region.regionId] = region;

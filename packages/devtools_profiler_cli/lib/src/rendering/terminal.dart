@@ -143,16 +143,16 @@ void writeRegionSummary(
   }
 }
 
-/// Renders allocation call-site attribution as a table.
+/// Renders profile-wide CPU correlation, not allocation-site attribution.
 void _writeAllocationAttribution(
   Console console,
   List<AllocationAttribution> attributions,
 ) {
   if (attributions.isEmpty) return;
 
-  console.section('Allocation Attribution');
+  console.section('Allocation / CPU Correlation (not allocation sites)');
   console.table(
-    headers: const ['Class', 'Allocated', 'Top Call Sites'],
+    headers: const ['Class', 'Allocated', 'Profile-wide CPU functions'],
     rows: [
       for (final attr in attributions)
         [

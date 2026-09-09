@@ -805,4 +805,4 @@ dart test packages/devtools_profiler_protocol
 ```
 
 All four test suites must pass before publishing. Current totals:
-175+ tests across all packages.
+The test suites cover all four packages.

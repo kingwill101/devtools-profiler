@@ -118,7 +118,11 @@ T profileRegionSync<T>(
     }
 
     // Fire-and-forget the stop — DTD events are sent asynchronously.
-    handle.stop().ignore();
+    unawaited(
+      handle.stop().catchError((Object error, StackTrace stack) {
+        _reportRegionFailure(handle.regionId, 'stop', error, stack);
+      }),
+    );
 
     if (pendingError != null) {
       Error.throwWithStackTrace(pendingError, pendingStackTrace!);
@@ -160,8 +164,9 @@ Future<ProfileRegionHandle> startProfileRegion(
 /// background.
 ///
 /// Use this when you need to profile synchronous code without adding a
-/// `Future` wrapper. The returned handle's [ProfileRegionHandle.stop] is
-/// fire-and-forget — DTD messages are sent asynchronously.
+/// `Future` wrapper. Awaiting the returned handle's [ProfileRegionHandle.stop]
+/// waits for both the start and stop messages. A failed start is logged and
+/// causes stop to fail without sending a stop for an unknown region.
 ///
 /// Throws a [ProfileRegionConfigurationException] when this process was not
 /// started by the profiler CLI in a session that can receive region events.
@@ -186,7 +191,7 @@ ProfileRegionHandle startProfileRegionSync(
   final startTimestampMicros = developer.Timeline.now;
 
   // Fire DTD start asynchronously — timestamps are already captured.
-  _startRegionAsync(
+  final started = _startRegionAsync(
     controlClient,
     dtdParams: {
       'attributes': attributes,
@@ -210,24 +215,58 @@ ProfileRegionHandle startProfileRegionSync(
     name: name,
     regionId: regionId,
     stopImpl: () async {
-      await controlClient.stopRegionAsynchronously(
-        isolateId: isolateId,
-        regionId: regionId,
-        timestampMicros: developer.Timeline.now,
-      );
+      // Capture the endpoint before waiting for transport, not after it.
+      final timestampMicros = developer.Timeline.now;
+      try {
+        await started;
+        await controlClient.stopRegionAsynchronously(
+          isolateId: isolateId,
+          regionId: regionId,
+          timestampMicros: timestampMicros,
+        );
+      } finally {
+        await controlClient.close();
+      }
     },
   );
 }
 
 /// Fires a DTD startRegion call in the background without awaiting.
-void _startRegionAsync(
+Future<void> _startRegionAsync(
   _ProfilerControlClient client, {
   required Map<String, Object?> dtdParams,
 }) {
+  final started = client
+      .callService(_profilerControlService, _startRegionMethod, dtdParams)
+      .catchError((Object error, StackTrace stack) async {
+        await client.close();
+        Error.throwWithStackTrace(error, stack);
+      });
+  // Observe errors immediately, while retaining them for an awaited stop.
   unawaited(
-    client
-        .callService(_profilerControlService, _startRegionMethod, dtdParams)
-        .catchError((_) {}),
+    started.catchError((Object error, StackTrace stack) {
+      _reportRegionFailure(
+        dtdParams['regionId'].toString(),
+        'start',
+        error,
+        stack,
+      );
+    }),
+  );
+  return started;
+}
+
+void _reportRegionFailure(
+  String regionId,
+  String operation,
+  Object error,
+  StackTrace stack,
+) {
+  developer.log(
+    'Failed to $operation profiling region $regionId: $error',
+    name: 'devtools_region_profiler',
+    error: error,
+    stackTrace: stack,
   );
 }
 
@@ -292,6 +331,7 @@ class _ProfilerControlClient {
 
   final Uri _dtdUri;
   final String _sessionId;
+  Future<DartToolingDaemon>? _connection;
 
   /// The configured profiler session identifier.
   String get sessionId => _sessionId;
@@ -397,20 +437,43 @@ class _ProfilerControlClient {
     }
   }
 
-  /// Calls a DTD service method without session validation.
+  /// Opens one validated connection for a synchronous region's lifetime.
+  Future<DartToolingDaemon> _connect() async {
+    final dtd = await DartToolingDaemon.connect(_dtdUri);
+    try {
+      await _validateSession(dtd);
+      return dtd;
+    } catch (_) {
+      await dtd.close();
+      rethrow;
+    }
+  }
+
+  /// Closes the region's cached connection after stop or failed start.
+  Future<void> close() async {
+    final connection = _connection;
+    _connection = null;
+    if (connection == null) return;
+    DartToolingDaemon dtd;
+    try {
+      dtd = await connection;
+    } catch (_) {
+      // A failed connection/validation already performed its own cleanup.
+      return;
+    }
+    await dtd.close();
+  }
+
+  /// Calls a DTD service method over the region's validated connection.
   ///
-  /// Used by fire-and-forget region start/stop to avoid blocking the caller.
+  /// The stop closure waits for start before sending its request.
   Future<void> callService(
     String service,
     String method,
     Map<String, Object?> params,
   ) async {
-    final dtd = await DartToolingDaemon.connect(_dtdUri);
-    try {
-      await dtd.call(service, method, params: params);
-    } finally {
-      await dtd.close();
-    }
+    final dtd = await (_connection ??= _connect());
+    await dtd.call(service, method, params: params);
   }
 
   /// Stops a region by sending a fire-and-forget DTD message.

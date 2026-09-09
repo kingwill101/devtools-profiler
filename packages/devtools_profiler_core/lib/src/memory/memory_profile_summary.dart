@@ -268,8 +268,11 @@ final class _MutableMemoryClassStats {
   int liveInstances = 0;
 }
 
-/// A single allocation-attribution entry for a memory class, showing
-/// the top call sites that were on the CPU stack during its growth.
+/// A growing memory class paired with profile-wide CPU activity.
+///
+/// This is correlation, not allocation-site evidence. Every class shares the
+/// same CPU function distribution; samples do not identify which class a
+/// function allocated.
 class AllocationAttribution {
   /// Creates an attribution entry.
   const AllocationAttribution({
@@ -292,12 +295,16 @@ class AllocationAttribution {
   /// Number of instances allocated for this class in the capture window.
   final int allocatedInstances;
 
-  /// Top call sites and their fraction of CPU samples, sorted descending.
-  /// Each entry is (functionName, fraction) where fraction is 0.0-1.0.
+  /// Profile-wide self functions and fractions of eligible named, non-native
+  /// self samples, sorted descending.
+  ///
+  /// Fractions are not percentages of allocations or of all CPU samples.
+  /// The legacy field name is retained for serialization compatibility.
   final List<(String name, double fraction)> callSiteFractions;
 
   /// Serializes this attribution entry to JSON.
   Map<String, Object?> toJson() => {
+    'attributionKind': 'profileWideCpuCorrelation',
     'className': className,
     'libraryUri': libraryUri,
     'allocatedBytes': allocatedBytes,
@@ -309,11 +316,10 @@ class AllocationAttribution {
   };
 }
 
-/// Cross-references CPU samples with memory class deltas to attribute
-/// allocations to the functions that were on the CPU stack during heap growth.
+/// Pairs growing memory classes with the profile-wide self CPU distribution.
 ///
-/// For each class with positive [allocationBytesDelta], this scans the CPU
-/// samples and finds which non-native Dart functions were on the stack.
+/// This does not identify allocation sites. Each growing class receives the
+/// same distribution of eligible named, non-native self samples.
 List<AllocationAttribution> attributeAllocationsToCallers(
   ProfileMemoryResult memory,
   CpuSamples cpuSamples,
@@ -348,12 +354,14 @@ List<AllocationAttribution> attributeAllocationsToCallers(
   if (totalHits <= 0) return const [];
 
   // Sort functions by hit count descending.
+  const maxCorrelatedFunctions = 5;
+  const maxGrowingClasses = 8;
   final sortedFunctions = functionHits.entries.toList()
     ..sort((a, b) => b.value.compareTo(a.value));
-  final topFunctions = sortedFunctions.take(5).toList();
+  final topFunctions = sortedFunctions.take(maxCorrelatedFunctions).toList();
 
   return [
-    for (final cls in classes.take(8))
+    for (final cls in classes.take(maxGrowingClasses))
       AllocationAttribution(
         className: cls.className,
         libraryUri: cls.libraryUri,

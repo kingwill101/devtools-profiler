@@ -13,6 +13,7 @@ import 'cli/commands/capture_commands.dart';
 import 'cli/commands/discover_command.dart';
 import 'cli/commands/flutter_commands.dart';
 import 'cli/commands/profiles_command.dart';
+import 'cli/commands/profiler_command.dart';
 import 'cli/constants.dart';
 
 /// Runs the `devtools-profiler` CLI.
@@ -28,7 +29,7 @@ Future<int> runCli(
 
   int exitCode = successExitCode;
   final commandRunner =
-      CommandRunner<int>(
+      _ProfilerCommandRunner(
           'devtools-profiler',
           'Profile Dart and Flutter apps and analyze the results.',
           out: stdoutSink.writeln,
@@ -68,7 +69,12 @@ Future<int> runCli(
         ..addCommand(DebugDumpCommand(profiler))
         ..addCommand(LogsCommand(profiler))
         ..addCommand(AnnotateCommand(profiler))
-        ..addCommand(ReplayCommand(profiler))
+        ..addCommand(
+          ReplayCommand(
+            profiler,
+            terminalAllowed: output == null && errorOutput == null,
+          ),
+        )
         ..addCommand(McpCommand(profiler));
 
   try {
@@ -88,5 +94,32 @@ Future<int> runCli(
       );
     }
     return softwareExitCode;
+  }
+}
+
+/// Validates output contracts before any command can launch or read a target.
+class _ProfilerCommandRunner extends CommandRunner<int> {
+  _ProfilerCommandRunner(
+    super.executableName,
+    super.description, {
+    super.out,
+    super.err,
+    super.outRaw,
+    super.errRaw,
+    super.usageExitCode,
+    super.setExitCode,
+    super.ansi,
+  });
+
+  @override
+  Future<int?> runCommand(ArgResults topLevelResults) {
+    final parsed = topLevelResults.command;
+    final command = commands[parsed?.name];
+    if (parsed != null &&
+        command is ProfilerCommand &&
+        !(parsed['help'] as bool)) {
+      command.validateOutputFormat(parsed);
+    }
+    return super.runCommand(topLevelResults);
   }
 }

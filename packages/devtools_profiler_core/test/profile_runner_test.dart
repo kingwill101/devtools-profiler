@@ -186,6 +186,16 @@ void main() {
     );
   });
 
+  test('keeps an actual Dart VM executable', () {
+    expect(
+      dart_executable.resolveDartExecutable(
+        resolvedExecutable: '/opt/dart-sdk/bin/dart',
+        environment: const {},
+      ),
+      '/opt/dart-sdk/bin/dart',
+    );
+  });
+
   test('allows overriding the Dart executable for helper processes', () {
     expect(
       dart_executable.resolveDartExecutable(

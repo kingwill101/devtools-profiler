@@ -1,6 +1,6 @@
 import 'dart:async';
+import 'dart:io';
 
-import 'package:artisanal/terminal.dart';
 import 'package:devtools_profiler_core/devtools_profiler_core.dart';
 import 'package:vm_service/vm_service.dart';
 
@@ -14,7 +14,7 @@ import 'profile_target_command.dart';
 /// Uses carriage return to update the bar in place on the terminal.
 class ReplayCommand extends ProfileTargetCommand {
   /// Creates a replay command.
-  ReplayCommand(super.profileRunner) {
+  ReplayCommand(super.profileRunner, {this.terminalAllowed = false}) {
     argParser
       ..addOption(
         'window',
@@ -32,6 +32,9 @@ class ReplayCommand extends ProfileTargetCommand {
         help: 'Number of top frames to show in each bar.',
       );
   }
+
+  /// Whether output is connected directly to the user's terminal.
+  final bool terminalAllowed;
 
   @override
   String get name => 'replay';
@@ -55,14 +58,25 @@ class ReplayCommand extends ProfileTargetCommand {
 
   @override
   Future<int> run() async {
+    const maxDelayMillis = 2_147_483_647;
+    final windowMs = int.tryParse(argResults!['window'] as String);
+    final speed = double.tryParse(argResults!['speed'] as String);
+    final topCount = int.tryParse(argResults!['top'] as String);
+    if (windowMs == null || windowMs <= 0 || windowMs > maxDelayMillis) {
+      usageException('--window must be between 1 and $maxDelayMillis.');
+    }
+    if (speed == null || !speed.isFinite || speed <= 0) {
+      usageException('--speed must be positive and finite.');
+    }
+    if (topCount == null || topCount <= 0) {
+      usageException('--top must be a positive integer.');
+    }
+    final delay = windowMs / speed;
+    if (!delay.isFinite || delay > maxDelayMillis) {
+      usageException('The replay delay is too large; increase --speed.');
+    }
+    final displayDelay = delay.round();
     final targetPath = await resolveTargetPath();
-    final windowMs =
-        int.tryParse(argResults!['window'] as String? ?? '500') ?? 500;
-    final speed =
-        double.tryParse(argResults!['speed'] as String? ?? '1.0') ?? 1.0;
-    final topCount = int.tryParse(argResults!['top'] as String? ?? '5') ?? 5;
-
-    final displayDelay = (windowMs / speed).round();
 
     // Load the session data.
     final summary = await profileRunner.summarizeArtifact(targetPath);
@@ -107,7 +121,7 @@ class ReplayCommand extends ProfileTargetCommand {
 
     final functions = cpuSamples.functions ?? const [];
     final samples = cpuSamples.samples!;
-    final windowMicros = windowMs * 1000;
+    final windowMicros = windowMs * 1_000;
     final totalDuration = timeExtent > 0 ? timeExtent : 1;
 
     line('Replay: $sessionLabel');
@@ -127,17 +141,20 @@ class ReplayCommand extends ProfileTargetCommand {
     final totalSpan = sampleEnd - sampleStart;
 
     // Group samples into windows and render each window.
-    final term = StdioTerminal();
+    final animate = terminalAllowed && stdout.hasTerminal;
     var windowStart = sampleStart;
     var windowIndex = 0;
     var totalFramesRendered = 0;
+    var sampleIndex = 0;
 
-    while (windowStart < sampleEnd) {
+    while (animate && windowStart <= sampleEnd) {
       final windowEnd = windowStart + windowMicros;
-      final windowSamples = sortedSamples.where((s) {
-        final t = s.timestamp ?? 0;
-        return t >= windowStart && t < windowEnd;
-      }).toList();
+      final firstIndex = sampleIndex;
+      while (sampleIndex < sortedSamples.length &&
+          (sortedSamples[sampleIndex].timestamp ?? 0) < windowEnd) {
+        sampleIndex++;
+      }
+      final windowSamples = sortedSamples.getRange(firstIndex, sampleIndex);
 
       // Count top frames in this window.
       final frameCounts = <String, int>{};
@@ -183,21 +200,21 @@ class ReplayCommand extends ProfileTargetCommand {
         bar.write('(idle)');
       }
 
-      // Update the terminal using artisanal's Terminal API.
-      if (windowIndex > 0) {
-        term.cursorUp(1);
-        term.clearLine();
-      }
-      term.writeln(bar.toString());
+      // Keep animation on the same output route as the aggregate summary.
+      line('${windowIndex > 0 ? '\x1b[1A\x1b[2K' : ''}$bar');
 
       windowStart = windowEnd;
       windowIndex++;
       totalFramesRendered++;
 
       // Delay for replay effect.
-      if (displayDelay > 0 && windowStart < sampleEnd) {
+      if (displayDelay > 0 && windowStart <= sampleEnd) {
         await Future.delayed(Duration(milliseconds: displayDelay));
       }
+    }
+
+    if (!animate) {
+      line('Animation skipped: non-interactive output.');
     }
 
     // Print summary.
@@ -234,7 +251,7 @@ class ReplayCommand extends ProfileTargetCommand {
     return successExitCode;
   }
 
-  /// Resolves a frame label from a ProfileFunction, showing the function
+  /// Resolves a frame label from a [ProfileFunction], showing the function
   /// kind (Native, Stub, etc.) when the Dart name is unavailable.
   String _resolveFrameLabel(ProfileFunction func) {
     final name = displayNameForFunction(func);
@@ -250,12 +267,12 @@ class ReplayCommand extends ProfileTargetCommand {
   }
 
   String _formatDuration(int micros) {
-    final ms = micros ~/ 1000;
-    if (ms >= 60000) {
-      return '${ms ~/ 60000}m${(ms % 60000) ~/ 1000}s';
+    final ms = micros ~/ 1_000;
+    if (ms >= 60_000) {
+      return '${ms ~/ 60_000}m${(ms % 60_000) ~/ 1_000}s';
     }
-    if (ms >= 1000) {
-      return '${(ms / 1000).toStringAsFixed(1)}s';
+    if (ms >= 1_000) {
+      return '${(ms / 1_000).toStringAsFixed(1)}s';
     }
     return '${ms}ms';
   }

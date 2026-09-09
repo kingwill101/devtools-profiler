@@ -11,6 +11,40 @@ import 'package:test/test.dart';
 import 'package:vm_service/vm_service.dart';
 
 void main() {
+  for (final warnOnly in [false, true]) {
+    test(
+      'profile_regress preserves MCP transport (warnOnly=$warnOnly)',
+      () async {
+        final environment = _McpTestEnvironment(_FakeProfileRunner());
+        addTearDown(environment.shutdown);
+        await _initializeServer(environment);
+        final result = await environment.serverConnection.callTool(
+          CallToolRequest(
+            name: 'profile_regress',
+            arguments: {
+              'baselinePath': '/tmp/artifacts/session-1',
+              'currentPath': '/tmp/artifacts/session-2',
+              'warnOnly': warnOnly,
+            },
+          ),
+        );
+        expect(result.isError, isNot(true), reason: result.content.toString());
+        final json = result.structuredContent!;
+        expect(json['kind'], 'regressionCheck');
+        expect(json['hasRegressions'], isTrue);
+        if (warnOnly) {
+          expect(json, isNot(contains('regressionExitCode')));
+        } else {
+          expect(json['regressionExitCode'], 1);
+        }
+        expect(
+          (await environment.serverConnection.listTools()).tools,
+          isNotEmpty,
+        );
+      },
+    );
+  }
+
   test('multi-path compare exposes aligned rows through MCP', () async {
     final environment = _McpTestEnvironment(_FakeProfileRunner());
     addTearDown(environment.shutdown);
@@ -20,9 +54,9 @@ void main() {
         name: 'profile_compare',
         arguments: {
           'paths': [
-            '/tmp/profile.json',
-            '/tmp/profile.json',
-            '/tmp/profile.json',
+            '/tmp/artifacts/session-1',
+            '/tmp/artifacts/session-2',
+            '/tmp/artifacts/session-3',
           ],
           'frameLimit': 1,
         },
@@ -31,6 +65,19 @@ void main() {
     expect(result.isError, isNot(true), reason: result.content.toString());
     expect(result.structuredContent!['kind'], 'multi-compare');
     expect(result.structuredContent!['rows'], hasLength(1));
+    final columns = result.structuredContent!['columns'] as List;
+    expect(columns.map((column) => (column as Map)['label']), [
+      'session-1',
+      'session-2',
+      'session-3',
+    ]);
+    final row = (result.structuredContent!['rows'] as List).single as Map;
+    final frames = row['frames'] as List;
+    expect(frames, hasLength(3));
+    expect(
+      frames.map((frame) => (frame as Map)['selfSamples']).toSet().length,
+      greaterThan(1),
+    );
     expect(
       result.structuredContent!['missingFrameMeaning'],
       contains('not evidence of elimination'),
@@ -62,6 +109,7 @@ void main() {
         'profile_search_methods',
         'profile_compare_method',
         'profile_compare',
+        'profile_regress',
         'profile_analyze_trends',
         'profile_find_regressions',
         'profile_inspect_classes',

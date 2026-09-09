@@ -1,5 +1,9 @@
 import 'package:dart_mcp/server.dart';
 
+const _collapseAsyncDescription =
+    'Whether to collapse dart:async frames into a single "async overhead" '
+    'entry in summary tables.';
+
 final Tool profileExplainHotspotsTool = Tool(
   name: 'profile_explain_hotspots',
   title: 'Profile Explain Hotspots',
@@ -43,11 +47,7 @@ final Tool profileExplainHotspotsTool = Tool(
       'hideRuntimeHelpers': Schema.bool(
         description: 'Whether to hide common profiler/runtime helper packages.',
       ),
-      'collapseAsync': Schema.bool(
-        description:
-            'Whether to collapse dart:async frames into a single "async overhead" '
-            'entry in summary tables.',
-      ),
+      'collapseAsync': Schema.bool(description: _collapseAsyncDescription),
       'includePackages': Schema.list(
         description: 'Optional package prefixes to keep. Frames outside these packages are hidden.',
         items: Schema.string(),
@@ -124,11 +124,7 @@ final Tool profileInspectMethodTool = Tool(
       'hideRuntimeHelpers': Schema.bool(
         description: 'Whether to hide common profiler/runtime helper packages.',
       ),
-      'collapseAsync': Schema.bool(
-        description:
-            'Whether to collapse dart:async frames into a single "async overhead" '
-            'entry in summary tables.',
-      ),
+      'collapseAsync': Schema.bool(description: _collapseAsyncDescription),
       'includePackages': Schema.list(
         description: 'Optional package prefixes to keep. Frames outside these packages are hidden.',
         items: Schema.string(),
@@ -203,11 +199,7 @@ final Tool profileSearchMethodsTool = Tool(
       'hideRuntimeHelpers': Schema.bool(
         description: 'Whether to hide common profiler/runtime helper packages.',
       ),
-      'collapseAsync': Schema.bool(
-        description:
-            'Whether to collapse dart:async frames into a single "async overhead" '
-            'entry in summary tables.',
-      ),
+      'collapseAsync': Schema.bool(description: _collapseAsyncDescription),
       'includePackages': Schema.list(
         description: 'Optional package prefixes to keep. Frames outside these packages are hidden.',
         items: Schema.string(),
@@ -288,11 +280,7 @@ final Tool profileCompareMethodTool = Tool(
       'hideRuntimeHelpers': Schema.bool(
         description: 'Whether to hide common profiler/runtime helper packages.',
       ),
-      'collapseAsync': Schema.bool(
-        description:
-            'Whether to collapse dart:async frames into a single "async overhead" '
-            'entry in summary tables.',
-      ),
+      'collapseAsync': Schema.bool(description: _collapseAsyncDescription),
       'includePackages': Schema.list(
         description: 'Optional package prefixes to keep. Frames outside these packages are hidden.',
         items: Schema.string(),
@@ -382,11 +370,7 @@ final Tool profileCompareTool = Tool(
       'hideRuntimeHelpers': Schema.bool(
         description: 'Whether to hide common profiler/runtime helper packages.',
       ),
-      'collapseAsync': Schema.bool(
-        description:
-            'Whether to collapse dart:async frames into a single "async overhead" '
-            'entry in summary tables.',
-      ),
+      'collapseAsync': Schema.bool(description: _collapseAsyncDescription),
       'includePackages': Schema.list(
         description: 'Optional package prefixes to keep. Frames outside these packages are hidden.',
         items: Schema.string(),
@@ -467,11 +451,7 @@ final Tool profileAnalyzeTrendsTool = Tool(
       'hideRuntimeHelpers': Schema.bool(
         description: 'Whether to hide common profiler/runtime helper packages.',
       ),
-      'collapseAsync': Schema.bool(
-        description:
-            'Whether to collapse dart:async frames into a single "async overhead" '
-            'entry in summary tables.',
-      ),
+      'collapseAsync': Schema.bool(description: _collapseAsyncDescription),
       'includePackages': Schema.list(
         description: 'Optional package prefixes to keep. Frames outside these packages are hidden.',
         items: Schema.string(),
@@ -543,11 +523,7 @@ final Tool profileFindRegressionsTool = Tool(
       'hideRuntimeHelpers': Schema.bool(
         description: 'Whether to hide common profiler/runtime helper packages.',
       ),
-      'collapseAsync': Schema.bool(
-        description:
-            'Whether to collapse dart:async frames into a single "async overhead" '
-            'entry in summary tables.',
-      ),
+      'collapseAsync': Schema.bool(description: _collapseAsyncDescription),
       'includePackages': Schema.list(
         description: 'Optional package prefixes to keep. Frames outside these packages are hidden.',
         items: Schema.string(),
@@ -629,7 +605,8 @@ final Tool profileRegressTool = Tool(
   title: 'Profile Regress',
   description:
       'Compare the current profile against a known-good baseline and report '
-      'regressions. Exits with code 1 when regressions are found. Use in CI '
+      'regressions. Returns regressionExitCode: 1 when regressions are found '
+      'unless warnOnly is true; the MCP server remains running. Use in CI '
       'workflows to detect performance regressions.',
   inputSchema: Schema.object(
     properties: {
@@ -681,9 +658,7 @@ final Tool profileRegressTool = Tool(
       'hideRuntimeHelpers': Schema.bool(
         description: 'Whether to hide common profiler/runtime helper packages.',
       ),
-      'collapseAsync': Schema.bool(
-        description: 'Collapse dart:async frames into categorized async overhead entries.',
-      ),
+      'collapseAsync': Schema.bool(description: _collapseAsyncDescription),
       'includePackages': Schema.list(
         description:
             'Optional package prefixes to keep. Frames outside these packages '
@@ -696,8 +671,7 @@ final Tool profileRegressTool = Tool(
       ),
       'warnOnly': Schema.bool(
         description:
-            'Return warnings instead of exiting with code 1 when regressions '
-            'are found.',
+            'Report regressions as warnings and omit regressionExitCode.',
       ),
       'frameLimit': Schema.int(
         description: 'Maximum rows per self / total comparison table. Use 0 for unlimited.',

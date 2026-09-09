@@ -10,6 +10,46 @@ import 'package:test/test.dart';
 import 'package:vm_service/vm_service.dart';
 
 void main() {
+  for (final value in ['abc', '0', '-1']) {
+    test('trends rejects invalid --last before discovery: $value', () async {
+      final result = await _runCliCommand(['trends', '--last', value]);
+      expect(result.exitCode, 64);
+      expect(result.stderr, contains('--last'));
+      expect(result.stdout, isEmpty);
+    });
+  }
+
+  for (final (option, value) in [
+    ('window', '0'),
+    ('window', '-1'),
+    ('window', 'invalid'),
+    ('speed', '0'),
+    ('speed', 'NaN'),
+    ('speed', 'Infinity'),
+    ('speed', '1e-300'),
+    ('top', '0'),
+  ]) {
+    test('replay rejects --$option $value before artifact lookup', () async {
+      final result = await _runCliCommand(['replay', '--$option', value]);
+      expect(result.exitCode, 64);
+      expect(result.stdout, isEmpty);
+      expect(result.stderr, contains('--'));
+    });
+  }
+
+  for (final arguments in [
+    ['compare', '--json', '--csv'],
+    ['inspect', '--csv'],
+    ['replay', '--json'],
+  ]) {
+    test('rejects unsupported output format: $arguments', () async {
+      final result = await _runCliCommand(arguments);
+      expect(result.exitCode, 64);
+      expect(result.stdout, isEmpty);
+      expect(result.stderr, contains(arguments.last));
+    });
+  }
+
   test('browse refuses redirected hosts without terminal output', () async {
     final result = await _runCliCommand(const ['browse']);
     expect(result.exitCode, 64);
@@ -36,7 +76,8 @@ void main() {
       expect(json['kind'], 'multi-compare');
       expect(json['rows'], hasLength(1));
       final row = (json['rows'] as List).single as Map;
-      expect(row['location'].toString(), isNot(startsWith('dart:')));
+      expect(row['location'], isA<String>());
+      expect(row['location'], 'package:lualike/src/lua_bytecode/vm.dart');
       expect(row['frames'], hasLength(3));
       expect(
         json['missingFrameMeaning'],

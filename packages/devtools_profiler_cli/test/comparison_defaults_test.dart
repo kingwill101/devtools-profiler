@@ -33,7 +33,7 @@ class _CompareCommand extends CompareCommand {
         for (final id in ['latest', 'previous'])
           StoredSession(
             directory: Directory('/$id'),
-            modifiedTime: DateTime.utc(2026),
+            modifiedTime: DateTime.utc(2026, 1, id == 'latest' ? 2 : 1),
             result: ProfileRunResult.fromJson({'sessionId': id}),
           ),
       ];

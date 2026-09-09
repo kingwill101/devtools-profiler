@@ -25,41 +25,42 @@ void writeCsvComparisonFrames(
   ProfileRegionComparison comparison,
 ) {
   if (comparison.topSelfFrames.isNotEmpty) {
-    writeLine('# Top Self Frame Deltas');
-    writeLine(
-      'method,base_self,current_self,self_delta,'
-      'base_total,current_total,total_delta',
+    _writeCsvDeltaTable(
+      writeLine,
+      'Top Self Frame Deltas',
+      comparison.topSelfFrames,
     );
-    for (final frame in comparison.topSelfFrames) {
-      writeLine(
-        '${_csvEscape(frame.name)},'
-        '${frame.selfSamples.baseline},'
-        '${frame.selfSamples.current},'
-        '${frame.selfSamples.delta},'
-        '${frame.totalSamples.baseline},'
-        '${frame.totalSamples.current},'
-        '${frame.totalSamples.delta}',
-      );
-    }
   }
 
   if (comparison.topTotalFrames.isNotEmpty) {
-    writeLine('# Top Total Frame Deltas');
-    writeLine(
-      'method,base_self,current_self,self_delta,'
-      'base_total,current_total,total_delta',
+    _writeCsvDeltaTable(
+      writeLine,
+      'Top Total Frame Deltas',
+      comparison.topTotalFrames,
     );
-    for (final frame in comparison.topTotalFrames) {
-      writeLine(
-        '${_csvEscape(frame.name)},'
-        '${frame.selfSamples.baseline},'
-        '${frame.selfSamples.current},'
-        '${frame.selfSamples.delta},'
-        '${frame.totalSamples.baseline},'
-        '${frame.totalSamples.current},'
-        '${frame.totalSamples.delta}',
-      );
-    }
+  }
+}
+
+void _writeCsvDeltaTable(
+  void Function(String line) writeLine,
+  String title,
+  List<ProfileFrameDelta> frames,
+) {
+  writeLine('# $title');
+  writeLine(
+    'method,base_self,current_self,self_delta,'
+    'base_total,current_total,total_delta',
+  );
+  for (final frame in frames) {
+    writeLine(
+      '${_csvEscape(frame.name)},'
+      '${frame.selfSamples.baseline},'
+      '${frame.selfSamples.current},'
+      '${frame.selfSamples.delta},'
+      '${frame.totalSamples.baseline},'
+      '${frame.totalSamples.current},'
+      '${frame.totalSamples.delta}',
+    );
   }
 }
 
@@ -107,7 +108,10 @@ void _writeCsvFrameTable(
 }
 
 String _csvEscape(String value) {
-  if (value.contains(',') || value.contains('"') || value.contains('\n')) {
+  if (value.contains(',') ||
+      value.contains('"') ||
+      value.contains('\n') ||
+      value.contains('\r')) {
     return '"${value.replaceAll('"', '""')}"';
   }
   return value;

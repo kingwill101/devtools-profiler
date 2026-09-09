@@ -228,10 +228,10 @@ Attach tool-specific metadata with the `extra` field on
 ```dart
 await profileRegion(
   'lua-test',
+  () async { ... },
   options: const ProfileRegionOptions(
     extra: {'luaFile': 'calls.lua', 'version': 3},
   ),
-  () async { ... },
 );
 ```
 
