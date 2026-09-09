@@ -4,6 +4,7 @@ import 'package:devtools_profiler_core/devtools_profiler_core.dart';
 import 'package:path/path.dart' as path;
 import 'package:vm_service/vm_service.dart';
 import 'package:vm_service/vm_service_io.dart';
+
 import 'vm_service_discovery.dart';
 
 import '../constants.dart';

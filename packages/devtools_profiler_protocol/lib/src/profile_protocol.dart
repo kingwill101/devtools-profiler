@@ -81,12 +81,14 @@ class ProfileRegionOptions {
     this.captureKinds = defaultProfileCaptureKinds,
     this.isolateScope = ProfileIsolateScope.current,
     this.parentRegionId,
+    this.extra = const {},
   });
 
   /// Deserializes options from JSON-compatible data.
   ///
   /// Missing `captureKinds` values default to [defaultProfileCaptureKinds], and
   /// missing `isolateScope` values default to [ProfileIsolateScope.current].
+  /// Missing `extra` defaults to an empty map.
   /// Duplicate capture kinds are normalized away while preserving order.
   factory ProfileRegionOptions.fromJson(Map<String, Object?> json) {
     final captureKinds = switch (json['captureKinds']) {
@@ -103,6 +105,10 @@ class ProfileRegionOptions {
       captureKinds: normalizeProfileCaptureKinds(captureKinds),
       isolateScope: isolateScope,
       parentRegionId: json['parentRegionId'] as String?,
+      extra: switch (json['extra']) {
+        final Map<String, Object?> m => m,
+        _ => <String, Object?>{},
+      },
     );
   }
 
@@ -117,6 +123,17 @@ class ProfileRegionOptions {
   /// `null` means the region is top-level unless a higher-level helper fills in
   /// an inherited parent automatically.
   final String? parentRegionId;
+
+  /// Extra tool-specific metadata for this region.
+  ///
+  /// Tools like `lualike` can attach arbitrary key-value data here (e.g.
+  /// `{'luaFile': 'calls.lua', 'luaFunction': 'runBenchmark'}`). This data
+  /// is preserved in the session artifact and displayed in region summaries,
+  /// making it searchable and reproducible across profiling sessions.
+  ///
+  /// Defaults to an empty map. Values should be JSON-serializable types
+  /// (String, int, double, bool, null, List, Map).
+  final Map<String, Object?> extra;
 
   /// Whether CPU capture is requested.
   bool get capturesCpu => captureKinds.contains(ProfileCaptureKind.cpu);
@@ -133,6 +150,7 @@ class ProfileRegionOptions {
     ProfileIsolateScope? isolateScope,
     String? parentRegionId,
     bool clearParentRegionId = false,
+    Map<String, Object?>? extra,
   }) {
     return ProfileRegionOptions(
       captureKinds: captureKinds ?? this.captureKinds,
@@ -140,6 +158,7 @@ class ProfileRegionOptions {
       parentRegionId: clearParentRegionId
           ? null
           : parentRegionId ?? this.parentRegionId,
+      extra: extra ?? this.extra,
     );
   }
 
@@ -148,6 +167,7 @@ class ProfileRegionOptions {
     'captureKinds': [for (final kind in captureKinds) kind.name],
     'isolateScope': isolateScope.name,
     'parentRegionId': parentRegionId,
+    if (extra.isNotEmpty) 'extra': Map<String, Object?>.from(extra),
   };
 }
 

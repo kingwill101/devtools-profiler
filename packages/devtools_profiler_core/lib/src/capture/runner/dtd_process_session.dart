@@ -4,6 +4,8 @@ import 'dart:io';
 
 import 'package:dtd/dtd.dart';
 
+import 'dart_executable.dart';
+
 /// A launched Dart Tooling Daemon process plus its active connection.
 final class DtdProcessSession {
   DtdProcessSession({
@@ -20,7 +22,7 @@ final class DtdProcessSession {
 
   /// Starts a local tooling-daemon process and connects to it.
   static Future<DtdProcessSession> start() async {
-    final process = await Process.start(Platform.resolvedExecutable, const [
+    final process = await Process.start(resolveDartExecutable(), const [
       'tooling-daemon',
       '--machine',
     ]);

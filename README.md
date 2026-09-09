@@ -16,6 +16,10 @@ It intentionally does not use the DevTools Flutter or web UI.
 
 ## Fast Start
 
+Requires Dart 3.13 or later (before Dart 4). The region-marking helper also
+requires Dart 3.13, so Flutter apps using it need a Flutter SDK that bundles
+Dart 3.13 or later. The profiler itself remains a pure-Dart CLI/MCP tool.
+
 Install the CLI once:
 
 ```bash
@@ -277,6 +281,14 @@ await profileRegion(
 Human output is designed for terminal scanning. JSON output is designed for
 automation and AI agents.
 
+`run --json` reserves stdout for the JSON result and forwards target logs from
+both streams to stderr. Use `--no-forward-output` to suppress target logs:
+
+```bash
+devtools-profiler run --json -- dart run bin/main.dart \
+  > profile.json 2> target.log
+```
+
 Use human output while exploring:
 
 ```bash
@@ -303,6 +315,25 @@ devtools-profiler summarize \
 
 JSON responses include a `cliCommand` field for the command that can reproduce
 the same analysis selection.
+
+Positional arguments accept session ids in addition to file paths, making it
+quick to reference stored runs by their id (listed by `devtools-profiler
+profiles`):
+
+```bash
+devtools-profiler summarize 0712060003-8c410
+devtools-profiler compare 0712060003-8c410 0711235455-ebfb3
+devtools-profiler trends session-a session-b session-c
+devtools-profiler inspect --method Parser.parseFile 0712060003-8c410
+devtools-profiler inspect-classes --class String 0712060003-8c410
+```
+
+Check for regressions against a known-good baseline (exits 1 on regression):
+
+```bash
+devtools-profiler regress path/to/baseline-session
+devtools-profiler regress --warn-only 0712060003-8c410
+```
 
 Important result sections:
 
@@ -574,7 +605,10 @@ Commands:
   `--duration`.
 - `summarize <path>` summarizes a session directory or profile artifact.
 - `explain <path>` explains likely hotspots in one selected profile.
-- `compare <baseline> <current>` compares two profiles or sessions.
+- `compare <baseline> <current>` compares two profiles or sessions. Also
+  accepts 3+ positional args for multi-compare aligned hotspot tables.
+- `regress <baseline> [current]` compares current against a baseline and
+  exits with code 1 when regressions are found. Use `--warn-only` to exit 0.
 - `trends <path>...` analyzes a sequence of profiles or sessions.
 - `inspect <path>` inspects one method in one profile.
 - `inspect-classes <path>` inspects memory classes in one profile.
@@ -585,12 +619,15 @@ Commands:
 Common presentation flags:
 
 - `--json` emits structured JSON instead of human output.
+- `--csv` outputs compact CSV tables instead of formatted terminal output.
 - `--call-tree` includes a top-down call tree.
 - `--expand` is an alias for `--call-tree`.
 - `--bottom-up` includes a bottom-up call tree.
 - `--method-table` includes a DevTools-style method table.
 - `--hide-sdk` hides Dart and Flutter SDK frames.
 - `--hide-runtime-helpers` hides common profiler/runtime helper packages.
+- `--collapse-async` collapses all `dart:async` frames into a single
+  "async overhead" entry in summary tables.
 - `--include-package <prefix>` keeps only matching package prefixes. May be
   repeated.
 - `--exclude-package <prefix>` excludes matching package prefixes. May be
@@ -628,6 +665,7 @@ Common presentation flags:
 
 Path arguments accepted by read/analyze commands:
 
+- a session id (listed by `devtools-profiler profiles`)
 - a session directory
 - a region `summary.json`
 - a raw `cpu_profile.json`
@@ -765,3 +803,6 @@ dart test packages/devtools_profiler_cli
 dart test packages/devtools_region_profiler
 dart test packages/devtools_profiler_protocol
 ```
+
+All four test suites must pass before publishing. Current totals:
+The test suites cover all four packages.

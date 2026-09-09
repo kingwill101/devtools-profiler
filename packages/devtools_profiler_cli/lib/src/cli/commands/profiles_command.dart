@@ -1,7 +1,5 @@
 import 'dart:io';
 
-import 'package:path/path.dart' as path;
-
 import '../constants.dart';
 import '../options.dart';
 import 'profiler_command.dart';
@@ -22,7 +20,9 @@ class ProfilesCommand extends ProfilerCommand with ProfileSessionResolution {
     argParser.addOption(
       'cwd',
       help:
-          'The working directory containing .dart_tool/devtools_profiler/sessions. Defaults to the current directory.',
+          'The working directory containing '
+          '.dart_tool/devtools_profiler/sessions. '
+          'Defaults to the current directory.',
     );
     argParser.addFlag(
       'extended',
@@ -57,8 +57,35 @@ class ProfilesCommand extends ProfilerCommand with ProfileSessionResolution {
 
   @override
   Future<int> run() async {
+    final limit = parseLimit(
+      argResults!['limit'] as String?,
+      optionName: 'limit',
+    );
     final sessionsDirectory = _resolveSessionsDirectory();
     final sessions = await discoverSessions(sessionsDirectory);
+    final listed = limit == null
+        ? sessions
+        : sessions.take(limit).toList(growable: false);
+    final truncated = limit != null && sessions.length > limit;
+
+    if (printJson) {
+      writeJson({
+        'kind': 'sessions',
+        'sessionsDirectory': sessionsDirectory.path,
+        'totalCount': sessions.length,
+        'returnedCount': listed.length,
+        'truncated': truncated,
+        'sessions': [
+          for (final session in listed)
+            {
+              'path': session.directory.path,
+              'modifiedTime': session.modifiedTime.toUtc().toIso8601String(),
+              'session': session.result.toJson(),
+            },
+        ],
+      });
+      return successExitCode;
+    }
 
     if (sessions.isEmpty) {
       warn(
@@ -66,15 +93,6 @@ class ProfilesCommand extends ProfilerCommand with ProfileSessionResolution {
       );
       return successExitCode;
     }
-
-    final limit = parseLimit(
-      argResults!['limit'] as String?,
-      optionName: 'limit',
-    );
-    final listed = limit == null
-        ? sessions
-        : sessions.take(limit).toList(growable: false);
-    final truncated = limit != null && sessions.length > limit;
 
     line('Profiling Sessions (${listed.length} of ${sessions.length}):');
 
@@ -124,19 +142,7 @@ class ProfilesCommand extends ProfilerCommand with ProfileSessionResolution {
 
   /// Locates the sessions directory, using --cwd when provided.
   Directory _resolveSessionsDirectory() {
-    final cwd = argResults!['cwd'] as String?;
-    if (cwd != null) {
-      // Check for .dart_tool/devtools_profiler/sessions under the given path
-      final dartToolDir = Directory(
-        path.join(cwd, '.dart_tool', 'devtools_profiler', 'sessions'),
-      );
-      if (dartToolDir.existsSync()) return dartToolDir;
-      // Fall back to the raw path
-      final dir = Directory(cwd);
-      if (dir.existsSync()) return dir;
-      throw ArgumentError('Directory not found: $cwd');
-    }
-    return defaultSessionsDirectory();
+    return resolveSessionsDirectory(cwd: argResults!['cwd'] as String?);
   }
 
   String _formatTime(DateTime time) {

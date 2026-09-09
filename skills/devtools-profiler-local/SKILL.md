@@ -209,6 +209,32 @@ table, and memory summaries.
 Use `run` mode for region capture because the profiler launches the target with
 the session and DTD configuration needed by the region library.
 
+For synchronous code that cannot use `async`/`await`, use
+`profileRegionSync()` (or `startProfileRegionSync()` for manual handles).
+DTD start/stop events are sent fire-and-forget so the caller is not blocked:
+
+```dart
+Object? dispatch(Opcode op, Object? arg) {
+  return profileRegionSync(
+    'dispatch-${op.name}',
+    () => executeOp(op, arg),
+  );
+}
+```
+
+Attach tool-specific metadata with the `extra` field on
+`ProfileRegionOptions`. This data is preserved in the session artifact:
+
+```dart
+await profileRegion(
+  'lua-test',
+  () async { ... },
+  options: const ProfileRegionOptions(
+    extra: {'luaFile': 'calls.lua', 'version': 3},
+  ),
+);
+```
+
 ## Live Flutter Analysis
 
 The CLI can connect to already-running Flutter or Dart applications for live
@@ -324,6 +350,17 @@ devtools-profiler summarize \
   path/to/session
 ```
 
+Positional arguments accept session ids in addition to file paths, so you can
+pass a session id directly instead of its on-disk path:
+
+```bash
+devtools-profiler summarize 0712060003-8c410
+devtools-profiler compare 0712060003-8c410 0711235455-ebfb3
+devtools-profiler trends session-a session-b session-c
+devtools-profiler inspect --method Parser.parseFile 0712060003-8c410
+devtools-profiler inspect-classes --class String 0712060003-8c410
+```
+
 Inspect a method:
 
 ```bash
@@ -364,6 +401,46 @@ When no path is given, analysis commands (`summarize`, `explain`, `inspect`,
 Comparison commands (`compare`, `compare-method`, `trends`) default to the
 latest two sessions. Use `--session-id latest`, `--session-id previous`, or
 `--session-id <id>` to select a different stored session explicitly.
+
+Check for regressions against a baseline (CI-ready, exits 1 on regression):
+
+```bash
+devtools-profiler regress path/to/baseline
+  devtools-profiler regress 0712060003-8c410 0711235455-ebfb3
+  devtools-profiler regress --warn-only path/to/baseline
+```
+
+Compare three or more sessions at once:
+
+```bash
+devtools-profiler compare session-a session-b session-c
+```
+
+Use `--csv` for compact, machine-readable tables:
+
+```bash
+devtools-profiler summarize --csv --hide-sdk
+  devtools-profiler compare --csv baseline current
+  devtools-profiler trends --last 5 --csv
+```
+
+Use `--collapse-async` to categorize `dart:async` frames by type (normal
+completions, error completions, listener dispatch, microtask scheduling,
+zone overhead) and attribute async cost to the calling function:
+
+```bash
+devtools-profiler summarize --collapse-async <session>
+devtools-profiler compare --collapse-async baseline current
+```
+
+Entries appear as `async (await _runFrame)` or `async (normal completions)`
+showing which calling function triggered the async cost.
+
+Use `--last N` on trends to analyze the N most recent sessions:
+
+```bash
+devtools-profiler trends --last 5
+```
 
 Use `--profile-id overall` for the whole session. Use the printed region id to
 inspect a marked region.

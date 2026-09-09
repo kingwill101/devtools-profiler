@@ -4,6 +4,33 @@ import 'cli_command.dart';
 import 'models.dart';
 import 'options.dart';
 
+const _missingFrameMeaning = 'not listed; not evidence of elimination';
+
+/// Converts aligned cross-run frames to the shared CLI/MCP response.
+Map<String, Object?> frameColumnsJson(
+  List<ProfileFrameColumn> columns, {
+  List<String> warnings = const [],
+  int? frameLimit,
+}) {
+  final rows = alignProfileFrames(columns, limit: frameLimit);
+  return {
+    'kind': 'multi-compare',
+    'warnings': warnings,
+    'missingFrameMeaning': _missingFrameMeaning,
+    'rows': [for (final row in rows) row.toJson()],
+    'columns': [
+      for (var i = 0; i < columns.length; i++)
+        {
+          'label': columns[i].label,
+          'frames': [
+            for (final row in rows)
+              if (row.frames[i] case final frame?) frame.toJson(),
+          ],
+        },
+    ],
+  };
+}
+
 /// Converts a prepared session to structured JSON.
 Map<String, Object?> sessionPresentationJson(
   ProfileRunResult session,
@@ -13,6 +40,7 @@ Map<String, Object?> sessionPresentationJson(
   Map<String, ProfileCallTree> regionTrees,
   Map<String, ProfileCallTree> regionBottomUpTrees,
   Map<String, ProfileMethodTable> regionMethodTables,
+  List<AllocationAttribution> overallAllocAttribution,
 ) {
   return {
     ...session.toJson(),
@@ -33,6 +61,10 @@ Map<String, Object?> sessionPresentationJson(
           regionMethodTables[region.regionId],
         ),
     ],
+    if (overallAllocAttribution.isNotEmpty)
+      'overallAllocAttribution': [
+        for (final attr in overallAllocAttribution) attr.toJson(),
+      ],
   };
 }
 
@@ -43,6 +75,7 @@ Map<String, Object?> regionPresentationJson(
   ProfileCallTree? bottomUpTree,
   ProfileMethodTable? methodTable, {
   List<String> warnings = const [],
+  List<AllocationAttribution> allocAttribution = const [],
 }) {
   return {
     ...region.toJson(),
@@ -52,6 +85,8 @@ Map<String, Object?> regionPresentationJson(
     if (bottomUpTree != null) 'bottomUpTree': bottomUpTree.toJson(),
     if (methodTable != null) 'methodTable': methodTable.toJson(),
     if (warnings.isNotEmpty) 'preparationWarnings': warnings,
+    if (allocAttribution.isNotEmpty)
+      'allocAttribution': [for (final attr in allocAttribution) attr.toJson()],
   };
 }
 
@@ -144,6 +179,19 @@ Map<String, Object?> trendPresentationJson(PreparedProfileTrends trends) {
     'kind': 'profileTrends',
     'cliCommand': _trendsCliCommand(trends),
     'targets': [for (final target in trends.targets) _trendTargetJson(target)],
+    'frameAlignment': {
+      'missingFrameMeaning': _missingFrameMeaning,
+      'rows': [
+        for (final row in alignProfileFrames([
+          for (final target in trends.targets)
+            ProfileFrameColumn(
+              label: target.path,
+              frames: target.presentation.region.topSelfFrames,
+            ),
+        ]))
+          row.toJson(),
+      ],
+    },
     'trends': trends.trends.toJson(),
   };
 }
@@ -161,6 +209,7 @@ Map<String, Object?> _comparisonTargetJson(PreparedComparisonTarget target) {
       target.presentation.bottomUpTree,
       target.presentation.methodTable,
       warnings: target.presentation.warnings,
+      allocAttribution: target.presentation.allocAttribution,
     ),
   };
 }

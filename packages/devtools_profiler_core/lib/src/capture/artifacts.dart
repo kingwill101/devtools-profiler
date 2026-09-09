@@ -7,6 +7,7 @@ import 'package:vm_service/vm_service.dart';
 
 import '../cpu/call_tree.dart';
 import '../cpu/cpu_profile_summary.dart';
+import '../cpu/cpu_samples_merge.dart';
 import '../memory/memory_models.dart';
 import '../memory/memory_profile_summary.dart';
 import 'models.dart';
@@ -127,7 +128,7 @@ class ProfileArtifacts {
     final json = jsonDecode(await File(targetPath).readAsString()) as Map;
     final map = json.cast<String, Object?>();
     if (map['type'] == 'CpuSamples') {
-      final cpuSamples = CpuSamples.parse(
+      final cpuSamples = parseProfileCpuSamples(
         map.map((key, value) => MapEntry(key, value as dynamic)),
       );
       if (cpuSamples == null) {
@@ -135,12 +136,17 @@ class ProfileArtifacts {
           'Failed to parse CPU samples artifact at $targetPath.',
         );
       }
+      final isolateIds = {
+        for (final sample in cpuSamples.samples ?? const <CpuSample>[])
+          if (sample case ProfileCpuSample(isolateId: final id?)) id,
+      }.toList()..sort();
+      if (isolateIds.isEmpty) isolateIds.add('unknown');
       return summarizeCpuSamples(
         regionId: path.basenameWithoutExtension(targetPath),
         name: path.basenameWithoutExtension(targetPath),
         attributes: const {},
-        isolateId: 'unknown',
-        isolateIds: const ['unknown'],
+        isolateId: isolateIds.first,
+        isolateIds: isolateIds,
         captureKinds: const [ProfileCaptureKind.cpu],
         startTimestampMicros: cpuSamples.timeOriginMicros ?? 0,
         endTimestampMicros:
@@ -239,9 +245,9 @@ class ProfileArtifacts {
       throw ArgumentError.value(targetPath, 'targetPath', 'Artifact not found');
     }
 
-    final json =
-        jsonDecode(await File(targetPath).readAsString())
-            as Map<Object?, Object?>;
+    final json = jsonDecode(
+      await File(targetPath).readAsString(),
+    ) as Map<Object?, Object?>;
     final map = json.cast<String, Object?>();
 
     if (map['type'] == 'ProfileMemoryArtifact') {
@@ -293,7 +299,7 @@ class ProfileArtifacts {
     required String targetPath,
   }) async {
     if (map['type'] == 'CpuSamples') {
-      final cpuSamples = CpuSamples.parse(
+      final cpuSamples = parseProfileCpuSamples(
         map.map((key, value) => MapEntry(key, value as dynamic)),
       );
       if (cpuSamples == null) {
@@ -433,6 +439,7 @@ class ProfileArtifactStore {
     CpuSamples? cpuSamples,
     ProfileMemoryResult? memory,
     Map<String, Object?>? rawMemoryPayload,
+    Map<String, Object?> extra = const {},
   }) async {
     return _writeProfileSuccess(
       profileDirectory: _ensureRegionDirectory(regionId),
@@ -449,6 +456,7 @@ class ProfileArtifactStore {
       cpuSamples: cpuSamples,
       memory: memory,
       rawMemoryPayload: rawMemoryPayload,
+      extra: extra,
     );
   }
 
@@ -465,6 +473,7 @@ class ProfileArtifactStore {
     required int startTimestampMicros,
     required int endTimestampMicros,
     required String error,
+    Map<String, Object?> extra = const {},
   }) async {
     return _writeProfileFailure(
       profileDirectory: _ensureRegionDirectory(regionId),
@@ -479,6 +488,7 @@ class ProfileArtifactStore {
       startTimestampMicros: startTimestampMicros,
       endTimestampMicros: endTimestampMicros,
       error: error,
+      extra: extra,
     );
   }
 
@@ -521,6 +531,7 @@ class ProfileArtifactStore {
     CpuSamples? cpuSamples,
     ProfileMemoryResult? memory,
     Map<String, Object?>? rawMemoryPayload,
+    Map<String, Object?> extra = const {},
   }) async {
     if (cpuSamples == null && memory == null) {
       throw ArgumentError(
@@ -534,9 +545,8 @@ class ProfileArtifactStore {
       final rawProfileFile = File(
         path.join(directory.path, _rawProfileFileName),
       );
-      final rawJson = const JsonEncoder.withIndent(
-        '  ',
-      ).convert(cpuSamples.toJson());
+      final rawJson = const JsonEncoder.withIndent('  ')
+          .convert(cpuSamples.toJson());
       await rawProfileFile.writeAsString(rawJson);
       rawProfilePath = rawProfileFile.path;
     }
@@ -547,9 +557,8 @@ class ProfileArtifactStore {
         path.join(directory.path, _rawMemoryProfileFileName),
       );
       await rawMemoryFile.writeAsString(
-        const JsonEncoder.withIndent(
-          '  ',
-        ).convert(rawMemoryPayload ?? memory.toJson()),
+        const JsonEncoder.withIndent('  ')
+            .convert(rawMemoryPayload ?? memory.toJson()),
       );
       storedMemory = memory.copyWith(rawProfilePath: rawMemoryFile.path);
     }
@@ -573,6 +582,7 @@ class ProfileArtifactStore {
             topSelfFrames: const [],
             topTotalFrames: const [],
             summaryPath: summaryFile.path,
+            extra: extra,
           )
         : summarizeCpuSamples(
             regionId: regionId,
@@ -589,6 +599,7 @@ class ProfileArtifactStore {
             cpuSamples: cpuSamples,
             summaryPath: summaryFile.path,
             rawProfilePath: rawProfilePath,
+            extra: extra,
           );
     await summaryFile.writeAsString(
       const JsonEncoder.withIndent('  ').convert(summary.toJson()),
@@ -609,6 +620,7 @@ class ProfileArtifactStore {
     required int startTimestampMicros,
     required int endTimestampMicros,
     required String error,
+    Map<String, Object?> extra = const {},
   }) async {
     final directory = await profileDirectory;
     final summaryFile = File(path.join(directory.path, _summaryFileName));
@@ -630,6 +642,7 @@ class ProfileArtifactStore {
       topTotalFrames: const [],
       summaryPath: summaryFile.path,
       error: error,
+      extra: extra,
     );
     await summaryFile.writeAsString(
       const JsonEncoder.withIndent('  ').convert(summary.toJson()),

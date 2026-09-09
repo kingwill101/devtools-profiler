@@ -131,7 +131,8 @@ ProfileMethodSearchResult searchProfileMethods({
       sortBy: sortBy,
       status: ProfileMethodSearchStatus.unavailable,
       message:
-          'Method search requires a raw CPU profile artifact, but no method table was available.',
+          'Method search requires a raw CPU profile artifact, '
+          'but no method table was available.',
       totalMatches: 0,
       truncated: false,
       methods: const [],

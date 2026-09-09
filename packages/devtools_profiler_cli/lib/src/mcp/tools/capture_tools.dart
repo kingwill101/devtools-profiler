@@ -10,7 +10,8 @@ final Tool profileRunTool = Tool(
     properties: {
       'command': Schema.list(
         description:
-            'A command such as ["dart", "run", "bin/main.dart"] or ["flutter", "test"].',
+            'A command such as ["dart", "run", "bin/main.dart"] or '
+            '["flutter", "test"].',
         items: Schema.string(),
       ),
       'workingDirectory': Schema.string(
@@ -21,11 +22,13 @@ final Tool profileRunTool = Tool(
       ),
       'durationSeconds': Schema.int(
         description:
-            'Optional duration in seconds to profile before terminating the launched process.',
+            'Optional duration in seconds to profile before terminating the '
+            'launched process.',
       ),
       'vmServiceTimeoutSeconds': Schema.int(
         description:
-            'Optional timeout in seconds for waiting for the launched process to expose a Dart VM service URI.',
+            'Optional timeout in seconds for waiting for the launched '
+            'process to expose a Dart VM service URI.',
       ),
       'warmUpSeconds': Schema.int(
         description:
@@ -51,9 +54,15 @@ final Tool profileRunTool = Tool(
       'hideRuntimeHelpers': Schema.bool(
         description: 'Whether to hide common profiler/runtime helper packages.',
       ),
+      'collapseAsync': Schema.bool(
+        description:
+            'Whether to collapse dart:async frames into a single "async overhead" '
+            'entry in summary tables.',
+      ),
       'includePackages': Schema.list(
         description:
-            'Optional package prefixes to keep. Frames outside these packages are hidden.',
+            'Optional package prefixes to keep. Frames outside these '
+            'packages are hidden.',
         items: Schema.string(),
       ),
       'excludePackages': Schema.list(
@@ -66,15 +75,18 @@ final Tool profileRunTool = Tool(
       ),
       'methodLimit': Schema.int(
         description:
-            'Maximum methods to include in the method table. Use 0 for unlimited.',
+            'Maximum methods to include in the method table. '
+            'Use 0 for unlimited.',
       ),
       'treeDepth': Schema.int(
         description:
-            'Maximum call tree depth when includeCallTree is true. Use 0 for unlimited.',
+            'Maximum call tree depth when includeCallTree is true. '
+            'Use 0 for unlimited.',
       ),
       'treeChildren': Schema.int(
         description:
-            'Maximum children per call tree node when includeCallTree is true. Use 0 for unlimited.',
+            'Maximum children per call tree node when includeCallTree is '
+            'true. Use 0 for unlimited.',
       ),
     },
     required: ['command'],
@@ -97,12 +109,14 @@ final Tool profileAttachTool = Tool(
   name: 'profile_attach',
   title: 'Profile Attach',
   description:
-      'Attach to an existing Dart or Flutter VM service URI and return structured CPU summaries for a fixed profiling window.',
+      'Attach to an existing Dart or Flutter VM service URI and return '
+      'structured CPU summaries for a fixed profiling window.',
   inputSchema: Schema.object(
     properties: {
       'vmServiceUri': Schema.string(
         description:
-            'The HTTP VM service URI printed by dart or flutter, for example "http://127.0.0.1:8181/abcd/".',
+            'The HTTP VM service URI printed by dart or flutter, for example '
+            '"http://127.0.0.1:8181/abcd/".',
       ),
       'durationSeconds': Schema.int(
         description:
@@ -136,9 +150,15 @@ final Tool profileAttachTool = Tool(
       'hideRuntimeHelpers': Schema.bool(
         description: 'Whether to hide common profiler/runtime helper packages.',
       ),
+      'collapseAsync': Schema.bool(
+        description:
+            'Whether to collapse dart:async frames into a single "async overhead" '
+            'entry in summary tables.',
+      ),
       'includePackages': Schema.list(
         description:
-            'Optional package prefixes to keep. Frames outside these packages are hidden.',
+            'Optional package prefixes to keep. Frames outside these '
+            'packages are hidden.',
         items: Schema.string(),
       ),
       'excludePackages': Schema.list(
@@ -151,15 +171,18 @@ final Tool profileAttachTool = Tool(
       ),
       'methodLimit': Schema.int(
         description:
-            'Maximum methods to include in the method table. Use 0 for unlimited.',
+            'Maximum methods to include in the method table. '
+            'Use 0 for unlimited.',
       ),
       'treeDepth': Schema.int(
         description:
-            'Maximum call tree depth when includeCallTree is true. Use 0 for unlimited.',
+            'Maximum call tree depth when includeCallTree is true. '
+            'Use 0 for unlimited.',
       ),
       'treeChildren': Schema.int(
         description:
-            'Maximum children per call tree node when includeCallTree is true. Use 0 for unlimited.',
+            'Maximum children per call tree node when includeCallTree is '
+            'true. Use 0 for unlimited.',
       ),
     },
     required: ['vmServiceUri'],

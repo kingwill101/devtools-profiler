@@ -209,6 +209,29 @@ The CLI uses these APIs to present both readable terminal output and JSON
 output. Tool authors should prefer these higher-level summaries over parsing
 raw VM service payloads directly.
 
+When requesting multiple CPU views, build the complete top-down tree once:
+
+```dart
+final samples = await runner.readCpuSamples('/path/to/cpu_profile.json');
+final completeTree = buildCallTree(cpuSamples: samples);
+final bottomUp = buildBottomUpTreeFromCallTree(completeTree);
+final methods = buildMethodTableFromCallTree(completeTree);
+final displayedTree = completeTree.limited(maxDepth: 8, maxChildren: 12);
+```
+
+Derive the bottom-up tree and method table **before** limiting the top-down
+tree; otherwise hidden paths cannot contribute to totals or caller edges.
+These helpers require a top-down input and do not mutate it. The CLI and MCP
+presentation layer shares this work for both whole-session and region output.
+
+Frame resolution caches are local to a single profile and do not retain
+per-sample stacks. For custom stack processing, reuse `ProfileFrameResolver`
+with one unchanged function table, and create a new resolver for each profile.
+
+See [CPU view benchmarks](benchmark/README.md) for the repeatable performance
+check. To keep structured stdout clean in a custom capture host, set both
+`forwardOutput: true` and `forwardOutputToStderr: true` on `ProfileRunRequest`.
+
 ## Relationship To DevTools Packages
 
 This package reuses `packages/devtools_shared` for shared VM and memory models.
@@ -217,6 +240,13 @@ It intentionally does not depend on `packages/devtools_app`,
 
 ## Limits
 
+- For a real Flutter desktop workload, repeated attach checks, and observed
+  isolate/thread behavior, see the
+  [stress validation recipe](test/fixtures/profiled_flutter_app/README.md).
+- CPU sample `tid` values identify OS threads, not Dart isolates. New artifacts
+  retain `profilerIsolateId` separately. Core artifact readers preserve it.
+- Exited-worker CPU capture is best-effort and bounded. An isolate must be seen
+  by a successful poll; cached samples cannot recover work after its last poll.
 - Attach mode captures a fixed whole-session VM-service window from an existing
   process, but explicit region markers normally require launch mode.
 - Dart and Flutter VM-service commands only.

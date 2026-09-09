@@ -15,8 +15,11 @@ const _sessionFileName = 'session.json';
 const _sessionsDirectoryName = 'sessions';
 const _defaultSessionListLimit = 20;
 
-typedef _ProgressReporter =
-    void Function(num progress, num total, String message);
+typedef _ProgressReporter = void Function(
+  num progress,
+  num total,
+  String message,
+);
 
 /// Handles MCP profiler tool calls.
 class McpToolHandlers {
@@ -76,6 +79,7 @@ class McpToolHandlers {
           prepared.regionTrees,
           prepared.regionBottomUpTrees,
           prepared.regionMethodTables,
+          prepared.overallAllocAttribution,
         );
         progress(3, 3, 'Profile run completed.');
         return response;
@@ -133,6 +137,7 @@ class McpToolHandlers {
           prepared.regionTrees,
           prepared.regionBottomUpTrees,
           prepared.regionMethodTables,
+          prepared.overallAllocAttribution,
         );
         progress(3, 3, 'Attach profiling completed.');
         return response;
@@ -265,6 +270,7 @@ class McpToolHandlers {
             prepared.regionTrees,
             prepared.regionBottomUpTrees,
             prepared.regionMethodTables,
+            prepared.overallAllocAttribution,
           ),
         };
         progress(3, 3, 'Latest session prepared.');
@@ -299,6 +305,7 @@ class McpToolHandlers {
             prepared.regionTrees,
             prepared.regionBottomUpTrees,
             prepared.regionMethodTables,
+            prepared.overallAllocAttribution,
           ),
         };
         progress(3, 3, 'Session prepared.');
@@ -340,6 +347,7 @@ class McpToolHandlers {
             prepared.bottomUpTree,
             prepared.methodTable,
             warnings: prepared.warnings,
+            allocAttribution: prepared.allocAttribution,
           ),
         };
         progress(3, 3, 'Region prepared.');
@@ -489,6 +497,24 @@ class McpToolHandlers {
       action: (progress) async {
         final arguments = request.arguments ?? const <String, Object?>{};
         final treeOptions = _treeOptionsFromArguments(arguments);
+        if (arguments.containsKey('paths')) {
+          final paths = _stringListArgument(arguments, key: 'paths');
+          if (paths.length < 2) {
+            throw ArgumentError('paths requires at least two profile targets.');
+          }
+          progress(0, 2, 'Preparing cross-run frames.');
+          final prepared = await prepareProfileFrameColumns(
+            runner,
+            paths: paths,
+            options: treeOptions,
+          );
+          progress(2, 2, 'Cross-run frames prepared.');
+          return frameColumnsJson(
+            prepared.columns,
+            warnings: prepared.warnings,
+            frameLimit: treeOptions.frameLimit,
+          );
+        }
         progress(0, 3, 'Resolving comparison targets.');
         final baselinePath = await _resolveComparisonTargetPath(
           arguments,
@@ -624,6 +650,59 @@ class McpToolHandlers {
         };
         progress(3, 3, 'Regression analysis prepared.');
         return response;
+      },
+    );
+  }
+
+  Future<CallToolResult> profileRegress(CallToolRequest request) {
+    return _runTool(
+      request: request,
+      successMessage: 'Regression check completed.',
+      action: (progress) async {
+        final arguments = request.arguments ?? const <String, Object?>{};
+        final warnOnly = arguments['warnOnly'] as bool? ?? false;
+        final treeOptions = _treeOptionsFromArguments(arguments);
+        progress(0, 3, 'Resolving regression targets.');
+
+        final baselinePath = await _resolveComparisonTargetPath(
+          arguments,
+          pathKey: 'baselinePath',
+          sessionPathKey: 'baselineSessionPath',
+          sessionIdKey: 'baselineSessionId',
+        );
+        final currentPath = await _resolveComparisonTargetPath(
+          arguments,
+          pathKey: 'currentPath',
+          sessionPathKey: 'currentSessionPath',
+          sessionIdKey: 'currentSessionId',
+        );
+        progress(1, 3, 'Preparing regression comparison.');
+
+        final comparison = await prepareProfileComparison(
+          runner,
+          baselinePath: baselinePath,
+          currentPath: currentPath,
+          baselineProfileId: _optionalStringArgument(
+            arguments,
+            key: 'baselineProfileId',
+          ),
+          currentProfileId: _optionalStringArgument(
+            arguments,
+            key: 'currentProfileId',
+          ),
+          options: treeOptions,
+        );
+
+        final hasRegressions = comparison.regressions.insights.isNotEmpty;
+        progress(3, 3, 'Regression check completed.');
+
+        final json = comparisonPresentationJson(comparison);
+        if (!warnOnly && hasRegressions) {
+          json['regressionExitCode'] = 1;
+        }
+        json['kind'] = 'regressionCheck';
+        json['hasRegressions'] = hasRegressions;
+        return json;
       },
     );
   }
@@ -1044,6 +1123,7 @@ class McpToolHandlers {
         prepared.regionTrees,
         prepared.regionBottomUpTrees,
         prepared.regionMethodTables,
+        prepared.overallAllocAttribution,
       );
     }
     if (summary case {'topSelfFrames': final Object? _}) {
@@ -1058,6 +1138,7 @@ class McpToolHandlers {
         prepared.bottomUpTree,
         prepared.methodTable,
         warnings: prepared.warnings,
+        allocAttribution: prepared.allocAttribution,
       );
     }
     return summary;
@@ -1581,6 +1662,7 @@ ProfilePresentationOptions _treeOptionsFromArguments(
     includeMethodTable: arguments['includeMethodTable'] as bool? ?? false,
     hideSdk: arguments['hideSdk'] as bool? ?? false,
     hideRuntimeHelpers: arguments['hideRuntimeHelpers'] as bool? ?? false,
+    collapseAsync: arguments['collapseAsync'] as bool? ?? false,
     includePackages: _stringListOrEmpty(arguments['includePackages']),
     excludePackages: _stringListOrEmpty(arguments['excludePackages']),
     frameLimit: _treeLimitFromArgument(

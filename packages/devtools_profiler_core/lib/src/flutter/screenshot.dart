@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
+
 import 'package:vm_service/vm_service.dart';
 
 /// Captures screenshots of running Flutter applications via VM service

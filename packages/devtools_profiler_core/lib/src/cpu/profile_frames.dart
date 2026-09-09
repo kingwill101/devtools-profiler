@@ -73,6 +73,16 @@ class ProfileFrame {
     return _packageNameFromFilePath(parsedUri.toFilePath());
   }
 
+  /// Whether the frame belongs to `dart:async`.
+  bool get isAsyncOverhead {
+    final source = location;
+    if (source == null || source.isEmpty) return false;
+    if (source.startsWith('dart:async')) return true;
+    // org-dartlang-sdk:///sdk/lib/async/...
+    if (source.startsWith('org-dartlang-sdk:///sdk/lib/async/')) return true;
+    return false;
+  }
+
   /// Whether the frame represents native code.
   bool get isNative {
     final source = location;
@@ -108,9 +118,8 @@ String? _packageNameFromFilePath(String filePath) {
 }
 
 String _packageNameFromPubCacheFolder(String folder) {
-  final versionMatch = RegExp(
-    r'^(.+)-(\d+\.\d+\.\d+(?:[-+].*)?)$',
-  ).firstMatch(folder);
+  final versionMatch = RegExp(r'^(.+)-(\d+\.\d+\.\d+(?:[-+].*)?)$')
+      .firstMatch(folder);
   return versionMatch?.group(1) ?? folder;
 }
 
@@ -134,23 +143,53 @@ List<ProfileFrame> filterStackFrames(
   List<int> stack,
   List<ProfileFunction> functions, {
   ProfileFramePredicate? includeFrame,
-}) {
-  if (stack.isEmpty) {
-    return const [];
+}) =>
+    ProfileFrameResolver(functions)
+        .filterStack(stack, includeFrame: includeFrame);
+
+/// Resolves function metadata once per index within one CPU profile.
+///
+/// Create a new resolver for each profile or changed function table. The
+/// function table must not be mutated while this resolver is in use.
+/// Stack lists and predicate results are not cached, so memory is bounded by
+/// the number of referenced functions, not by the number of samples.
+final class ProfileFrameResolver {
+  /// Creates a resolver for [functions].
+  ProfileFrameResolver(List<ProfileFunction> functions)
+    : _functions = functions;
+
+  final List<ProfileFunction> _functions;
+  final Map<int, ProfileFrame> _frames = {};
+
+  /// Returns the cached metadata for [functionIndex].
+  ProfileFrame resolve(int functionIndex) {
+    // Invalid indices share one unknown entry rather than growing the cache.
+    final index = functionIndex < 0 || functionIndex >= _functions.length
+        ? -1
+        : functionIndex;
+    return _frames.putIfAbsent(
+      index,
+      () => profileFrameFromFunction(_functions, index),
+    );
   }
 
-  final frames = <ProfileFrame>[];
-  final resolvedFrames = <int, ProfileFrame>{};
-  for (final functionIndex in stack) {
-    final frame = resolvedFrames.putIfAbsent(
-      functionIndex,
-      () => profileFrameFromFunction(functions, functionIndex),
-    );
-    if (includeFrame == null || includeFrame(frame)) {
-      frames.add(frame);
+  /// Returns included frames in stack order, preserving recursive occurrences.
+  ///
+  /// [includeFrame] is evaluated for each occurrence, including cached frames.
+  List<ProfileFrame> filterStack(
+    List<int> stack, {
+    ProfileFramePredicate? includeFrame,
+  }) {
+    if (stack.isEmpty) return const [];
+    final frames = <ProfileFrame>[];
+    for (final index in stack) {
+      final frame = resolve(index);
+      if (includeFrame == null || includeFrame(frame)) {
+        frames.add(frame);
+      }
     }
+    return frames;
   }
-  return frames;
 }
 
 /// Returns a human-readable name for a VM profile function.
@@ -221,4 +260,14 @@ String _simplifyStackFrameName(String? name) {
     return normalized;
   }
   return normalized.split('&').last;
+}
+
+/// Returns the approximate source line number for [function], or `null` if
+/// the line number is unavailable.
+int? lineForFunction(ProfileFunction function) {
+  final object = function.function;
+  if (object case FuncRef(location: final SourceLocation location?)) {
+    return location.line;
+  }
+  return null;
 }

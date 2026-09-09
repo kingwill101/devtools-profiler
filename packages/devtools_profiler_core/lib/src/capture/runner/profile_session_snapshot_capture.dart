@@ -8,16 +8,27 @@ import '../../cpu/cpu_samples_merge.dart';
 import '../../memory/memory_models.dart';
 import '../../memory/memory_profile_summary.dart';
 import 'capture_state.dart';
+import 'cpu_snapshot_cache.dart';
 import 'profile_runner_shared.dart';
 import 'profile_session_context.dart';
 
-const _vmServiceRequestTimeout = Duration(seconds: 2);
+// Flutter startup and large profile response decoding can delay even getVM.
+// Keep metadata requests bounded without treating a busy healthy VM as gone.
+const _vmServiceRequestTimeout = Duration(seconds: 10);
+// CPU and allocation responses contain the complete profile payload. They can
+// be substantially larger than ordinary VM-service requests and need a longer
+// bound during shutdown so a healthy target is not reported as failed merely
+// because a large response took time to transfer.
+const _vmServiceProfileRequestTimeout = Duration(seconds: 30);
 
 /// Captures CPU and memory snapshots for one profiling session.
 final class ProfileSessionSnapshotCapture {
   ProfileSessionSnapshotCapture(this.context);
 
   final ProfileSessionContext context;
+  final _cpuCache = CpuSnapshotCache();
+  bool _reportedCachedCpuFallback = false;
+  bool _reportedCpuCacheEviction = false;
 
   /// Ensures the whole-session profile artifact has been captured.
   Future<void> captureOverallProfile() async {
@@ -50,13 +61,27 @@ final class ProfileSessionSnapshotCapture {
 
     try {
       try {
-        cpuSnapshot =
-            context.latestOverallSnapshot ??
-            await captureCpuSnapshotForAllAppIsolates(
-              startTimestampMicros: 0,
-              timeExtentMicros: maxSafeJsInt,
-              warningContext: 'Whole-session profiling',
-            );
+        // A cached poll may predate a completed region. Attempt one final live
+        // snapshot before falling back to retained data.
+        try {
+          cpuSnapshot = await captureCpuSnapshotForAllAppIsolates(
+            startTimestampMicros: 0,
+            timeExtentMicros: maxSafeJsInt,
+            warningContext: 'Whole-session profiling',
+          );
+        } catch (_) {
+          cpuSnapshot =
+              await captureCpuSnapshotForIsolates(
+                isolateIds: const [],
+                startTimestampMicros: 0,
+                timeExtentMicros: maxSafeJsInt,
+                includePreviouslySeenIsolates: true,
+              ).catchError((Object error) {
+                final cached = context.latestOverallSnapshot;
+                if (cached != null) return cached;
+                throw error;
+              });
+        }
         isolateIds.addAll(cpuSnapshot.isolateIds);
       } catch (error) {
         failures.add('cpu: $error');
@@ -184,16 +209,22 @@ final class ProfileSessionSnapshotCapture {
 
     context.overallSnapshotInProgress = true;
     try {
-      if (context.overallMemoryStartSnapshot == null) {
-        try {
-          context.overallMemoryStartSnapshot =
-              await captureMemorySnapshotForAllAppIsolates(
-                timestampMicros: DateTime.now().toUtc().microsecondsSinceEpoch,
-                warningContext: 'Whole-session memory start',
-              );
-        } catch (_) {
-          // Best-effort. A later poll or region start can still seed memory.
+      // Capture CPU first: allocation profiles can be large enough for workers
+      // to exit while we are waiting for memory responses.
+      try {
+        final snapshot = await captureCpuSnapshotForAllAppIsolates(
+          startTimestampMicros: 0,
+          timeExtentMicros: maxSafeJsInt,
+        );
+        final sampleCount =
+            snapshot.cpuSamples.sampleCount ??
+            snapshot.cpuSamples.samples?.length ??
+            0;
+        if (sampleCount > 0) {
+          context.latestOverallSnapshot = snapshot;
         }
+      } catch (_) {
+        // Polling is best-effort while isolates start or shut down.
       }
       try {
         final memorySnapshot = await captureMemorySnapshotForAllAppIsolates(
@@ -204,20 +235,6 @@ final class ProfileSessionSnapshotCapture {
       } catch (_) {
         // Best-effort. Memory capture should not block CPU snapshot polling.
       }
-      final snapshot = await captureCpuSnapshotForAllAppIsolates(
-        startTimestampMicros: 0,
-        timeExtentMicros: maxSafeJsInt,
-      );
-      final sampleCount =
-          snapshot.cpuSamples.sampleCount ??
-          snapshot.cpuSamples.samples?.length ??
-          0;
-      if (sampleCount > 0) {
-        context.latestOverallSnapshot = snapshot;
-      }
-    } catch (_) {
-      // Polling is best-effort. The isolate can be briefly unrunnable while
-      // the target is starting or shutting down.
     } finally {
       context.overallSnapshotInProgress = false;
     }
@@ -253,16 +270,18 @@ final class ProfileSessionSnapshotCapture {
       originIsolateId: region.isolateId,
     );
 
-    final cpuSamples =
+    final cpuSnapshot =
         region.options.captureKinds.contains(ProfileCaptureKind.cpu)
-        ? (await captureCpuSnapshotForIsolates(
+        ? await captureCpuSnapshotForIsolates(
             isolateIds: isolateIds,
             startTimestampMicros: region.startTimestampMicros,
             timeExtentMicros: nonZeroDuration(
               stopTimestampMicros - region.startTimestampMicros,
             ),
             warningContext: 'Region "${region.name}"',
-          )).cpuSamples
+            includePreviouslySeenIsolates:
+                region.options.isolateScope == ProfileIsolateScope.all,
+          )
         : null;
 
     ProfileMemoryResult? memory;
@@ -310,8 +329,11 @@ final class ProfileSessionSnapshotCapture {
     }
 
     return RegionCaptureSnapshot(
-      cpuSamples: cpuSamples,
-      isolateIds: List.unmodifiable(isolateIds),
+      cpuSamples: cpuSnapshot?.cpuSamples,
+      isolateIds: List.unmodifiable({
+        ...isolateIds,
+        ...?cpuSnapshot?.isolateIds,
+      }),
       memory: memory,
       rawMemoryPayload: rawMemoryPayload,
     );
@@ -420,7 +442,7 @@ final class ProfileSessionSnapshotCapture {
           try {
             final allocationProfile = await context.vmService!
                 .getAllocationProfile(isolateId)
-                .timeout(_vmServiceRequestTimeout);
+                .timeout(_vmServiceProfileRequestTimeout);
             capturedSnapshots.add(
               AllocationProfileSnapshot(
                 isolateId: isolateId,
@@ -473,6 +495,7 @@ final class ProfileSessionSnapshotCapture {
       startTimestampMicros: startTimestampMicros,
       timeExtentMicros: timeExtentMicros,
       warningContext: warningContext,
+      includePreviouslySeenIsolates: true,
     );
   }
 
@@ -513,33 +536,70 @@ final class ProfileSessionSnapshotCapture {
     required int startTimestampMicros,
     required int timeExtentMicros,
     String? warningContext,
+    bool includePreviouslySeenIsolates = false,
   }) async {
-    if (isolateIds.isEmpty) {
+    if (isolateIds.isEmpty && !includePreviouslySeenIsolates) {
       throw StateError('No application isolates were available for capture.');
     }
 
-    final capturedIsolateIds = <String>[];
-    final capturedSamples = <CpuSamples>[];
+    final capturedById = <String, CpuSamples>{};
     final failures = <String>[];
 
     await Future.wait([
       for (final isolateId in isolateIds)
         () async {
           try {
-            final cpuSamples = await context.vmService!.getCpuSamples(
-              isolateId,
-              startTimestampMicros,
-              timeExtentMicros,
-            );
-            capturedIsolateIds.add(isolateId);
-            capturedSamples.add(cpuSamples);
+            final rawSamples = await context.vmService!
+                .getCpuSamples(
+                  isolateId,
+                  includePreviouslySeenIsolates ? 0 : startTimestampMicros,
+                  includePreviouslySeenIsolates
+                      ? maxSafeJsInt
+                      : timeExtentMicros,
+                )
+                .timeout(_vmServiceProfileRequestTimeout);
+            final cpuSamples = compactCpuSamples(rawSamples);
+            capturedById[isolateId] = includePreviouslySeenIsolates
+                ? clipCpuSnapshot(
+                    cpuSamples,
+                    startTimestampMicros: startTimestampMicros,
+                    timeExtentMicros: timeExtentMicros,
+                  )
+                : cpuSamples;
+            if (includePreviouslySeenIsolates) {
+              final evicted = _cpuCache.record(isolateId, cpuSamples);
+              if (evicted.isNotEmpty && !_reportedCpuCacheEviction) {
+                _reportedCpuCacheEviction = true;
+                context.warnings.add(
+                  'CPU snapshot retention reached its bound of '
+                  '${_cpuCache.capacity} isolates or '
+                  '${_cpuCache.maxStackEntries} stack entries. Earlier samples '
+                  'from evicted isolates may be unavailable.',
+                );
+              }
+            }
           } catch (error) {
             failures.add('$isolateId: $error');
           }
         }(),
     ]);
 
-    if (capturedSamples.isEmpty) {
+    final sources = includePreviouslySeenIsolates
+        ? _cpuCache.withMissingIsolates(
+            capturedById,
+            startTimestampMicros: startTimestampMicros,
+            timeExtentMicros: timeExtentMicros,
+          )
+        : capturedById;
+    if (sources.length > capturedById.length && !_reportedCachedCpuFallback) {
+      _reportedCachedCpuFallback = true;
+      context.warnings.add(
+        'Retained earlier CPU snapshots for exited or unavailable isolates. '
+        'Samples after their last successful poll may be missing. OS thread '
+        'ids are not isolate ids and can be shared or change over time.',
+      );
+    }
+    if (sources.isEmpty) {
       throw StateError(
         'CPU samples could not be captured for any isolate.'
         '${failures.isEmpty ? '' : ' Failures: ${failures.join('; ')}'}',
@@ -552,8 +612,11 @@ final class ProfileSessionSnapshotCapture {
       );
     }
 
+    final capturedIsolateIds = sources.keys.toList()..sort();
     return CpuCaptureSnapshot(
-      cpuSamples: mergeCpuSamples(capturedSamples),
+      cpuSamples: mergeCpuSamples([
+        for (final id in capturedIsolateIds) sources[id]!,
+      ], isolateIds: capturedIsolateIds),
       isolateIds: List.unmodifiable(capturedIsolateIds),
     );
   }

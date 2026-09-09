@@ -44,9 +44,9 @@ void main() {
         'data',
         'allocation_profile_response.json',
       );
-      final json =
-          jsonDecode(File(fixturePath).readAsStringSync())
-              as Map<String, dynamic>;
+      final json = jsonDecode(
+        File(fixturePath).readAsStringSync(),
+      ) as Map<String, dynamic>;
 
       final members = json['members'] as List<dynamic>;
       final firstMember = members.first as Map<String, dynamic>;

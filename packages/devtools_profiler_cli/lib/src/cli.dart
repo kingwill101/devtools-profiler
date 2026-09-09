@@ -5,11 +5,15 @@ import 'package:artisanal/args.dart';
 import 'package:devtools_profiler_core/devtools_profiler_core.dart';
 
 import 'cli/commands/analysis_commands.dart';
+import 'cli/commands/annotate_command.dart';
 import 'cli/commands/artifact_commands.dart';
+import 'cli/commands/browse_command.dart';
+import 'cli/commands/replay_command.dart';
 import 'cli/commands/capture_commands.dart';
 import 'cli/commands/discover_command.dart';
 import 'cli/commands/flutter_commands.dart';
 import 'cli/commands/profiles_command.dart';
+import 'cli/commands/profiler_command.dart';
 import 'cli/constants.dart';
 
 /// Runs the `devtools-profiler` CLI.
@@ -25,7 +29,7 @@ Future<int> runCli(
 
   int exitCode = successExitCode;
   final commandRunner =
-      CommandRunner<int>(
+      _ProfilerCommandRunner(
           'devtools-profiler',
           'Profile Dart and Flutter apps and analyze the results.',
           out: stdoutSink.writeln,
@@ -41,12 +45,19 @@ Future<int> runCli(
         ..addCommand(SummarizeCommand(profiler))
         ..addCommand(ExplainCommand(profiler))
         ..addCommand(CompareCommand(profiler))
+        ..addCommand(RegressCommand(profiler))
         ..addCommand(TrendsCommand(profiler))
         ..addCommand(InspectCommand(profiler))
         ..addCommand(CompareMethodCommand(profiler))
         ..addCommand(SearchMethodsCommand(profiler))
         ..addCommand(InspectClassesCommand(profiler))
         ..addCommand(ProfilesCommand(profiler))
+        ..addCommand(
+          BrowseCommand(
+            profiler,
+            terminalAllowed: output == null && errorOutput == null,
+          ),
+        )
         ..addCommand(DiscoverCommand(profiler))
         ..addCommand(FrameProfileCommand(profiler))
         ..addCommand(TimelineCommand(profiler))
@@ -57,6 +68,13 @@ Future<int> runCli(
         ..addCommand(ScreenshotCommand(profiler))
         ..addCommand(DebugDumpCommand(profiler))
         ..addCommand(LogsCommand(profiler))
+        ..addCommand(AnnotateCommand(profiler))
+        ..addCommand(
+          ReplayCommand(
+            profiler,
+            terminalAllowed: output == null && errorOutput == null,
+          ),
+        )
         ..addCommand(McpCommand(profiler));
 
   try {
@@ -66,7 +84,42 @@ Future<int> runCli(
     stderrSink.writeln(error.message);
     return usageExitCode;
   } catch (error) {
-    stderrSink.writeln(error);
+    stderrSink.writeln(error.toString());
+    final message = error.toString();
+    if (message.contains('Artifact not found') ||
+        message.contains('No profiler artifact')) {
+      stderrSink.writeln(
+        'Tip: Use "devtools-profiler profiles" to list available stored '
+        'sessions, or pass a session id as a positional argument.',
+      );
+    }
     return softwareExitCode;
+  }
+}
+
+/// Validates output contracts before any command can launch or read a target.
+class _ProfilerCommandRunner extends CommandRunner<int> {
+  _ProfilerCommandRunner(
+    super.executableName,
+    super.description, {
+    super.out,
+    super.err,
+    super.outRaw,
+    super.errRaw,
+    super.usageExitCode,
+    super.setExitCode,
+    super.ansi,
+  });
+
+  @override
+  Future<int?> runCommand(ArgResults topLevelResults) {
+    final parsed = topLevelResults.command;
+    final command = commands[parsed?.name];
+    if (parsed != null &&
+        command is ProfilerCommand &&
+        !(parsed['help'] as bool)) {
+      command.validateOutputFormat(parsed);
+    }
+    return super.runCommand(topLevelResults);
   }
 }

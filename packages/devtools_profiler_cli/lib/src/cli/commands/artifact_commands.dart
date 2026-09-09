@@ -51,8 +51,17 @@ class SummarizeCommand extends ProfileTargetCommand {
             prepared.regionTrees,
             prepared.regionBottomUpTrees,
             prepared.regionMethodTables,
+            prepared.overallAllocAttribution,
           ),
         );
+      } else if (printCsv) {
+        final overall = prepared.session.overallProfile;
+        if (overall != null) {
+          writeCsvRegionFrames(line, overall);
+        }
+        for (final region in prepared.session.regions) {
+          writeCsvRegionFrames(line, region);
+        }
       } else {
         writeSessionSummary(
           io,
@@ -63,6 +72,7 @@ class SummarizeCommand extends ProfileTargetCommand {
           regionTrees: prepared.regionTrees,
           regionBottomUpTrees: prepared.regionBottomUpTrees,
           regionMethodTables: prepared.regionMethodTables,
+          allocAttribution: prepared.overallAllocAttribution,
           options: options,
         );
       }
@@ -83,8 +93,11 @@ class SummarizeCommand extends ProfileTargetCommand {
             prepared.bottomUpTree,
             prepared.methodTable,
             warnings: prepared.warnings,
+            allocAttribution: prepared.allocAttribution,
           ),
         );
+      } else if (printCsv) {
+        writeCsvRegionFrames(line, prepared.region);
       } else {
         writeRegionSummary(
           io,
@@ -94,6 +107,7 @@ class SummarizeCommand extends ProfileTargetCommand {
           methodTable: prepared.methodTable,
           workingDirectory: workingDirectoryFromRegionPath(prepared.region),
           warnings: prepared.warnings,
+          allocAttribution: prepared.allocAttribution,
           options: options,
         );
       }

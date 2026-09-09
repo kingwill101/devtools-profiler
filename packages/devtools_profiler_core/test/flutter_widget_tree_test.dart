@@ -14,9 +14,9 @@ void main() {
         'data',
         'widget_tree_response.json',
       );
-      final json =
-          jsonDecode(File(fixturePath).readAsStringSync())
-              as Map<String, dynamic>;
+      final json = jsonDecode(
+        File(fixturePath).readAsStringSync(),
+      ) as Map<String, dynamic>;
 
       expect(json['name'], 'MyApp');
 
@@ -67,9 +67,8 @@ void main() {
           ],
         });
 
-        final capture = await WidgetTreeCaptureService(
-          vmService: vmService,
-        ).captureWidgetTree(isolateId: 'isolate', projectOnly: true);
+        final capture = await WidgetTreeCaptureService(vmService: vmService)
+            .captureWidgetTree(isolateId: 'isolate', projectOnly: true);
 
         expect(capture.root.children, hasLength(1));
         final projectWidget = capture.root.children.single;

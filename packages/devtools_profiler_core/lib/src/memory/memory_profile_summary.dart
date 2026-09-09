@@ -4,11 +4,13 @@ import 'dart:io';
 import 'package:devtools_shared/devtools_shared.dart';
 import 'package:vm_service/vm_service.dart';
 
+import '../cpu/profile_frames.dart';
 import 'memory_models.dart';
 
 /// Predicate used to retain or hide memory class summaries.
-typedef ProfileMemoryClassPredicate =
-    bool Function(ProfileMemoryClassSummary summary);
+typedef ProfileMemoryClassPredicate = bool Function(
+  ProfileMemoryClassSummary summary,
+);
 
 /// Builds a [ProfileMemoryResult] from start and end allocation snapshots.
 ProfileMemoryResult summarizeMemoryProfile({
@@ -139,9 +141,9 @@ Future<ProfileMemoryResult> readMemoryClassesFromArtifact(
   ProfileMemoryClassPredicate? includeClass,
   int topClassCount = 50,
 }) async {
-  final json =
-      jsonDecode(await File(rawProfilePath).readAsString())
-          as Map<Object?, Object?>;
+  final json = jsonDecode(
+    await File(rawProfilePath).readAsString(),
+  ) as Map<Object?, Object?>;
   return rebuildMemoryProfileFromArtifact(
     json.cast<String, Object?>(),
     rawProfilePath: rawProfilePath,
@@ -264,4 +266,111 @@ final class _MutableMemoryClassStats {
   int accumulatedInstances = 0;
   int liveBytes = 0;
   int liveInstances = 0;
+}
+
+/// A growing memory class paired with profile-wide CPU activity.
+///
+/// This is correlation, not allocation-site evidence. Every class shares the
+/// same CPU function distribution; samples do not identify which class a
+/// function allocated.
+class AllocationAttribution {
+  /// Creates an attribution entry.
+  const AllocationAttribution({
+    required this.className,
+    required this.libraryUri,
+    required this.allocatedBytes,
+    required this.allocatedInstances,
+    required this.callSiteFractions,
+  });
+
+  /// The name of the class being allocated.
+  final String className;
+
+  /// The library URI where the class is defined.
+  final String? libraryUri;
+
+  /// Number of bytes allocated for this class in the capture window.
+  final int allocatedBytes;
+
+  /// Number of instances allocated for this class in the capture window.
+  final int allocatedInstances;
+
+  /// Profile-wide self functions and fractions of eligible named, non-native
+  /// self samples, sorted descending.
+  ///
+  /// Fractions are not percentages of allocations or of all CPU samples.
+  /// The legacy field name is retained for serialization compatibility.
+  final List<(String name, double fraction)> callSiteFractions;
+
+  /// Serializes this attribution entry to JSON.
+  Map<String, Object?> toJson() => {
+    'attributionKind': 'profileWideCpuCorrelation',
+    'className': className,
+    'libraryUri': libraryUri,
+    'allocatedBytes': allocatedBytes,
+    'allocatedInstances': allocatedInstances,
+    'callSiteFractions': [
+      for (final (name, fraction) in callSiteFractions)
+        {'function': name, 'fraction': fraction},
+    ],
+  };
+}
+
+/// Pairs growing memory classes with the profile-wide self CPU distribution.
+///
+/// This does not identify allocation sites. Each growing class receives the
+/// same distribution of eligible named, non-native self samples.
+List<AllocationAttribution> attributeAllocationsToCallers(
+  ProfileMemoryResult memory,
+  CpuSamples cpuSamples,
+) {
+  final classes = memory.topClasses
+      .where((c) => c.allocationBytesDelta > 0)
+      .toList();
+  if (classes.isEmpty) return const [];
+
+  final functions = cpuSamples.functions ?? const <ProfileFunction>[];
+  final samples = cpuSamples.samples ?? const <CpuSample>[];
+  if (functions.isEmpty || samples.isEmpty) return const [];
+
+  // Count how many times each function appears as self-frame (top of stack).
+  final functionHits = <String, int>{};
+  for (final sample in samples) {
+    final stack = sample.stack ?? const <int>[];
+    if (stack.isEmpty) continue;
+    final idx = stack.first;
+    if (idx < 0 || idx >= functions.length) continue;
+    final func = functions[idx];
+    final kind = func.kind;
+    if (kind == null || kind.toLowerCase() == 'native') continue;
+    final name = displayNameForFunction(func);
+    if (name.isEmpty || name == 'unknown') continue;
+    functionHits[name] = (functionHits[name] ?? 0) + 1;
+  }
+
+  if (functionHits.isEmpty) return const [];
+
+  final totalHits = functionHits.values.fold<int>(0, (s, v) => s + v);
+  if (totalHits <= 0) return const [];
+
+  // Sort functions by hit count descending.
+  const maxCorrelatedFunctions = 5;
+  const maxGrowingClasses = 8;
+  final sortedFunctions = functionHits.entries.toList()
+    ..sort((a, b) => b.value.compareTo(a.value));
+  final topFunctions = sortedFunctions.take(maxCorrelatedFunctions).toList();
+
+  return [
+    for (final cls in classes.take(maxGrowingClasses))
+      AllocationAttribution(
+        className: cls.className,
+        libraryUri: cls.libraryUri,
+        allocatedBytes: cls.allocationBytesDelta,
+        allocatedInstances: cls.allocationInstancesDelta,
+        callSiteFractions: [
+          for (final entry in topFunctions)
+            (entry.key, entry.value / totalHits),
+        ],
+      ),
+  ];
 }

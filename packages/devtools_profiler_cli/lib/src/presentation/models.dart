@@ -153,6 +153,7 @@ class PreparedSessionPresentation {
     required this.regionTrees,
     required this.regionBottomUpTrees,
     required this.regionMethodTables,
+    this.overallAllocAttribution = const [],
   });
 
   /// The session result with region summaries adjusted for the view options.
@@ -166,6 +167,9 @@ class PreparedSessionPresentation {
 
   /// The whole-session method table, when requested.
   final ProfileMethodTable? overallMethodTable;
+
+  /// Allocation call-site attribution for the overall profile.
+  final List<AllocationAttribution> overallAllocAttribution;
 
   /// Call trees keyed by region id.
   final Map<String, ProfileCallTree> regionTrees;
@@ -213,6 +217,7 @@ class PreparedRegionPresentation {
     this.bottomUpTree,
     this.methodTable,
     this.warnings = const [],
+    this.allocAttribution = const [],
   });
 
   /// The region summary adjusted for the view options.
@@ -231,4 +236,8 @@ class PreparedRegionPresentation {
   /// between the stored sample count and the count re-derived from the raw
   /// CPU profile artifact.
   final List<String> warnings;
+
+  /// Allocation call-site attribution, correlating memory class growth with
+  /// the CPU functions that were active during the allocation window.
+  final List<AllocationAttribution> allocAttribution;
 }

@@ -10,6 +10,39 @@ automation, and serve the same capabilities to AI agents over stdio MCP.
 
 For the full CLI guide, see [the profiler README](../../README.md).
 
+## Browse And Compare Stored Runs
+
+```bash
+devtools-profiler browse --cwd /path/to/project
+devtools-profiler compare --hide-sdk --frame-limit 20 baseline middle current
+devtools-profiler trends --last 5 --json
+```
+
+`browse` is an explicit, read-only terminal UI. Use `/` to search session IDs,
+commands, directories, and region names; arrows or `j`/`k` to move; `b` to set
+the baseline; and `c` or Enter to set the current profile. Regions are listed
+with their run-local IDs, so repeated names are not silently matched.
+Press `d` for scrollable comparison details, `e` to exit and print the full
+POSIX-shell comparison command, or `q`/Ctrl+C to quit.
+
+The browser reads stored summaries only, not large raw CPU artifacts. It
+requires terminal stdin/stdout and does not accept JSON, CSV, or frame filters.
+Use its exported command for full filtered analysis. No profile is modified.
+
+Multi-run `compare` rebuilds frame lists from raw CPU data when available,
+applies filters, aligns by name/kind/exact location, then limits output rows.
+Different checkout paths are not guessed to be equivalent. Missing entries
+mean **not listed**, not eliminated; stored summaries may be incomplete.
+Terminal output shows kind and location; CSV adds `kind` and `location` columns
+and uses blank cells for missing observations. JSON has aligned `rows` with
+nullable observations. MCP `profile_compare` accepts `paths` for the same
+cross-run CPU alignment; pairwise baseline/current selectors remain supported.
+
+Self percentages describe share of sampled CPU stacks, not elapsed time.
+Browser deltas are percentage points. Verify workloads, capture settings,
+build mode, and isolate coverage before interpreting a change as a regression.
+Repeated-run statistics and live capture controls are not part of this browser.
+
 ## Install And Run
 
 Install the CLI once:
@@ -292,6 +325,17 @@ stored session exists — it falls back to the latest session automatically.
 Use `--session-id latest`, `--session-id previous`, or `--session-id <id>`
 to pick a different stored session explicitly.
 
+Positional arguments accept session ids in addition to file paths, so you can
+pass a session id directly instead of its on-disk path:
+
+```bash
+devtools-profiler summarize 0712060003-8c410
+devtools-profiler compare 0712060003-8c410 0711235455-ebfb3
+devtools-profiler trends session-a session-b session-c
+devtools-profiler inspect --method Parser.parseFile 0712060003-8c410
+devtools-profiler inspect-classes --class String 0712060003-8c410
+```
+
 Summarize a session:
 
 ```bash
@@ -363,16 +407,42 @@ devtools-profiler trends \
   /path/to/session-1 \
   /path/to/session-2 \
   /path/to/session-3
+
+# Or use the N most recent stored sessions:
+devtools-profiler trends --last 5
+```
+
+Check for regressions against a known-good baseline (useful in CI):
+
+```bash
+devtools-profiler regress path/to/baseline-session
+devtools-profiler regress 0712060003-8c410 0711235455-ebfb3
+```
+
+Exits with code 1 when regressions are found. Use `--warn-only` to exit 0.
+
+Compare three or more sessions with an aligned hotspot table:
+
+```bash
+devtools-profiler compare session-a session-b session-c
+devtools-profiler compare --csv session-a session-b session-c
 ```
 
 ## Important Flags
 
 - `--json` emits machine-readable JSON.
+- `run --json` sends forwarded target stdout and stderr to the profiler's
+  stderr, keeping stdout parseable. `--no-forward-output` suppresses target logs.
+- `--csv` outputs compact CSV tables instead of formatted terminal output.
 - `--call-tree` includes the top-down call tree.
 - `--bottom-up` includes the bottom-up caller tree.
 - `--method-table` includes DevTools-style caller and callee context.
 - `--hide-sdk` hides Dart and Flutter SDK frames.
 - `--hide-runtime-helpers` hides profiler transport and runtime helper frames.
+- `--collapse-async` categorizes `dart:async` frames by type (normal
+  completions, error completions, listener dispatch, microtask scheduling,
+  zone overhead) and attributes async cost to the calling function when
+  raw CPU samples are available (e.g. `async (await _executeFrame)`).
 - `--include-package <prefix>` keeps only matching package prefixes.
 - `--exclude-package <prefix>` removes matching package prefixes.
 - `--full-locations` keeps full source locations instead of compact labels.
@@ -393,6 +463,8 @@ devtools-profiler trends \
   `inspect-classes`.
 - `--memory-class-limit <n>` controls compared memory class rows for `compare`.
   `0` means unlimited.
+- `--last <n>` on `trends` uses the `n` most recent stored sessions.
+  Example: `devtools-profiler trends --last 5`.
 
 Commands that operate on one profile use `--profile-id overall` for the
 whole-session profile or a generated region id for a marked region. Region names
@@ -410,6 +482,12 @@ devtools-profiler profiles --extended     # full table
 devtools-profiler profiles --limit 0      # all stored sessions
 devtools-profiler profiles --json         # machine-readable output
 ```
+
+JSON output is a single object with `kind: "sessions"`, `sessionsDirectory`,
+`totalCount`, `returnedCount`, `truncated`, and a newest-first `sessions` array.
+Each entry contains the absolute `path`, UTC `modifiedTime`, and the complete
+stored `session` object. Empty discovery returns an empty array with zero counts.
+`--limit 0` includes every session; `--extended` only changes text output.
 
 ## MCP Server
 

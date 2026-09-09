@@ -3,6 +3,51 @@ import 'package:test/test.dart';
 import 'package:vm_service/vm_service.dart';
 
 void main() {
+  test('recursive totals stay independent across sibling and root paths', () {
+    final samples = CpuSamples(
+      samplePeriod: 50,
+      functions: [
+        for (final name in ['a', 'b', 'c'])
+          ProfileFunction(
+            kind: 'Dart',
+            function: FuncRef(id: 'functions/$name', name: name),
+          ),
+      ],
+      samples: [
+        CpuSample(timestamp: 100, stack: [0, 1, 0, 0]),
+        CpuSample(timestamp: 150, stack: [0, 2, 0]),
+        CpuSample(timestamp: 200, stack: [0, 1]),
+        CpuSample(timestamp: 250, stack: [1, 0, 1]),
+      ],
+    );
+
+    for (final includeFrame in <ProfileFramePredicate?>[
+      null,
+      (frame) => frame.name != 'c',
+    ]) {
+      final table = buildMethodTable(
+        cpuSamples: samples,
+        includeFrame: includeFrame,
+      );
+      final a = table.methods.singleWhere((method) => method.name == 'a');
+      final b = table.methods.singleWhere((method) => method.name == 'b');
+      expect(table.sampleCount, 4);
+      expect(a.totalSamples, 4);
+      expect(a.selfSamples, 3);
+      expect(a.totalMicros, 200);
+      expect(b.totalSamples, 3);
+      expect(b.selfSamples, 1);
+      expect(
+        a.callees.singleWhere((relation) => relation.name == 'b').sampleCount,
+        2,
+      );
+      expect(
+        b.callees.singleWhere((relation) => relation.name == 'a').sampleCount,
+        3,
+      );
+    }
+  });
+
   test('buildMethodTable computes self totals and caller/callee edges', () {
     final workerClass = ClassRef(id: 'classes/worker', name: 'Worker');
     final functions = [

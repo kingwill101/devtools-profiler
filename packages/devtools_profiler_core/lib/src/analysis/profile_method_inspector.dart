@@ -329,7 +329,8 @@ ProfileMethodInspection inspectProfileMethod({
       queryKind: queryKind,
       status: ProfileMethodInspectionStatus.unavailable,
       message:
-          'Method inspection requires a raw CPU profile artifact, but no method table was available.',
+          'Method inspection requires a raw CPU profile artifact, '
+          'but no method table was available.',
       candidates: const [],
       topDownPaths: const [],
       bottomUpPaths: const [],

@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:path/path.dart' as path;
 
 import '../models.dart';
+import 'dart_executable.dart';
 import 'profile_runner_shared.dart';
 
 /// A launched target process plus the subscriptions needed to monitor it.
@@ -88,7 +89,7 @@ Future<LaunchedProcess> launchProfiledProcess({
     }
 
     if (request.forwardOutput) {
-      sink.writeln(line);
+      (request.forwardOutputToStderr ? stderr : sink).writeln(line);
     }
   }
 
@@ -272,7 +273,7 @@ CommandLaunchPlan instrumentedCommandLaunchPlan(
 /// disables exit pausing because terminal apps own their shutdown behavior and
 /// because the profiler uses [CommandLaunchPlan.expectedVmServiceUri] instead
 /// of scraping output for service auth codes. The bare `dart` command is
-/// replaced with [Platform.resolvedExecutable] only when
+/// replaced with the resolved Dart VM executable only when
 /// [normalizedExecutableName] confirms it is exactly the SDK token; explicit
 /// paths and suffixed executables are preserved.
 CommandLaunchPlan _dartLaunchPlan(
@@ -289,7 +290,7 @@ CommandLaunchPlan _dartLaunchPlan(
     executable:
         normalizedExecutableName(command.first) == 'dart' &&
             command.first == 'dart'
-        ? Platform.resolvedExecutable
+        ? resolveDartExecutable()
         : command.first,
     arguments: [
       usesInheritedStdio ? '--observe=$vmServicePort' : '--observe=0',

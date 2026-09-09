@@ -34,6 +34,7 @@ library;
 export 'package:devtools_profiler_protocol/devtools_profiler_protocol.dart';
 
 export 'src/analysis/profile_comparison.dart';
+export 'src/analysis/profile_frame_alignment.dart';
 export 'src/analysis/profile_hotspots.dart';
 export 'src/analysis/profile_method_comparison.dart';
 export 'src/analysis/profile_method_inspector.dart';

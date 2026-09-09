@@ -7,6 +7,13 @@ void addPresentationOptions(ArgParser parser) {
   parser
     ..addFlag('json', negatable: false, help: 'Print the result as JSON.')
     ..addFlag(
+      'csv',
+      negatable: false,
+      help:
+          'Output compact CSV tables instead of formatted terminal output.'
+          ' Combines with --hide-sdk for a focused view.',
+    )
+    ..addFlag(
       'call-tree',
       negatable: false,
       help: 'Include a top-down call tree for each captured region.',
@@ -32,10 +39,18 @@ void addPresentationOptions(ArgParser parser) {
       negatable: false,
       help: 'Hide common profiler/runtime helper packages from summaries.',
     )
+    ..addFlag(
+      'collapse-async',
+      negatable: false,
+      help:
+          'Collapse all dart:async frames into a single "async overhead" entry'
+          ' in summary tables.',
+    )
     ..addMultiOption(
       'include-package',
       help:
-          'Only include package prefixes that match these values. May be repeated.',
+          'Only include package prefixes that match these values. '
+          'May be repeated.',
     )
     ..addMultiOption(
       'exclude-package',
@@ -51,25 +66,29 @@ void addPresentationOptions(ArgParser parser) {
       'frame-limit',
       defaultsTo: '$defaultFrameLimit',
       help:
-          'Maximum rows per self / total table. Use 0 to show every matching frame.',
+          'Maximum rows per self / total table. '
+          'Use 0 to show every matching frame.',
     )
     ..addOption(
       'tree-depth',
       defaultsTo: '$defaultTreeDepth',
       help:
-          'Maximum call tree depth when --call-tree is used. Use 0 for unlimited.',
+          'Maximum call tree depth when --call-tree is used. '
+          'Use 0 for unlimited.',
     )
     ..addOption(
       'tree-children',
       defaultsTo: '$defaultTreeChildren',
       help:
-          'Maximum children per call tree node when --call-tree is used. Use 0 for unlimited.',
+          'Maximum children per call tree node when --call-tree is used. '
+          'Use 0 for unlimited.',
     )
     ..addOption(
       'method-limit',
       defaultsTo: '$defaultFrameLimit',
       help:
-          'Maximum methods to include when --method-table is used. Use 0 for unlimited.',
+          'Maximum methods to include when --method-table is used. '
+          'Use 0 for unlimited.',
     );
 }
 
@@ -84,6 +103,7 @@ ProfilePresentationOptions presentationOptionsFrom(ArgResults results) {
     includeMethodTable: results['method-table'] as bool? ?? false,
     hideSdk: results['hide-sdk'] as bool? ?? false,
     hideRuntimeHelpers: results['hide-runtime-helpers'] as bool? ?? false,
+    collapseAsync: results['collapse-async'] as bool? ?? false,
     fullLocations: results['full-locations'] as bool? ?? false,
     includePackages: (results['include-package'] as List<String>? ?? const [])
         .where((value) => value.isNotEmpty)

@@ -77,6 +77,58 @@ Future<T> profileRegion<T>(
   }, zoneValues: {_activeRegionStackZoneKey: regionStack});
 }
 
+/// Runs a synchronous [body] while reporting a named profiling region.
+///
+/// Unlike [profileRegion], this does not wrap the callback in a Future.
+/// DTD start/stop events are sent asynchronously (fire-and-forget) so the
+/// caller's synchronous execution is not blocked by profiler transport.
+/// Timestamps are captured at the call site, so region timing remains
+/// accurate even if the DTD messages arrive slightly late.
+///
+/// Nested calls inherit the current region parent automatically.
+///
+/// Throws a [ProfileRegionConfigurationException] when this process was not
+/// started by the profiler CLI in a session that can receive region events.
+T profileRegionSync<T>(
+  String name,
+  T Function() body, {
+  Map<String, String> attributes = const {},
+  ProfileRegionOptions options = const ProfileRegionOptions(),
+}) {
+  final inheritedOptions = options.parentRegionId == null
+      ? options.copyWith(parentRegionId: _currentRegionId())
+      : options;
+  final handle = startProfileRegionSync(
+    name,
+    attributes: attributes,
+    options: inheritedOptions,
+  );
+  final regionStack = [..._currentRegionStack(), handle.regionId];
+
+  return runZoned(() {
+    T? result;
+    Object? pendingError;
+    StackTrace? pendingStackTrace;
+
+    try {
+      result = body();
+    } catch (error, stackTrace) {
+      pendingError = error;
+      pendingStackTrace = stackTrace;
+    }
+
+    // Each transport phase reports its own failures. Observe the future without
+    // relabeling a failed start as a failed stop.
+    unawaited(handle.stop().catchError((Object _) {}));
+
+    if (pendingError != null) {
+      Error.throwWithStackTrace(pendingError, pendingStackTrace!);
+    }
+
+    return result as T;
+  }, zoneValues: {_activeRegionStackZoneKey: regionStack});
+}
+
 /// Starts a profiling region and returns a handle that can stop it later.
 ///
 /// Use this when the measured work spans multiple control-flow paths or cannot
@@ -102,6 +154,127 @@ Future<ProfileRegionHandle> startProfileRegion(
     name: name,
     attributes: attributes,
     options: inheritedOptions,
+  );
+}
+
+/// Starts a profiling region synchronously, firing DTD events in the
+/// background.
+///
+/// Use this when you need to profile synchronous code without adding a
+/// `Future` wrapper. Awaiting the returned handle's [ProfileRegionHandle.stop]
+/// waits for both the start and stop messages. A failed start is logged and
+/// causes stop to fail without sending a stop for an unknown region.
+///
+/// Throws a [ProfileRegionConfigurationException] when this process was not
+/// started by the profiler CLI in a session that can receive region events.
+ProfileRegionHandle startProfileRegionSync(
+  String name, {
+  Map<String, String> attributes = const {},
+  ProfileRegionOptions options = const ProfileRegionOptions(),
+}) {
+  final isolateId = developer.Service.getIsolateId(Isolate.current);
+  if (isolateId == null) {
+    throw const ProfileRegionConfigurationException(
+      'The current Dart runtime does not expose a service protocol isolate ID.',
+    );
+  }
+
+  final inheritedOptions = options.parentRegionId == null
+      ? options.copyWith(parentRegionId: _currentRegionId())
+      : options;
+
+  final controlClient = _ProfilerControlClient.fromEnvironment();
+  final regionId = _generateRegionId();
+  final startTimestampMicros = developer.Timeline.now;
+
+  // Fire DTD start asynchronously — timestamps are already captured.
+  final started = _startRegionAsync(
+    controlClient,
+    dtdParams: {
+      'attributes': attributes,
+      'captureKinds': [
+        for (final kind in inheritedOptions.captureKinds) kind.name,
+      ],
+      'isolateId': isolateId,
+      'isolateScope': inheritedOptions.isolateScope.name,
+      'name': name,
+      if (inheritedOptions.parentRegionId != null)
+        'parentRegionId': inheritedOptions.parentRegionId,
+      'regionId': regionId,
+      'sessionId': controlClient.sessionId,
+      'timestampMicros': startTimestampMicros,
+      if (inheritedOptions.extra.isNotEmpty) 'extra': inheritedOptions.extra,
+    },
+  );
+
+  return ProfileRegionHandle._(
+    attributes: attributes,
+    name: name,
+    regionId: regionId,
+    stopImpl: () async {
+      // Capture the endpoint before waiting for transport, not after it.
+      final timestampMicros = developer.Timeline.now;
+      // Failed starts already report their error and close their connection.
+      await started;
+      var stopFailed = false;
+      try {
+        await controlClient.stopRegionAsynchronously(
+          isolateId: isolateId,
+          regionId: regionId,
+          timestampMicros: timestampMicros,
+        );
+      } catch (error, stack) {
+        stopFailed = true;
+        _reportRegionFailure(regionId, 'stop', error, stack);
+        rethrow;
+      } finally {
+        try {
+          await controlClient.close();
+        } catch (error, stack) {
+          _reportRegionFailure(regionId, 'close', error, stack);
+          if (!stopFailed) rethrow;
+        }
+      }
+    },
+  );
+}
+
+/// Fires a DTD startRegion call in the background without awaiting.
+Future<void> _startRegionAsync(
+  _ProfilerControlClient client, {
+  required Map<String, Object?> dtdParams,
+}) {
+  final started = client
+      .callService(_profilerControlService, _startRegionMethod, dtdParams)
+      .catchError((Object error, StackTrace stack) async {
+        await client.close();
+        Error.throwWithStackTrace(error, stack);
+      });
+  // Observe errors immediately, while retaining them for an awaited stop.
+  unawaited(
+    started.catchError((Object error, StackTrace stack) {
+      _reportRegionFailure(
+        dtdParams['regionId'].toString(),
+        'start',
+        error,
+        stack,
+      );
+    }),
+  );
+  return started;
+}
+
+void _reportRegionFailure(
+  String regionId,
+  String operation,
+  Object error,
+  StackTrace stack,
+) {
+  developer.log(
+    'Failed to $operation profiling region $regionId: $error',
+    name: 'devtools_region_profiler',
+    error: error,
+    stackTrace: stack,
   );
 }
 
@@ -166,6 +339,10 @@ class _ProfilerControlClient {
 
   final Uri _dtdUri;
   final String _sessionId;
+  Future<DartToolingDaemon>? _connection;
+
+  /// The configured profiler session identifier.
+  String get sessionId => _sessionId;
 
   /// Creates a control client from profiler-provided environment values.
   ///
@@ -215,6 +392,7 @@ class _ProfilerControlClient {
           'regionId': regionId,
           'sessionId': _sessionId,
           'timestampMicros': developer.Timeline.now,
+          if (options.extra.isNotEmpty) 'extra': options.extra,
         },
       );
     });
@@ -265,6 +443,59 @@ class _ProfilerControlClient {
     } finally {
       await dtd.close();
     }
+  }
+
+  /// Opens one validated connection for a synchronous region's lifetime.
+  Future<DartToolingDaemon> _connect() async {
+    final dtd = await DartToolingDaemon.connect(_dtdUri);
+    try {
+      await _validateSession(dtd);
+      return dtd;
+    } catch (_) {
+      await dtd.close();
+      rethrow;
+    }
+  }
+
+  /// Closes the region's cached connection after stop or failed start.
+  Future<void> close() async {
+    final connection = _connection;
+    _connection = null;
+    if (connection == null) return;
+    DartToolingDaemon dtd;
+    try {
+      dtd = await connection;
+    } catch (_) {
+      // A failed connection/validation already performed its own cleanup.
+      return;
+    }
+    await dtd.close();
+  }
+
+  /// Calls a DTD service method over the region's validated connection.
+  ///
+  /// The stop closure waits for start before sending its request.
+  Future<void> callService(
+    String service,
+    String method,
+    Map<String, Object?> params,
+  ) async {
+    final dtd = await (_connection ??= _connect());
+    await dtd.call(service, method, params: params);
+  }
+
+  /// Stops a region by sending a fire-and-forget DTD message.
+  Future<void> stopRegionAsynchronously({
+    required String isolateId,
+    required String regionId,
+    required int timestampMicros,
+  }) async {
+    await callService(_profilerControlService, _stopRegionMethod, {
+      'isolateId': isolateId,
+      'regionId': regionId,
+      'sessionId': _sessionId,
+      'timestampMicros': timestampMicros,
+    });
   }
 }
 

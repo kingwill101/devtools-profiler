@@ -13,6 +13,7 @@ void writeSessionSummary(
   Map<String, ProfileCallTree> regionTrees = const {},
   Map<String, ProfileCallTree> regionBottomUpTrees = const {},
   Map<String, ProfileMethodTable> regionMethodTables = const {},
+  List<AllocationAttribution> allocAttribution = const [],
   required ProfilePresentationOptions options,
 }) {
   console.title('Profiler Session');
@@ -94,6 +95,8 @@ void writeSessionSummary(
     console.components.bulletList(session.warnings);
   }
 
+  _writeAllocationAttribution(console, allocAttribution);
+
   if (session.regions.isNotEmpty) {
     console.section('Region Details');
     for (final region in session.regions) {
@@ -120,6 +123,7 @@ void writeRegionSummary(
   ProfileMethodTable? methodTable,
   String? workingDirectory,
   List<String> warnings = const [],
+  List<AllocationAttribution> allocAttribution = const [],
   required ProfilePresentationOptions options,
 }) {
   console.title('Region Summary');
@@ -132,10 +136,48 @@ void writeRegionSummary(
     workingDirectory: workingDirectory,
     options: options,
   );
+  _writeAllocationAttribution(console, allocAttribution);
   if (warnings.isNotEmpty) {
     console.section('Warnings');
     console.components.bulletList(warnings);
   }
+}
+
+/// Renders profile-wide CPU correlation, not allocation-site attribution.
+void _writeAllocationAttribution(
+  Console console,
+  List<AllocationAttribution> attributions,
+) {
+  if (attributions.isEmpty) return;
+
+  console.section('Allocation / CPU Correlation (not allocation sites)');
+  console.table(
+    headers: const ['Class', 'Allocated', 'Profile-wide CPU functions'],
+    rows: [
+      for (final attr in attributions)
+        [
+          attr.className,
+          _formatBytesShort(attr.allocatedBytes),
+          attr.callSiteFractions
+              .take(3)
+              .map((e) {
+                final pct = (e.$2 * 100).toStringAsFixed(0);
+                return '${e.$1} ($pct%)';
+              })
+              .join(', '),
+        ],
+    ],
+  );
+}
+
+String _formatBytesShort(int bytes) {
+  if (bytes >= 1024 * 1024) {
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MiB';
+  }
+  if (bytes >= 1024) {
+    return '${(bytes / 1024).toStringAsFixed(1)} KiB';
+  }
+  return '$bytes B';
 }
 
 void writeComparisonSummary(
@@ -254,6 +296,56 @@ void writeComparisonSummary(
       options: options,
     );
   }
+}
+
+/// A single column in a multi-compare table.
+///
+/// Each column corresponds to one session or profile artifact in a
+/// multi-session comparison.
+typedef MultiCompareColumn = ProfileFrameColumn;
+
+/// Writes an aligned multi-column hotspot comparison table.
+///
+/// Collects the union of all top-self frames across [columns] and renders
+/// each method's self-percentage for every column. Missing entries are not
+/// interpreted as zero cost, since the supplied lists may be limited.
+void writeMultiCompareSummary(
+  Console console,
+  List<MultiCompareColumn> columns, {
+  required ProfilePresentationOptions options,
+}) {
+  if (columns.isEmpty) {
+    return;
+  }
+
+  final headers = [
+    'Method',
+    'Kind',
+    'Location',
+    for (final column in columns) column.label,
+  ];
+  final rows = [
+    for (final row in alignProfileFrames(columns, limit: options.frameLimit))
+      [
+        row.name,
+        row.kind,
+        row.location ?? '(unknown)',
+        for (final frame in row.frames)
+          frame != null ? formatPercent(frame.selfPercent) : 'not listed',
+      ],
+  ];
+
+  if (rows.isEmpty) {
+    console.warn('No profile frames available for comparison.');
+    return;
+  }
+
+  console.title('Multi-Session Comparison (top self frames)');
+  console.comment(
+    'Self share of samples; not elapsed time. '
+    '"not listed" does not mean eliminated.',
+  );
+  console.table(headers: headers, rows: rows);
 }
 
 void writeHotspotExplanation(

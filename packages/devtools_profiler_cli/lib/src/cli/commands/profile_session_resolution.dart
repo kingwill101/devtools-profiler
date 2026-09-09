@@ -18,6 +18,21 @@ import 'profiler_command.dart';
 /// These methods are shared between CLI commands (via [ProfilerCommand]) and
 /// the MCP tool handlers to avoid duplicating session discovery logic.
 mixin ProfileSessionResolution on ProfilerCommand {
+  /// Resolves a project root or sessions directory to an absolute directory.
+  ///
+  /// Throws [ArgumentError] if an explicitly supplied directory does not exist.
+  Directory resolveSessionsDirectory({String? cwd}) {
+    if (cwd == null) return defaultSessionsDirectory();
+    final directory = Directory(path.normalize(path.absolute(cwd)));
+    if (!directory.existsSync()) {
+      throw ArgumentError('Directory not found: $cwd');
+    }
+    final nested = Directory(
+      path.join(directory.path, '.dart_tool', 'devtools_profiler', 'sessions'),
+    );
+    return nested.existsSync() ? nested : directory;
+  }
+
   /// Locates the default sessions directory under the current working
   /// directory.
   ///
@@ -37,6 +52,36 @@ mixin ProfileSessionResolution on ProfilerCommand {
       return candidate;
     }
     return Directory.current;
+  }
+
+  /// Resolves [input] as a stored session id when possible; otherwise
+  /// returns the normalized absolute path.
+  ///
+  /// Session ids are matched against stored sessions under
+  /// [sessionsDirectory] (or [defaultSessionsDirectory] when omitted).
+  /// When no stored sessions are available or the input does not match
+  /// any session id, the input is treated as a file path and normalized
+  /// to an absolute path.
+  Future<String> resolveSessionOrPath(
+    String input, {
+    Directory? sessionsDirectory,
+  }) async {
+    final absolutePath = path.normalize(path.absolute(input));
+    if (FileSystemEntity.typeSync(absolutePath) !=
+        FileSystemEntityType.notFound) {
+      return absolutePath;
+    }
+    final dir = sessionsDirectory ?? defaultSessionsDirectory();
+    final sessions = await discoverSessions(dir);
+    if (sessions.isNotEmpty) {
+      try {
+        final selected = selectSession(sessions, sessionId: input);
+        return selected.directory.path;
+      } on ArgumentError {
+        // Not a matching session id — fall through to file path.
+      }
+    }
+    return absolutePath;
   }
 
   /// Lists all stored profiling sessions, sorted newest first.
@@ -69,6 +114,19 @@ mixin ProfileSessionResolution on ProfilerCommand {
       (left, right) => right.modifiedTime.compareTo(left.modifiedTime),
     );
     return sessions;
+  }
+
+  /// Selects the previous baseline or newest current run from discovery order.
+  StoredSession selectComparisonSession(
+    List<StoredSession> sessions, {
+    required bool baseline,
+  }) {
+    if (sessions.length < 2) {
+      throw ArgumentError(
+        'A comparison requires at least two stored sessions.',
+      );
+    }
+    return selectSession(sessions, sessionId: baseline ? 'previous' : 'latest');
   }
 
   /// Returns the single stored session identified by [sessionId].

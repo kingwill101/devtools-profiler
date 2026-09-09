@@ -83,9 +83,9 @@ void main() {
         'data',
         'timeline_response.json',
       );
-      final json =
-          jsonDecode(File(fixturePath).readAsStringSync())
-              as Map<String, dynamic>;
+      final json = jsonDecode(
+        File(fixturePath).readAsStringSync(),
+      ) as Map<String, dynamic>;
       final traceEvents = (json['traceEvents'] as List<dynamic>)
           .cast<Map<String, dynamic>>();
 

@@ -24,9 +24,15 @@ final Tool profileSummarizeTool = Tool(
       'hideRuntimeHelpers': Schema.bool(
         description: 'Whether to hide common profiler/runtime helper packages.',
       ),
+      'collapseAsync': Schema.bool(
+        description:
+            'Whether to collapse dart:async frames into a single "async overhead" '
+            'entry in summary tables.',
+      ),
       'includePackages': Schema.list(
         description:
-            'Optional package prefixes to keep. Frames outside these packages are hidden.',
+            'Optional package prefixes to keep. Frames outside these packages '
+            'are hidden.',
         items: Schema.string(),
       ),
       'excludePackages': Schema.list(
@@ -39,15 +45,18 @@ final Tool profileSummarizeTool = Tool(
       ),
       'methodLimit': Schema.int(
         description:
-            'Maximum methods to include in the method table. Use 0 for unlimited.',
+            'Maximum methods to include in the method table. '
+            'Use 0 for unlimited.',
       ),
       'treeDepth': Schema.int(
         description:
-            'Maximum call tree depth when includeCallTree is true. Use 0 for unlimited.',
+            'Maximum call tree depth when includeCallTree is true. '
+            'Use 0 for unlimited.',
       ),
       'treeChildren': Schema.int(
         description:
-            'Maximum children per call tree node when includeCallTree is true. Use 0 for unlimited.',
+            'Maximum children per call tree node when includeCallTree is true. '
+            'Use 0 for unlimited.',
       ),
     },
     required: ['path'],
@@ -96,7 +105,8 @@ final Tool profileListSessionsTool = Tool(
   name: 'profile_list_sessions',
   title: 'Profile List Sessions',
   description:
-      'List stored profiling sessions under a project root or sessions directory.',
+      'List stored profiling sessions under a project root or sessions '
+      'directory.',
   inputSchema: Schema.object(
     properties: {
       'rootDirectory': Schema.string(
@@ -129,7 +139,8 @@ final Tool profileListRegionsTool = Tool(
   name: 'profile_list_regions',
   title: 'Profile List Regions',
   description:
-      'List the whole-session profile and explicit regions stored in a session.',
+      'List the whole-session profile and explicit regions '
+      'stored in a session.',
   inputSchema: Schema.object(
     properties: {
       'rootDirectory': Schema.string(
@@ -165,7 +176,8 @@ final Tool profileLatestSessionTool = Tool(
   name: 'profile_latest_session',
   title: 'Profile Latest Session',
   description:
-      'Resolve the newest stored profiling session and return its prepared summary.',
+      'Resolve the newest stored profiling session and return its prepared '
+      'summary.',
   inputSchema: Schema.object(
     properties: {
       'rootDirectory': Schema.string(
@@ -190,9 +202,15 @@ final Tool profileLatestSessionTool = Tool(
       'hideRuntimeHelpers': Schema.bool(
         description: 'Whether to hide common profiler/runtime helper packages.',
       ),
+      'collapseAsync': Schema.bool(
+        description:
+            'Whether to collapse dart:async frames into a single "async overhead" '
+            'entry in summary tables.',
+      ),
       'includePackages': Schema.list(
         description:
-            'Optional package prefixes to keep. Frames outside these packages are hidden.',
+            'Optional package prefixes to keep. Frames outside these packages '
+            'are hidden.',
         items: Schema.string(),
       ),
       'excludePackages': Schema.list(
@@ -205,15 +223,18 @@ final Tool profileLatestSessionTool = Tool(
       ),
       'methodLimit': Schema.int(
         description:
-            'Maximum methods to include in the method table. Use 0 for unlimited.',
+            'Maximum methods to include in the method table. '
+            'Use 0 for unlimited.',
       ),
       'treeDepth': Schema.int(
         description:
-            'Maximum call tree depth when includeCallTree is true. Use 0 for unlimited.',
+            'Maximum call tree depth when includeCallTree is true. '
+            'Use 0 for unlimited.',
       ),
       'treeChildren': Schema.int(
         description:
-            'Maximum children per call tree node when includeCallTree is true. Use 0 for unlimited.',
+            'Maximum children per call tree node when includeCallTree is true. '
+            'Use 0 for unlimited.',
       ),
     },
     additionalProperties: false,
@@ -235,7 +256,8 @@ final Tool profileGetSessionTool = Tool(
   name: 'profile_get_session',
   title: 'Profile Get Session',
   description:
-      'Resolve a stored profiling session by id or path and return its prepared summary.',
+      'Resolve a stored profiling session by id or path and return its '
+      'prepared summary.',
   inputSchema: Schema.object(
     properties: {
       'rootDirectory': Schema.string(
@@ -247,7 +269,8 @@ final Tool profileGetSessionTool = Tool(
       ),
       'sessionId': Schema.string(
         description:
-            'Session id to resolve under the sessions directory. Also accepts "latest" or "previous".',
+            'Session id to resolve under the sessions directory. Also accepts '
+            '"latest" or "previous".',
       ),
       'sessionPath': Schema.string(
         description: 'Direct path to a session directory.',
@@ -267,9 +290,15 @@ final Tool profileGetSessionTool = Tool(
       'hideRuntimeHelpers': Schema.bool(
         description: 'Whether to hide common profiler/runtime helper packages.',
       ),
+      'collapseAsync': Schema.bool(
+        description:
+            'Whether to collapse dart:async frames into a single "async overhead" '
+            'entry in summary tables.',
+      ),
       'includePackages': Schema.list(
         description:
-            'Optional package prefixes to keep. Frames outside these packages are hidden.',
+            'Optional package prefixes to keep. Frames outside these packages '
+            'are hidden.',
         items: Schema.string(),
       ),
       'excludePackages': Schema.list(
@@ -282,15 +311,18 @@ final Tool profileGetSessionTool = Tool(
       ),
       'methodLimit': Schema.int(
         description:
-            'Maximum methods to include in the method table. Use 0 for unlimited.',
+            'Maximum methods to include in the method table. '
+            'Use 0 for unlimited.',
       ),
       'treeDepth': Schema.int(
         description:
-            'Maximum call tree depth when includeCallTree is true. Use 0 for unlimited.',
+            'Maximum call tree depth when includeCallTree is true. '
+            'Use 0 for unlimited.',
       ),
       'treeChildren': Schema.int(
         description:
-            'Maximum children per call tree node when includeCallTree is true. Use 0 for unlimited.',
+            'Maximum children per call tree node when includeCallTree is true. '
+            'Use 0 for unlimited.',
       ),
     },
     additionalProperties: false,
@@ -312,7 +344,8 @@ final Tool profileGetRegionTool = Tool(
   name: 'profile_get_region',
   title: 'Profile Get Region',
   description:
-      'Read a stored whole-session profile or explicit region by id and return the prepared summary.',
+      'Read a stored whole-session profile or explicit region by id and return '
+      'the prepared summary.',
   inputSchema: Schema.object(
     properties: {
       'rootDirectory': Schema.string(
@@ -330,7 +363,8 @@ final Tool profileGetRegionTool = Tool(
       ),
       'regionId': Schema.string(
         description:
-            'The explicit region id to load, or "overall" for the whole-session profile.',
+            'The explicit region id to load, or "overall" for the '
+            'whole-session profile.',
       ),
       'includeCallTree': Schema.bool(
         description: 'Whether to attach a top-down call tree.',
@@ -347,9 +381,15 @@ final Tool profileGetRegionTool = Tool(
       'hideRuntimeHelpers': Schema.bool(
         description: 'Whether to hide common profiler/runtime helper packages.',
       ),
+      'collapseAsync': Schema.bool(
+        description:
+            'Whether to collapse dart:async frames into a single "async overhead" '
+            'entry in summary tables.',
+      ),
       'includePackages': Schema.list(
         description:
-            'Optional package prefixes to keep. Frames outside these packages are hidden.',
+            'Optional package prefixes to keep. Frames outside these packages '
+            'are hidden.',
         items: Schema.string(),
       ),
       'excludePackages': Schema.list(
@@ -362,15 +402,18 @@ final Tool profileGetRegionTool = Tool(
       ),
       'methodLimit': Schema.int(
         description:
-            'Maximum methods to include in the method table. Use 0 for unlimited.',
+            'Maximum methods to include in the method table. '
+            'Use 0 for unlimited.',
       ),
       'treeDepth': Schema.int(
         description:
-            'Maximum call tree depth when includeCallTree is true. Use 0 for unlimited.',
+            'Maximum call tree depth when includeCallTree is true. '
+            'Use 0 for unlimited.',
       ),
       'treeChildren': Schema.int(
         description:
-            'Maximum children per call tree node when includeCallTree is true. Use 0 for unlimited.',
+            'Maximum children per call tree node when includeCallTree is true. '
+            'Use 0 for unlimited.',
       ),
     },
     required: ['regionId'],

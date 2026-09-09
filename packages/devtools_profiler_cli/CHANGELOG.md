@@ -1,5 +1,104 @@
 # Changelog
 
+## 0.6.0
+
+- Allowed Artisanal releases from 0.6.0 up to, but not including, 1.0.0.
+- Implemented `profiles --json` with structured empty results, session metadata,
+  and explicit listing counts and truncation.
+- Validated replay, trend, and output-format options before execution.
+- Kept replay output capturable and skipped animation for redirected hosts.
+- Unified session-directory resolution and preferred existing artifact paths.
+- Clarified annotation granularity and allocation/CPU correlation semantics.
+- Fixed unlimited annotation output and aligned run/attach text with JSON.
+- Added an opt-in `browse` terminal UI for searchable stored sessions and
+  explicit baseline/current region selection, summary previews, and command
+  export. Redirected hosts cannot enter terminal mode.
+- Matched multi-run CPU frames by name, kind, and location instead of name
+  alone; missing entries no longer claim a function was eliminated.
+- Corrected default pairwise comparison order: previous run is the baseline,
+  newest run is current.
+- Rebuilt multi-run frame lists before filtering/alignment and applied row
+  limits after alignment. Added MCP `profile_compare.paths` support.
+- Added aligned nullable rows to multi-run JSON and trend JSON. Multi-run CSV
+  now includes kind/location columns and blank cells for missing observations.
+- Aligned the MCP implementation version with the CLI release and required
+  core 0.6.0 for the improved artifact reader and capture lifecycle.
+- Improved saved-profile frame names and CPU isolate/thread metadata through the
+  shared core reader, for CLI and MCP workflows.
+- Finalized in-flight region captures before terminating duration-limited runs.
+- Kept `run --json` stdout parseable by forwarding target logs to stderr;
+  `--no-forward-output` still suppresses them.
+- Shared complete CPU call paths across top-down, bottom-up, and method-table
+  presentation for both CLI and MCP, before applying output limits.
+- Required Dart 3.13 or later and refreshed dependencies, including artisanal
+  0.6 and dart_mcp 0.5.2 (remaining on the supported 0.5.x line).
+
+## 0.5.2
+
+- Updated the CLI release to use core 0.5.2, fixing profiling from AOT bundles
+  installed with `dart install`.
+
+## 0.5.1
+
+- Updated the CLI release to use `devtools_profiler_core` 0.5.1, including
+  reliable completion of interrupted CPU and memory profile captures.
+
+## 0.5.0
+
+- Added `replay` command that animates through stored CPU samples as a
+  live flame chart. Shows time-windowed frame samples with visual bars.
+  Use `--window` to control the time slice, `--speed` for playback rate,
+  and `--top` for number of frames shown.
+- Added `annotate` command that shows per-file hotspot breakdowns with
+  sample counts, percentages, and visual bars. Use `--file` to filter to
+  one source file, `--top` and `--min-samples` to control output.
+  Package URIs are resolved via package_config.json.
+- Added `lineForFunction()` helper to extract line numbers from VM
+  profile function data.
+
+- Positional arguments can now be session ids in addition to file paths.
+  Commands like `summarize`, `compare`, `explain`, `trends`, `inspect`,
+  `search-methods`, `inspect-classes`, and `compare-method` first try to
+  match a positional argument against stored session ids before falling
+  back to file-path treatment.
+- Improved error output when an artifact is not found — a tip now suggests
+  `devtools-profiler profiles` to list available sessions or to pass a
+  session id as a positional argument.
+- Added `--csv` flag for compact machine-readable table output. Supports
+  `summarize`, `compare`, `trends`, and multi-compare modes.
+- Added `--last N` flag to `trends` for analyzing the N most recent stored
+  sessions without specifying explicit paths.
+- Added `--collapse-async` flag that replaces individual `dart:async` frames
+  with categorized entries grouped by async type (normal completions, error
+  completions, listener dispatch, microtask scheduling, zone overhead).
+  When raw CPU samples are available, async cost is further attributed to
+  the first non-async caller in the stack, producing actionable entries like
+  `async (await _runFrame)` that show which calling function triggered the
+  async cost.
+- Added what-if async removal estimation to `--collapse-async`: when raw
+  CPU samples are available, the profiler estimates how much time could be
+  saved by converting specific functions from async to sync. Warnings appear
+  for functions where normal completions dominate the async cost, making
+  them prime candidates for sync conversion.
+- Multi-compare mode: `compare` now accepts 3+ positional arguments and
+  produces an aligned hotspot table showing each method's self-percentage
+  across all sessions, with "eliminated" for absent entries.
+- Added `isAsyncOverhead` getter to `ProfileFrame` for identifying
+  `dart:async` frames.
+- Added `regress` command that compares the current profile against a
+  known-good baseline and reports regressions. Exits with code 1 when
+  regressions are found. Use `--warn-only` to always exit 0.
+  Examples:
+
+  ```bash
+  devtools-profiler regress path/to/baseline
+  devtools-profiler regress 0712060003-8c410 0711235455-ebfb3
+  devtools-profiler regress --warn-only path/to/baseline
+  ```
+
+- Updated `--csv` output: now also supports the multi-compare mode and
+  the `regress` command.
+
 ## 0.4.0
 
 - Added `profiles` command that lists stored profiling sessions in a
