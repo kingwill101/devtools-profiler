@@ -184,6 +184,10 @@ does mark regions, the session includes both the full view and each region view.
 
 ## Mark A Region In Your Code
 
+Driving a Flutter app with an agent? See
+[Using the profiler with Marionette](packages/devtools_profiler_cli/MARIONETTE.md)
+for custom actions, region attributes, and repeatable capture workflows.
+
 Add the helper package to the target app:
 
 ```bash

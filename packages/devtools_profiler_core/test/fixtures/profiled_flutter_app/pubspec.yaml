@@ -9,6 +9,11 @@ dependencies:
     sdk: flutter
   devtools_region_profiler:
     path: ../../../../devtools_region_profiler
+  marionette_flutter: ^0.6.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
 
 dependency_overrides:
   devtools_profiler_protocol:

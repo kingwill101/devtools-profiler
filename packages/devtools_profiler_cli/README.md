@@ -173,6 +173,10 @@ target process. It defaults to 15s, and attach sessions skip DTD by default
 because explicit region markers are unavailable in attach mode.
 If exactly one app is running, `attach` can auto-discover its VM service URI.
 
+For agent-driven Flutter workloads, see
+[Using the profiler with Marionette](MARIONETTE.md). The guide covers shared
+VM-service connections, attach versus region capture, and custom actions.
+
 ## Live Flutter Analysis
 
 The CLI includes commands that connect directly to a running Flutter or Dart
