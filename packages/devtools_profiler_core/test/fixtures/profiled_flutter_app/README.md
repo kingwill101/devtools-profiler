@@ -1,5 +1,95 @@
 # Flutter stress validation
 
+## Marionette + Profiler Demo
+
+`lib/marionette_demo.dart` is a separate entrypoint showing a custom Marionette
+action, seeded worker-isolate work, and region metadata. Existing stress
+entrypoints are unchanged.
+
+From this fixture directory, install dependencies:
+
+```bash
+flutter pub get
+```
+
+From the repository root, launch through the profiler:
+
+```bash
+dart run packages/devtools_profiler_cli/bin/devtools_profiler.dart run \
+  --duration 3m \
+  --vm-service-timeout 5m \
+  --call-tree --bottom-up --method-table \
+  --artifact-dir "$PWD/.dart_tool/marionette-demo" \
+  --cwd packages/devtools_profiler_core/test/fixtures/profiled_flutter_app \
+  -- flutter run --debug -d linux -t lib/marionette_demo.dart \
+  --host-vmservice-port=0
+```
+
+On headless Linux, prefix the entire command with `xvfb-run -a`. Configure
+Marionette MCP using the [combined guide][], then connect it to the VM service
+of this app. Do not launch a second app or a second profiler.
+
+Ask your agent:
+
+> Discover the custom extensions. Call profiler_demo_search with seed 42,
+> items 20000, and passes 100. Wait for completion. Repeat with the same inputs
+> and verify both checksums match. Then try items 0 and verify it is rejected.
+
+The original extension name for `call_custom_extension` is
+`profilerDemo.search`. Clients with schema-aware discovery expose
+`profiler_demo_search`. If your installed Marionette server predates custom
+extensions, update it following upstream setup instructions.
+
+The UI also offers **Run seeded search** with those defaults. Both paths execute
+the same action. A busy guard rejects overlapping runs; bounded inputs prevent
+accidentally requesting unlimited work. The custom action returns completion,
+inputs, checksum, and whether a region was captured. These results are not
+custom profiler metrics.
+
+Each measured action creates `marionette-search` with string attributes
+`scenarioVersion`, `seed`, `items`, and `passes`. The worker stays alive until
+the all-isolate region stop completes, then is terminated. Open the saved
+session using `devtools-profiler browse` and select matching region IDs.
+Repeated region names have separate IDs. For cross-run comparisons, repeat the
+launch and compare matching inputs; use a fresh artifact directory per launch.
+
+For Marionette-only use, run this instead:
+
+```bash
+flutter run --debug -d linux -t lib/marionette_demo.dart
+```
+
+Without the profiler's injected defines the demo runs the same workload but
+explicitly skips region calls. Rebuild without old session defines when
+switching modes. The screen reports whether region capture is configured;
+stale configuration or transport failures remain errors, not silent fallbacks.
+
+Run the demo checks from this fixture directory:
+
+```bash
+flutter test test/marionette_demo_check.dart
+```
+
+The explicit `_check.dart` filename keeps Flutter-only checks out of the
+parent pure-Dart package's recursive `dart test` discovery.
+
+This debug-mode example demonstrates orchestration and attribution, not a
+release-performance benchmark. CPU samples are statistical, and an all-isolate
+region includes unrelated work in the same interval.
+
+Locally verified on Linux under Xvfb using Flutter 3.47.1 / Dart 3.13.1 and
+`marionette_flutter` 0.6.0: Marionette MCP discovered the action, invoked it twice
+through `call_custom_extension`, and rejected an invalid item count. Both runs
+returned checksum `2152479` for the defaults. Saved regions contained the input
+attributes, main/worker isolate IDs, and 2,710 / 1,030 CPU samples respectively.
+Sample counts are observations, not test expectations. The whole-session capture
+warned that earlier snapshots were retained for exited workers; worker shutdown
+after each region makes that expected and does not guarantee lossless capture.
+
+[combined guide]: ../../../../devtools_profiler_cli/MARIONETTE.md
+
+## Stress Workload
+
 This is a real Linux desktop Flutter workload, not a mocked VM service or web
 app. `lib/stress_main.dart` renders 240 animated grid cells, allocates and
 processes JSON on the main isolate, runs two named persistent CPU workers, and
